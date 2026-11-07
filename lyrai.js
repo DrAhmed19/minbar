@@ -257,12 +257,16 @@
     out.push(pcm.length); return out;
   }
   /** يرجع جملاً مسموعة [{t0,t1,text,words}] */
-  async function transcribe(url, quality, prog, stop) {
+  async function transcribe(url, quality, prog, stop, part) {
     const pcm = await prepAudio(url, prog); if (stop && stop()) throw new Error('cancel');
-    const asrp = await loadAsr(quality || 'good', prog), SR = 16000, C = cuts(pcm, SR), segs = [];
-    for (let w = 0; w < C.length - 1; w++) {
+    const asrp = await loadAsr(quality || 'good', prog), SR = 16000, C = cuts(pcm, SR); let segs = [], w0 = 0;
+    /* استئناف: لو انقطع التحليل (خروج من التطبيق) نكمل من آخر مقطع محفوظ */
+    try { const sv = part && part.get(); if (sv && sv.n === C.length && Array.isArray(sv.segs)) { segs = sv.segs; w0 = sv.w; } } catch (e) {}
+    for (let w = w0; w < C.length - 1; w++) {
+      if (part) try { part.put({ n: C.length, w, segs }); } catch (e) {}
+      prog && prog('الاستماع للقصيدة', 0.3 + 0.68 * w / (C.length - 1), { i: w, n: C.length - 1 });
       if (stop && stop()) throw new Error('cancel');
-      const a = C[w], b = C[w + 1], off = a / SR, end = b / SR; prog && prog('الاستماع للقصيدة ' + Math.round(w / (C.length - 1) * 100) + '%', 0.3 + 0.68 * w / (C.length - 1));
+      const a = C[w], b = C[w + 1], off = a / SR, end = b / SR;
       await new Promise((rs) => setTimeout(rs, 40));
       let r; try { r = await asrp(pcm.subarray(a, b), { language: 'arabic', task: 'transcribe', return_timestamps: true, max_new_tokens: 160, repetition_penalty: 1.08 }); } catch (x) { r = await asrp(pcm.subarray(a, b), { language: 'arabic', task: 'transcribe' }); r.chunks = [{ text: r.text, timestamp: [0, (b - a) / SR] }]; }
       const ch = r.chunks || [];
@@ -271,6 +275,8 @@
     segs.forEach((s) => { s.words = segsToWords([{ text: s.text, timestamp: [s.t0, s.t1] }]).map((x) => ({ w: x.w, t0: x.t0, t1: x.t1 })); });
     prog && prog('تم', 1); return cleanSegs(segs);
   }
-  root.LYAI = { norm, wsim, align, alignP, extract, extractP, cleanSegs, csim, phrases, clean, units, transcribe, segsToWords };
+  /* تحرير ذاكرة النموذج بعد الانتهاء حتى لا يغلق النظام الصفحة بالخلفية */
+  async function free() { if (asr) { try { await asr.dispose(); } catch (e) {} asr = null; asrKey = ''; } }
+  root.LYAI = { norm, wsim, align, alignP, extract, extractP, cleanSegs, csim, phrases, clean, units, transcribe, segsToWords, free };
   if (typeof module !== 'undefined') module.exports = root.LYAI;
 })(typeof window !== 'undefined' ? window : globalThis);

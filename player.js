@@ -4,6 +4,9 @@
   const $ = (id) => document.getElementById(id);
   const LSK = 'minbar.plr', CATK = 'minbar.catalog', CATC = 'minbar.catalog.cache';
   const I = {
+    rw: '<path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/>',
+    fw: '<path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4v4h-4"/>',
+    undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>', share: '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>', users: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 4.6a3 3 0 010 6M18 14c2 .6 3.5 2.6 3.5 5"/>', pulse: '<path d="M3 12h4l2-6 4 12 2-6h6"/>', flame: '<path d="M12 21c4 0 7-2.7 7-6.5 0-3.5-2.5-5.5-4-8-1 2-2 3-3.5 3.5C11 7 10 5 9.5 3 7 6 5 9 5 14.5 5 18.3 8 21 12 21z"/>', mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/>', plist: '<path d="M4 6h12M4 11h12M4 16h7M17 14v6M14 17h6"/>',
     play: '<path d="M7 4.5v15l13-7.5z" fill="currentColor" stroke-linejoin="round"/>', pause: '<path d="M7 4h3.5v16H7zM13.5 4H17v16h-3.5z" fill="currentColor"/>',
@@ -155,7 +158,7 @@
     try { const r = await fetch(url, { cache: 'no-cache' }); if (r.ok) { j = await r.json(); try { localStorage.setItem(CATC, JSON.stringify(j)); } catch (e) {} } } catch (e) {}
     if (!j) { try { j = JSON.parse(localStorage.getItem(CATC) || 'null'); } catch (e) {} }
     catCovers = (j && j.covers) || []; BASE = ((j && j.tracks) || []).map((t, i) => Object.assign({ id: 't' + i, lyrics: [], cat: 'أخرى' }, t));
-    let fsc = []; try { fsc = JSON.parse(localStorage.getItem(FSK) || '[]'); } catch (e) {} tracks = BASE.concat(fsc); render(); fsLoad(); setTimeout(() => { if (deepAt) deepGo(); else lastRestore(); }, 300);
+    let fsc = []; try { fsc = JSON.parse(localStorage.getItem(FSK) || '[]'); } catch (e) {} tracks = BASE.concat(fsc); render(); fsLoad(); setTimeout(() => { if (deepAt) deepGo(); else { lastRestore(); setTimeout(uiRestore, 600); } }, 300);
   }
   /* القصائد المرفوعة: بياناتها في Firestore (tracks) وملفاتها في مخزن Cloudflare */
   const FSK = 'minbar.tracks.fs', OWNER = 'ahmad1999199919999@gmail.com'; let BASE = [];
@@ -661,11 +664,19 @@
   }
   const demoStop = () => cancelAnimationFrame(demoRaf);
   function openLys() { lyStyle(); lysStyleBuild(); lysTab(g('plrLyT').querySelector('.on').dataset.k); g('plrLys').hidden = false; g('plrAdmB').hidden = !(window.MinbarAuth && window.MinbarAuth.admin); demoStart(); flush(); }
-  function closeLys() { try { const ae = document.activeElement; if (ae && ae.blur && g('plrLys').contains(ae)) ae.blur(); } catch (e) {} demoStop(); g('plrLys').hidden = true; lyrBuild(); }
+  function closeLys() { try { const ae = document.activeElement; if (ae && ae.blur && g('plrLys').contains(ae)) ae.blur(); } catch (e) {} demoStop(); g('plrLys').hidden = true; uiSave(null); lyrBuild(); }
   g('plrLyOk').onclick = () => { closeLys(); toast('تم التطبيق'); };
   g('plrLyB').onclick = openLys; g('plrLyBack').onclick = closeLys;
   g('plrLyT').querySelectorAll('button').forEach((b) => b.onclick = () => { g('plrLyT').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); lysTab(b.dataset.k); });
-  function lysTab(k) { g('plrLyStyle').hidden = k !== 'style'; g('plrLyEdit').hidden = k !== 'edit'; if (k === 'edit') lysEditBuild(); }
+  const UIK = 'minbar.ui.ly'; const uiSave = (o) => { try { if (o) localStorage.setItem(UIK, JSON.stringify(o)); else localStorage.removeItem(UIK); } catch (e) {} };
+  function lysTab(k) { g('plrLyStyle').hidden = k !== 'style'; g('plrLyEdit').hidden = k !== 'edit'; if (k === 'edit') lysEditBuild(); const t = tracks[cur]; if (t) uiSave({ id: t.id, tab: k }); }
+  /* بعد رجوع التطبيق من الخلفية (أو إعادة تحميله من النظام) نرجع لنفس شاشة التحرير */
+  function uiRestore() { let o = null; try { o = JSON.parse(localStorage.getItem(UIK) || 'null'); } catch (e) {} const t = tracks[cur]; if (!o || !t || t.id !== o.id) return; openFull();
+    g('plrLyT').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x.dataset.k === o.tab)); openLys();
+    let run = null; try { run = JSON.parse(localStorage.getItem('minbar.ai.run') || 'null'); } catch (e) {} if (run && run.id === t.id && o.tab === 'edit') snack('التحليل توقّف عند خروجك من التطبيق', 'استئناف', () => { aiQ = run.q || aiQ; aiRun(t, run.mode, run.lines); }, 12000); }
+  /* لوحة المفاتيح: النافذة تأخذ المساحة الظاهرة فقط، والحقل يبقى ظاهراً */
+  if (window.visualViewport) { const vv = window.visualViewport, vu = () => { root.style.setProperty('--vvh', vv.height + 'px'); }; vv.addEventListener('resize', vu); vu(); }
+  g('plrLys').addEventListener('focusin', (e) => { const f = e.target; if (!f || !/TEXTAREA|INPUT/.test(f.tagName)) return; setTimeout(() => { try { f.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (x) {} }, 320); });
   function lysStyleBuild() { const scr = g('plrLyScroll'), sy = scr.scrollTop; requestAnimationFrame(() => { scr.scrollTop = sy; }); lysStyleBuild0(); scr.scrollTop = sy; }
   function lysStyleBuild0() {
     const SP = g('plrLySp'); SP.textContent = ''; [[true, 'تلقائي'], [false, 'إيقاف']].forEach(([v, n]) => { const b = el('button', (st.ly.split !== false) === v ? 'on' : '', n); b.type = 'button'; b.onclick = () => { st.ly.split = v; save(); lyrBuild(); lysStyleBuild(); }; SP.appendChild(b); });
@@ -725,7 +736,7 @@
     box.appendChild(el('h4', 'lsth', 'الأسطر والتوقيت'));
     L.forEach((ln) => {
       const r = el('div', 'plrlr' + (ln.ed ? ' ed' : '')), top = el('div', 'lrt'), tm = el('button', 'tm', fmt1(ln.t));
-      const ta = mkTa(ln.l); const adj = el('div', 'adj'); adj.hidden = true;
+      const ta = mkTa(ln.l); roTa(ta); const adj = el('div', 'adj'); adj.hidden = true;
       const setT = (v) => {
         v = Math.max(0, r2(v)); const all = jget(TMK, {}); all[t.id] = all[t.id] || {}; if (Math.abs(v - ln.ot) > 0.001) all[t.id][ln.i] = v; else delete all[t.id][ln.i]; jset(TMK, all);
         ln.t = v; tm.textContent = fmt1(v); r.classList.add('ed'); if (adm) admSoon(t); else if (Math.abs(v - ln.ot) > 0.001) suggest(t.id, ln.i, 't', v); lyrBuild(); A.currentTime = v;
@@ -751,7 +762,9 @@
     if (isAdm()) applyGlobal(t, arr); else saveMine(t, arr); lysEditBuild(); toast('تم تقسيم السطر');
   }
   function mkTa(v) { const ta = document.createElement('textarea'); ta.rows = 1; ta.value = v || ''; ta.spellcheck = false; ta.setAttribute('autocorrect', 'off'); ta.setAttribute('autocapitalize', 'off'); ta.setAttribute('autocomplete', 'off'); ta.addEventListener('input', () => fitTa(ta)); return ta; }
-  function fitTa(ta) { requestAnimationFrame(() => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }); }
+  /* السطر للقراءة حتى تضغطه، حتى يصير التمرير سهلاً بدون فتح لوحة المفاتيح بالغلط */
+  function roTa(ta) { ta.readOnly = true; ta.classList.add('ro'); ta.addEventListener('click', () => { if (!ta.readOnly) return; ta.readOnly = false; ta.classList.remove('ro'); ta.focus(); }); ta.addEventListener('blur', () => { ta.readOnly = true; ta.classList.add('ro'); }); }
+  function fitTa(ta) { requestAnimationFrame(() => { const sc = g('plrLyScroll'), y = sc ? sc.scrollTop : 0; ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; if (sc && sc.scrollTop !== y) sc.scrollTop = y; }); }
   /* ✦ التحليل الذكي */
   let aiQ = localStorage.getItem('minbar.ai.q') || 'good', aiStop = false, aiBusy = false;
   function aiCard(t, L) {
@@ -769,27 +782,38 @@
       btn('', 'ضبط يدوي', () => { const l = ls(); if (l.length < 2) return toast('أدخل سطرين على الأقل'); syncView(g('plrLyL'), t, l); }));
     c.appendChild(row);
     const r2b = el('div', 'row'); r2b.append(btn('', 'استخراج مسودة من الصوت', () => aiRun(t, 'extract'))); c.appendChild(r2b);
-    const pg = el('div', 'aipg'); pg.hidden = true; pg.innerHTML = '<div class="bar"><i></i></div><div class="st"><span></span></div>'; pg.lastChild.appendChild(btn('', 'إلغاء', () => { aiStop = true; })); c.appendChild(pg);
+    const pg = el('div', 'aipg'); pg.hidden = true; pg.innerHTML = '<ol class="aist"><li data-s="0">تجهيز الصوت</li><li data-s="1">تحميل نموذج التعرّف</li><li data-s="2">الاستماع للقصيدة</li><li data-s="3">مطابقة الأبيات</li></ol><div class="bar"><i></i></div><div class="st"><span class="m"></span><b class="pc"></b></div><div class="st2"><span class="el"></span><span class="eta"></span></div>';
+    const cx = btn('', 'إيقاف التحليل', () => { aiStop = true; }); cx.classList.add('aicx'); pg.appendChild(cx); c.appendChild(pg);
     return c;
   }
   const ASRK = (t, q) => 'minbar.asr3.' + t.id + '.' + q;
   async function aiRun(t, mode, lines, fresh) {
     if (aiBusy) return toast('التحليل جارٍ'); if (!window.LYAI) return toast('محرك التحليل غير محمّل');
     const box = g('plrLyL'); let card = box.querySelector('.aic:not(.rv)'); if (!card) { lysEditBuild(); card = box.querySelector('.aic'); }
-    const pg = card.querySelector('.aipg'), bar = pg.querySelector('i'), sp = pg.querySelector('span'); pg.hidden = false; card.classList.add('busy'); aiBusy = true; aiStop = false;
+    const pg = card.querySelector('.aipg'), bar = pg.querySelector('.bar i'), msg = pg.querySelector('.m'), pc = pg.querySelector('.pc'), elT = pg.querySelector('.el'), eta = pg.querySelector('.eta'); pg.hidden = false; card.classList.add('busy'); aiBusy = true; aiStop = false;
+    try { localStorage.setItem('minbar.ai.run', JSON.stringify({ id: t.id, mode, lines, q: aiQ })); } catch (e) {}
     pg.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    const prog = (s, v) => { sp.textContent = s; bar.style.width = Math.max(2, Math.round(v * 100)) + '%'; };
+    /* مؤشر حي: الوقت المنقضي + تقدّم سلس داخل كل مقطع + تقدير الوقت المتبقي */
+    const T0 = Date.now(); let base = 0, nxt = 0.02, ch = null, chT = 0, chAvg = 0, last = Date.now();
+    const step = (s) => pg.querySelectorAll('.aist li').forEach((li) => { const k = +li.dataset.s; li.className = k < s ? 'ok' : k === s ? 'on' : ''; });
+    const prog = (s, v, info) => { last = Date.now(); msg.textContent = s; base = v;
+      if (/فك|تجهيز/.test(s)) step(0); else if (/تحميل/.test(s)) step(1); else if (info) { step(2); if (!ch || ch.i !== info.i) { const n2 = Date.now(); if (ch) chAvg = chAvg ? chAvg * 0.6 + (n2 - chT) * 0.4 : n2 - chT; ch = info; chT = n2; } nxt = 0.3 + 0.68 * (info.i + 1) / info.n; msg.textContent = 'الاستماع للقصيدة — المقطع ' + (info.i + 1) + ' من ' + info.n; } else if (/ترتيب|مطابقة/.test(s)) step(3); };
+    const tick = setInterval(() => { const sec = Math.round((Date.now() - T0) / 1000); elT.textContent = 'منذ ' + fmt(sec); let v = base;
+      if (ch) { const e = Date.now() - chT, est = chAvg || 25000; v = base + (nxt - base) * Math.min(0.95, e / est); if (chAvg) { const left = (ch.n - ch.i) * chAvg - e; eta.textContent = left > 4000 ? 'متبقٍ تقريباً ' + fmt(left / 1000) : 'اقترب الانتهاء'; } else eta.textContent = 'يحسب الوقت المتبقي…'; }
+      bar.style.width = Math.max(2, v * 100).toFixed(1) + '%'; pc.textContent = Math.round(v * 100) + '%'; pg.classList.toggle('slow', Date.now() - last > 45000); }, 250);
     prog('تجهيز الصوت…', 0.02); if (aiQ === 'best' && !navigator.gpu) toast('«الأعلى دقة» بطيء على هذا الجهاز');
-    const done = () => { pg.hidden = true; card.classList.remove('busy'); aiBusy = false; };
+    const PK = 'minbar.asr.part.' + t.id + '.' + aiQ; if (fresh) try { localStorage.removeItem(PK); } catch (e) {}
+    const part = { get: () => JSON.parse(localStorage.getItem(PK) || 'null'), put: (o) => { try { localStorage.setItem(PK, JSON.stringify(o)); } catch (e) {} } };
+    const done = () => { clearInterval(tick); pg.hidden = true; card.classList.remove('busy'); aiBusy = false; try { localStorage.removeItem('minbar.ai.run'); } catch (e) {} try { window.LYAI.free(); } catch (e) {} };
     try {
       let segs = null; if (!fresh) { try { const c = JSON.parse(localStorage.getItem(ASRK(t, aiQ)) || 'null'); if (c) segs = c.map((x) => ({ t0: x[0], t1: x[1], text: x[2], words: window.LYAI.segsToWords([{ text: x[2], timestamp: [x[0], x[1]] }]) })); } catch (e) {} }
-      if (!segs) { segs = await window.LYAI.transcribe(t.audio, aiQ, prog, () => aiStop); if (segs.length) { try { localStorage.setItem(ASRK(t, aiQ), JSON.stringify(segs.map((x) => [r2(x.t0), r2(x.t1), x.text]))); } catch (e) {} } }
-      prog('ترتيب الأسطر…', 0.98); await new Promise((r) => setTimeout(r, 30));
+      if (!segs) { segs = await window.LYAI.transcribe(t.audio, aiQ, prog, () => aiStop, part); if (segs.length) { try { localStorage.setItem(ASRK(t, aiQ), JSON.stringify(segs.map((x) => [r2(x.t0), r2(x.t1), x.text]))); localStorage.removeItem(PK); } catch (e) {} } }
+      prog('مطابقة الأبيات…', 0.98); await new Promise((r) => setTimeout(r, 30));
       let rows, st2 = null;
       if (mode === 'extract') rows = window.LYAI.extractP(segs); else { const r = window.LYAI.alignP(lines, segs, { base: 0.35 }); rows = r.out; st2 = r.stats; }
       done(); if (!rows.length) return toast('تعذّر تمييز كلام واضح في هذا التسجيل');
       aiReview(t, rows, mode, st2, lines);
-    } catch (e) { done(); toast(e && e.message === 'cancel' ? 'أُلغي التحليل' : 'تعذّر التحليل. يلزم اتصال بالإنترنت عند الاستخدام الأول.'); console.warn(e); }
+    } catch (e) { done(); toast(e && e.message === 'cancel' ? 'أُوقف التحليل — يُستأنف من حيث توقّف عند الإعادة' : 'تعذّر التحليل. يلزم اتصال بالإنترنت عند الاستخدام الأول.'); console.warn(e); }
   }
   function aiReview(t, rows, mode, stt, lines) {
     const box = g('plrLyL'); box.textContent = ''; const head = el('div', 'aic rv'), nRep = rows.filter((r) => r.rep).length, nLow = rows.filter((r) => r.conf < 0.45).length;
@@ -810,43 +834,67 @@
   /* الضبط اليدوي: حفظ فوري للتقدّم، تنقّل بالسحب، وأدوات دقيقة */
   const SYK = (t) => 'minbar.lyr.sync.' + t.id;
   function syncView(box, t, ls, resume) {
-    const sv = resume || { ls, st2: [], k: 0 }; ls = sv.ls; const st2 = sv.st2; let k = sv.k, slow = false;
-    const keep = () => { try { localStorage.setItem(SYK(t), JSON.stringify({ ls, st2, k })); } catch (e) {} };
+    const sv = resume || { ls, st2: [], k: 0 }; ls = sv.ls; const st2 = sv.st2 || []; let k = sv.k || 0, slow = false, raf = 0, seg = null, view = sv.view || 'sync';
+    const N = ls.length, LAT = 0.12;
+    const keep = () => { try { localStorage.setItem(SYK(t), JSON.stringify({ ls, st2, k, view })); } catch (e) {} };
     const setRate = () => { A.playbackRate = slow ? 0.75 : (st.speed || 1); };
-    A.currentTime = k > 0 && st2[k - 1] != null ? Math.max(0, st2[k - 1] - 1) : (resume ? A.currentTime : 0); fadePlay(); keep(); g('plrLyScroll').scrollTo({ top: 0, behavior: 'smooth' });
-    const finish = () => { slow = false; setRate(); };
-    const paint = () => {
-      box.textContent = ''; const w = el('div', 'sync');
-      if (k >= ls.length) {
-        finish(); w.appendChild(el('h5', '', 'تمّت المزامنة — راجع الأوقات'));
-        const l = el('div', 'synlist'); ls.forEach((x, i) => { const r = el('div', 'syr'); const tb = el('button', 'tm', fmt1(st2[i])); tb.onclick = () => { A.currentTime = st2[i]; if (A.paused) fadePlay(); };
-          const mn = el('button', 'sm', '−'), pl = el('button', 'sm', '+'); mn.onclick = () => { st2[i] = Math.max(0, r2(st2[i] - 0.1)); tb.textContent = fmt1(st2[i]); keep(); }; pl.onclick = () => { st2[i] = r2(st2[i] + 0.1); tb.textContent = fmt1(st2[i]); keep(); };
-          r.append(mn, tb, pl, el('span', '', x)); l.appendChild(r); }); w.appendChild(l);
-        const mk = () => ls.map((x, i) => ({ t: r2(st2[i]), l: x })), clr = () => { try { localStorage.removeItem(SYK(t)); } catch (e) {} };
-        const rw = el('div', 'row'); rw.append(btn('primary', isAdm() ? 'اعتماد للجميع' : 'حفظ وإرسال للمراجعة', () => { clr(); commit(t, mk()); lysEditBuild(); }), btn('', 'حفظ على هذا الجهاز', () => { clr(); saveMine(t, mk()); lysEditBuild(); toast('حُفظت الكلمات على هذا الجهاز'); }));
-        const rw2 = el('div', 'row'); rw2.append(btn('', 'رجوع للسطر الأخير', () => { k = ls.length - 1; keep(); paint(); }), btn('', 'إعادة من البداية', () => { st2.length = 0; k = 0; keep(); A.currentTime = 0; paint(); }));
-        w.append(rw, rw2); box.appendChild(w); return;
-      }
-      const hd = el('div', 'synh'); hd.append(el('b', '', (k + 1) + ' / ' + ls.length)); const bar = el('div', 'synbar'); bar.appendChild(el('i')); bar.firstChild.style.width = (k / ls.length * 100) + '%'; hd.appendChild(bar); w.appendChild(hd);
-      const stage = el('div', 'synst'), lnw = el('div', 'synln'); [k - 1, k, k + 1, k + 2].forEach((i) => { if (i < 0 || i >= ls.length) { lnw.appendChild(el('div', 'syl e')); return; } const d = el('div', 'syl' + (i === k ? ' cur' : i < k ? ' done' : '')); d.appendChild(el('span', '', ls[i])); if (st2[i] != null) d.appendChild(el('small', '', fmt1(st2[i]))); lnw.appendChild(d); }); stage.appendChild(lnw);
-      stage.appendChild(el('div', 'synhint', 'اضغط على السطر أو «الآن» عند بدايته · اسحب للأعلى أو الأسفل للتنقّل'));
-      let y0 = null, mv = 0; stage.addEventListener('pointerdown', (e) => { y0 = e.clientY; mv = 0; try { stage.setPointerCapture(e.pointerId); } catch (x) {} });
-      stage.addEventListener('pointermove', (e) => { if (y0 == null) return; mv = e.clientY - y0; lnw.style.transition = 'none'; lnw.style.transform = `translateY(${Math.max(-70, Math.min(70, mv * 0.6))}px)`; lnw.style.opacity = 1 - Math.min(0.5, Math.abs(mv) / 200); });
-      stage.addEventListener('pointerup', () => { if (y0 == null) return; y0 = null; lnw.style.transition = ''; lnw.style.transform = ''; lnw.style.opacity = ''; if (Math.abs(mv) < 8) return mark(); if (mv < -40 && k < ls.length - 1) { k++; if (st2[k] != null) A.currentTime = Math.max(0, st2[k] - 1); } else if (mv > 40 && k > 0) { k--; A.currentTime = Math.max(0, (st2[k] != null ? st2[k] : st2[k - 1] || 0) - 1.5); } keep(); paint(); });
-      w.appendChild(stage);
-      const mark = () => { st2[k] = Math.max(0, r2(A.currentTime - 0.12)); k++; keep(); paint(); try { navigator.vibrate && navigator.vibrate(12); } catch (x) {} };
-      const go = el('button', 'syngo', 'الآن'); go.onclick = mark; w.appendChild(go);
-      const tl = el('div', 'syntools');
-      const tb = (n, f, on) => { const b = el('button', on ? 'on' : '', n); b.type = 'button'; b.onclick = f; tl.appendChild(b); return b; };
-      tb('⟲ 3ث', () => { A.currentTime = Math.max(0, A.currentTime - 3); }); tb(A.paused ? '▶' : '❚❚', () => { toggle(); setTimeout(paint, 60); });
-      tb('⟳ 3ث', () => { A.currentTime = A.currentTime + 3; }); tb('×0.75', () => { slow = !slow; setRate(); paint(); }, slow);
-      tb('تراجع', () => { if (k > 0) { k--; st2[k] = null; A.currentTime = Math.max(0, (st2[k - 1] != null ? st2[k - 1] : 0) - 0.5); keep(); paint(); } });
-      w.appendChild(tl);
-      if (k > 0 && st2[k - 1] != null) { const fx = el('div', 'synfx'); fx.append(el('span', '', 'السطر السابق ' + fmt1(st2[k - 1]))); [['−0.1', -0.1], ['+0.1', 0.1]].forEach(([n, d]) => { const b = el('button', '', n); b.onclick = () => { st2[k - 1] = Math.max(0, r2(st2[k - 1] + d)); keep(); paint(); }; fx.appendChild(b); }); const ls2 = el('button', '', 'استماع'); ls2.onclick = () => { A.currentTime = Math.max(0, st2[k - 1] - 0.3); if (A.paused) fadePlay(); }; fx.appendChild(ls2); w.appendChild(fx); }
-      const cn = el('div', 'row'); cn.append(btn('', 'حفظ والخروج', () => { keep(); finish(); lysEditBuild(); toast('حُفظ التقدّم، ويمكنك المتابعة لاحقاً'); })); w.appendChild(cn);
+    const stopLoop = () => { cancelAnimationFrame(raf); raf = 0; clearInterval(seg); seg = null; };
+    const leave = () => { stopLoop(); slow = false; setRate(); };
+    const sc = g('plrLyScroll'); sc.scrollTo({ top: 0 });
+    const avgDur = () => { let s = 0, n = 0; for (let i = 1; i < k; i++) if (st2[i] != null && st2[i - 1] != null) { s += st2[i] - st2[i - 1]; n++; } return n ? Math.max(1.5, s / n) : 4; };
+    const ibn = (icn, lbl, fn, cls) => { const b = el('button', 'sib' + (cls ? ' ' + cls : '')); b.type = 'button'; b.innerHTML = ic(icn, 20) + '<span></span>'; b.lastChild.textContent = lbl; b.onclick = fn; return b; };
+    /* ---------- شاشة الضبط ---------- */
+    function paintSync() {
+      view = 'sync'; keep(); stopLoop(); box.textContent = ''; const w = el('div', 'sy2');
+      const hd = el('div', 'sy2h'); const cnt = el('b'); hd.append(el('span', '', 'الضبط اليدوي'), cnt); const bar = el('div', 'sy2bar'); bar.appendChild(el('i')); w.append(hd, bar);
+      const list = el('div', 'sy2l'); const rows = ls.map((x, i) => { const r = el('div', 'sy2r'); r.innerHTML = '<i class="fl"></i><span class="tt"></span><span class="tx"></span>'; r.children[2].textContent = x;
+        r.onclick = () => { if (i >= k) return; snack('إعادة الضبط من البيت ' + (i + 1) + '؟', 'نعم', () => { k = i; st2.length = i; A.currentTime = Math.max(0, (i > 0 ? st2[i - 1] : 0) - (i > 0 ? 0.3 : 0)); if (A.paused) fadePlay(); keep(); upd(true); }); };
+        list.appendChild(r); return r; }); w.appendChild(list);
+      const fx = el('div', 'sy2fx'); const fxl = el('span'); const nud = (d) => { if (k < 1) return; st2[k - 1] = Math.max(0, r2(st2[k - 1] + d)); keep(); upd(); };
+      fx.append(el('button', '', '−0.1'), fxl, el('button', '', '+0.1')); fx.firstChild.onclick = () => nud(-0.1); fx.lastChild.onclick = () => nud(0.1); w.appendChild(fx);
+      const go = el('button', 'sy2go'); go.type = 'button'; w.appendChild(go);
+      const mark = () => { if (k >= N) return; if (A.paused) { fadePlay(); if (k === 0) { /* أول ضغطة تبدأ التشغيل فقط إذا كنا قبل الصوت */ } }
+        const ol = ac && ac.outputLatency ? ac.outputLatency : 0; st2[k] = Math.max(0, r2(A.currentTime - LAT - ol)); if (k > 0 && st2[k] <= st2[k - 1]) st2[k] = r2(st2[k - 1] + 0.2); k++; keep(); upd(true); try { navigator.vibrate && navigator.vibrate(10); } catch (x) {} };
+      go.addEventListener('pointerdown', (e) => { e.preventDefault(); go.classList.add('dn'); mark(); }); ['pointerup', 'pointerleave', 'pointercancel'].forEach((n) => go.addEventListener(n, () => go.classList.remove('dn')));
+      const ctl = el('div', 'sy2c'); const pp = ibn(A.paused ? 'play' : 'pause', A.paused ? 'تشغيل' : 'إيقاف', () => toggle(), 'big');
+      ctl.append(ibn('rw', '3 ث', () => { A.currentTime = Math.max(0, A.currentTime - 3); }), pp, ibn('fw', '3 ث', () => { A.currentTime += 3; }),
+        ibn('speed', 'أبطأ', function () { slow = !slow; setRate(); this.classList.toggle('on', slow); }, slow ? 'on' : ''),
+        ibn('undo', 'تراجع', () => { if (k < 1) return; k--; st2.length = k; A.currentTime = Math.max(0, (k > 0 ? st2[k - 1] : 0) - 0.5); keep(); upd(true); }));
+      w.appendChild(ctl);
+      const ft = el('div', 'row'); ft.append(btn('', 'حفظ والخروج', () => { keep(); leave(); lysEditBuild(); toast('حُفظ التقدّم — تكمل لاحقاً من نفس البيت'); }), btn('primary', 'مراجعة', () => { if (!k) return toast('اضبط بيتاً واحداً على الأقل'); paintRev(); })); w.appendChild(ft);
       box.appendChild(w);
-    };
-    paint();
+      let lastK = -1, lastP = null;
+      function upd(scroll) { cnt.textContent = Math.min(k, N) + ' / ' + N; bar.firstChild.style.width = (k / N * 100) + '%';
+        go.textContent = k === 0 ? 'ابدأ — البيت الأول' : k < N ? 'البيت التالي ↓' : 'تم ضبط كل الأبيات'; go.disabled = k >= N; fx.hidden = k < 1; if (k > 0) fxl.textContent = 'البيت ' + k + ' يبدأ عند ' + fmt1(st2[k - 1]);
+        rows.forEach((r, i) => { r.className = 'sy2r' + (i < k - 1 ? ' done' : i === k - 1 ? ' act' : i === k ? ' nx' : ''); r.children[1].textContent = st2[i] != null && i < k ? fmt1(st2[i]) : ''; if (i !== k - 1) r.firstChild.style.transform = 'scaleX(0)'; });
+        if (scroll || lastK !== k) { const r = rows[Math.min(N - 1, Math.max(0, k - 1))]; if (r) list.scrollTo({ top: r.offsetTop - list.clientHeight * 0.35, behavior: 'smooth' }); lastK = k; } }
+      const loop = () => { if (!w.isConnected) return stopLoop(); raf = requestAnimationFrame(loop); if (A.paused !== lastP) { lastP = A.paused; pp.innerHTML = ic(A.paused ? 'play' : 'pause', 22) + '<span>' + (A.paused ? 'تشغيل' : 'إيقاف') + '</span>'; }
+        if (k > 0) { const r = rows[k - 1], s = st2[k - 1]; if (r && s != null) { const f = Math.max(0, Math.min(1, (A.currentTime - s) / avgDur())); r.firstChild.style.transform = 'scaleX(' + f.toFixed(3) + ')'; r.classList.toggle('long', f >= 1); } } };
+      upd(true); raf = requestAnimationFrame(loop);
+      if (k > 0 && st2[k - 1] != null && resume) { A.currentTime = Math.max(0, st2[k - 1] - 1); }
+      resume = null;
+    }
+    /* ---------- شاشة المراجعة ---------- */
+    function playSeg(i, b) { stopLoop(); A.currentTime = st2[i]; fadePlay(); const end = i + 1 < k ? st2[i + 1] : st2[i] + 8; box.querySelectorAll('.rvr').forEach((x) => x.classList.toggle('pl', x === b)); seg = setInterval(() => { if (A.currentTime >= end - 0.05 || A.paused) { clearInterval(seg); seg = null; if (!A.paused) fadePause(); b.classList.remove('pl'); } }, 50); }
+    function paintRev() {
+      view = 'rev'; keep(); stopLoop(); box.textContent = ''; const w = el('div', 'sy2 rv');
+      const hd = el('div', 'sy2h'); hd.append(el('span', '', 'مراجعة الضبط'), el('b', '', k + ' / ' + N)); w.appendChild(hd);
+      w.appendChild(el('p', 'sy2p', 'اضغط ▶ لسماع البيت فقط · عدّل الوقت بـ − و + · اضغط النص لتصحيحه · ⟲ لإعادة الضبط من هذا البيت'));
+      const list = el('div', 'rvl');
+      for (let i = 0; i < k; i++) { const r = el('div', 'rvr'); const pl = el('button', 'rp'); pl.type = 'button'; pl.innerHTML = ic('play', 16); pl.onclick = () => playSeg(i, r);
+        const tw = el('div', 'rt'); const mn = el('button', '', '−'), tb = el('b', '', fmt1(st2[i])), pp = el('button', '', '+'); const nd = (d) => { st2[i] = Math.max(i ? st2[i - 1] + 0.1 : 0, r2(st2[i] + d)); tb.textContent = fmt1(st2[i]); keep(); }; mn.onclick = () => nd(-0.1); pp.onclick = () => nd(0.1); tw.append(mn, tb, pp);
+        const tx = el('div', 'rx', ls[i]); tx.onclick = () => { const ta = mkTa(ls[i]); ta.className = 'rxe'; tx.replaceWith(ta); ta.focus(); fitTa(ta); const fin = () => { ls[i] = ta.value.trim() || ls[i]; tx.textContent = ls[i]; ta.replaceWith(tx); keep(); }; ta.onblur = fin; ta.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); ta.blur(); } }; };
+        const rs = el('button', 'rr'); rs.type = 'button'; rs.innerHTML = ic('reset', 16); rs.title = 'إعادة الضبط من هنا'; rs.onclick = () => { k = i; st2.length = i; A.currentTime = Math.max(0, (i ? st2[i - 1] : 0) - 0.3); fadePlay(); paintSync(); };
+        r.append(pl, tw, tx, rs); list.appendChild(r); }
+      if (k < N) { const mr = el('div', 'rvm', 'باقي ' + (N - k) + ' بيت لم يُضبط بعد'); mr.onclick = () => { A.currentTime = Math.max(0, st2[k - 1] - 1); fadePlay(); paintSync(); }; list.appendChild(mr); }
+      w.appendChild(list);
+      const mk = () => ls.slice(0, k).map((x, i) => ({ t: r2(st2[i]), l: x })), clr = () => { try { localStorage.removeItem(SYK(t)); } catch (e) {} };
+      const a1 = el('div', 'row'); a1.append(btn('primary', isAdm() ? 'حفظ واعتماد للجميع' : 'حفظ وإرسال للمراجعة', () => { if (k < N && !confirm('لم تُضبط كل الأبيات. حفظ المضبوط فقط؟')) return; leave(); clr(); commit(t, mk()); lysEditBuild(); }));
+      const a2 = el('div', 'row'); a2.append(btn('', 'متابعة الضبط', () => { A.currentTime = Math.max(0, (k ? st2[k - 1] : 0) - 1); paintSync(); }), btn('', 'إعادة من البداية', () => { if (!confirm('مسح كل التوقيتات والبدء من جديد؟')) return; st2.length = 0; k = 0; A.currentTime = 0; keep(); paintSync(); }));
+      w.append(a1, a2); box.appendChild(w);
+    }
+    if (!resume) { A.currentTime = 0; } fadePlay();
+    if (view === 'rev' && k > 0) paintRev(); else paintSync();
   }
   function submitLyrics(t, arr) { const q2 = jget(SQK, []); q2.push({ track: t.id, title: t.title, json: JSON.stringify(arr), ts: Date.now() }); jset(SQK, q2); flush().then(() => toast(fuid() ? 'أُرسلت للمراجعة. ستظهر للجميع بعد موافقة المشرف' : 'حُفظت. ستُرسل عند تسجيل الدخول')); toast('تم الحفظ'); }
   /* مراجعة الطلبات (للمشرف فقط) */
