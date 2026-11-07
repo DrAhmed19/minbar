@@ -7,6 +7,8 @@
     rw: '<path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4h4"/>',
     fw: '<path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4v4h-4"/>',
     undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',
+    back: '<path d="M9 6l6 6-6 6"/>',
+    fwd: '<path d="M15 6l-6 6 6 6"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>', share: '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>', users: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 4.6a3 3 0 010 6M18 14c2 .6 3.5 2.6 3.5 5"/>', pulse: '<path d="M3 12h4l2-6 4 12 2-6h6"/>', flame: '<path d="M12 21c4 0 7-2.7 7-6.5 0-3.5-2.5-5.5-4-8-1 2-2 3-3.5 3.5C11 7 10 5 9.5 3 7 6 5 9 5 14.5 5 18.3 8 21 12 21z"/>', mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/>', plist: '<path d="M4 6h12M4 11h12M4 16h7M17 14v6M14 17h6"/>',
     play: '<path d="M7 4.5v15l13-7.5z" fill="currentColor" stroke-linejoin="round"/>', pause: '<path d="M7 4h3.5v16H7zM13.5 4H17v16h-3.5z" fill="currentColor"/>',
@@ -41,7 +43,8 @@
     <div class="plrmrow"><div class="plrcov sm" id="plrMiniC"></div><div class="plrmt" id="plrMiniT"><b></b><small></small></div>
       <button class="plrib" id="plrMiniPlay"></button><button class="plrib" id="plrMiniNext">${ic('next', 22)}</button></div>
   </div>
-  <nav class="plrnav"><button data-t="lib" class="on">${ic('lib', 22)}<span>المكتبة</span></button><button data-t="fav">${ic('heart', 22)}<span>المفضلة</span></button><button data-t="pls" id="plrNavPl">${ic('plist', 22)}<span>القوائم</span></button><button data-t="studio">${ic('studio', 22)}<span>الاستوديو</span></button></nav>
+  <nav class="plrnav"><button data-t="lib" class="on">${ic('lib', 22)}<span>المكتبة</span></button><button data-t="fav">${ic('heart', 22)}<span>المفضلة</span></button><button data-t="smp">${ic('pulse', 22)}<span>عينات</span></button><button data-t="pls" id="plrNavPl">${ic('plist', 22)}<span>القوائم</span></button><button data-t="studio">${ic('studio', 22)}<span>الاستوديو</span></button></nav>
+  <div class="plrsmp" id="plrSmp" hidden><div class="smhd"><b>عينات</b><button class="ib" id="plrSmpX" aria-label="إغلاق">${ic('x', 20)}</button></div><div class="smpl" id="plrSmpL"></div></div>
   <div class="plrfull lay-a" id="plrFull" hidden>
     <div class="plrbgi" id="plrBgI"></div><img class="plrbgf" id="plrBgF" alt="">
     <canvas class="plrviz" id="plrViz"></canvas>
@@ -120,8 +123,8 @@
     </div>
     <div class="plrqs plrcm" id="plrCm" hidden><div class="gr"></div>
       <div class="tph"><b>التعليقات</b><button class="ib" id="plrCmX" aria-label="إغلاق">${ic('x', 18)}</button></div>
-      <div class="cmin"><input id="plrCmI" maxlength="100" placeholder="تعليق يظهر عند هذه اللحظة" autocomplete="off"><button id="plrCmS" aria-label="إرسال">${ic('send', 18)}</button></div>
-      <div class="cmo"><div class="seg" id="plrCmOn"></div><div class="seg" id="plrCmV"></div><div class="seg" id="plrCmD"></div><div class="seg" id="plrCmM"></div></div>
+      <div class="cmin"><input id="plrCmI" maxlength="70" placeholder="عبّر عن حبك للقصيدة عند هذه اللحظة" autocomplete="off"><small class="cmn" id="plrCmN">70</small><button id="plrCmS" aria-label="إرسال">${ic('send', 18)}</button></div>
+      <div class="cmo"><div class="seg" id="plrCmOn"></div><div class="seg" id="plrCmV"></div></div><button class="btn small wide" id="plrCmMod" type="button" hidden>مراجعة التعليقات والفلتر</button>
       <div class="cmlist" id="plrCmList"></div>
     </div>
     <div class="plrqs plrcv" id="plrCv" hidden><div class="gr"></div>
@@ -177,6 +180,7 @@
     cs.forEach((c) => { const b = document.createElement('button'); b.className = 'plrchip' + (c === cat ? ' on' : ''); b.textContent = c; b.onclick = () => { cat = c; render(); }; bar.appendChild(b); });
     const body = g('plrBody'); body.textContent = ''; view = filtered(); g('plrCats').hidden = tab === 'pls';
     if (tab === 'pls') { if (!plSel) return plRender(body); const pl = pls().find((x) => x.id === plSel); if (!pl) { plSel = null; return render(); } const hb = el('div', 'plhd'); const bk = el('button', 'ib'); bk.innerHTML = ic('next', 18); bk.onclick = () => { plSel = null; render(); }; const nm = el('b', '', pl.name); const pa = el('button', 'btn small primary', 'تشغيل الكل'); pa.onclick = () => plPlay(pl); const dl = el('button', 'btn small', 'حذف'); dl.onclick = () => { if (!confirm('حذف القائمة «' + pl.name + '»؟')) return; plsSet(pls().filter((x) => x.id !== pl.id)); plSel = null; render(); }; hb.append(bk, nm, pa, dl); body.appendChild(hb); }
+    g('plrCats').hidden = tab === 'pls' || (tab === 'lib' && libV !== 'all'); if (tab === 'lib' && libRender(body)) return; if (tab === 'lib' && tracks.length) body.insertBefore(el('div'), null);
     if (!view.length) { const d = document.createElement('div'); d.className = 'hint'; d.style.textAlign = 'center'; d.textContent = tab === 'fav' ? 'لا توجد عناصر في المفضلة' : (tracks.length ? 'لا توجد نتائج' : 'لا توجد قصائد بعد'); body.appendChild(d); return; }
     const grid = document.createElement('div'); grid.className = 'plrgrid';
     view.forEach((t) => {
@@ -282,7 +286,7 @@
     const avg = (a, b) => { let s2 = 0; for (let i = a; i < b; i++) s2 += v[i]; return s2 / (b - a); };
     const bass = avg(0, 4), mid = avg(4, 13), hi = avg(13, N), vol = avg(0, N), fl = Math.max(0, bass - pBass); pBass = bass;
     beat = Math.max(beat * Math.pow(0.86, k60), fl > 0.04 ? Math.min(1, fl * 7) : 0, STM.on); cum += dt * (A.paused ? 0 : 0.6 + vol * 1.5);
-    live = { vals: v, vol, bass, mid, hi, beat, cum, f: Math.floor(A.currentTime * 30), sp: null, hist: [v], wave, stems: STM };
+    live = { vals: v, vol, bass, mid, hi, beat, cum, f: Math.floor(A.currentTime * 30), sp: null, hist: [v], wave, stems: STM }; dlyPush();
   }
 
   /* خلفية «أجواء»: هادئة تتنفس مع الصوت بلطف */
@@ -413,10 +417,10 @@
     const wave = new Float32Array(256); for (let i = 0; i < 256; i++) wave[i] = 0.25 * Math.sin(i * 0.19) * Math.sin(i * 0.031);
     const F = { vals, vol: 0.5, bass: 0.6, mid: 0.45, hi: 0.35, beat: 0.5, cum: 3, wave };
     L.forEach(([k, n]) => {
-      const b = document.createElement('button'); b.className = 'vz' + (st.viz === k ? ' on' : ''); const c = document.createElement('canvas'); c.width = c.height = 200; const x = c.getContext('2d');
+      const b = document.createElement('button'); b.className = 'vz' + (st.viz === k ? ' on' : ''); const c = document.createElement('canvas'), TS = Math.round(200 * Math.min(2, Math.max(1.5, window.devicePixelRatio || 1))); c.width = c.height = TS; const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; const u = TS / 200;
       try {
-        if (k === 'cover') { const cc = document.createElement('div'); cc.className = 'plrcov'; if (curImg && curImg.naturalWidth) x.drawImage(curImg, 45, 45, 110, 110); else { x.fillStyle = 'rgba(232,196,104,.5)'; x.fillRect(45, 45, 110, 110); } x.fillStyle = 'rgba(255,255,255,.12)'; x.fillRect(4, 55, 30, 90); x.fillRect(166, 55, 30, 90); }
-        else if (k === 'ambient') drawAmbient(x, 200, 200, 2, F, { cx: 100, cy: 100, R: 50 }); else window.PVZ.draw(x, 200, 200, k, F, curImg, { cx: 100, cy: 100, R: 50 }, { t: 1.2, now: 1.2, dt: 0.016 });
+        if (k === 'cover') { const cc = document.createElement('div'); cc.className = 'plrcov'; if (curImg && curImg.naturalWidth) x.drawImage(curImg, 30 * u, 30 * u, 140 * u, 140 * u); else { x.fillStyle = 'rgba(232,196,104,.5)'; x.fillRect(30 * u, 30 * u, 140 * u, 140 * u); } }
+        else if (k === 'ambient') drawAmbient(x, TS, TS, 2, F, { cx: TS / 2, cy: TS / 2, R: 50 * u }); else window.PVZ.draw(x, TS, TS, k, F, curImg, { cx: TS / 2, cy: TS / 2, R: 50 * u }, { t: 1.2, now: 1.2, dt: 0.016 });
       } catch (e) {}
       b.title = n; b.append(c); b.onclick = () => { st.viz = k; save(); applyViz(); vizPills(); }; box.appendChild(b); if (st.viz === k) { g('plrVizN').textContent = n; requestAnimationFrame(() => { const r = box.getBoundingClientRect(), q = b.getBoundingClientRect(); box.scrollLeft += (q.left + q.width / 2) - (r.left + r.width / 2); }); }
     });
@@ -565,14 +569,17 @@
   function lnUi() { const d = A.duration || 0, p = d ? Math.min(1, A.currentTime / d) : 0, s = (p * 100).toFixed(2) + '%'; g('plrLnF').style.width = s; g('plrLnK').style.left = s; }
   /* شكل الصوت الحي: المنشد في الوسط، ثم الإيقاع، ثم الجمهور، ثم الآلات نحو الأطراف */
   const SPC = { h: [] };
+  /* الصوت يُسمع بعد تحليله بزمن «تأخير الإخراج» (قد يصل لربع ثانية بالأندرويد)، فنؤخر الرسم بنفس المقدار حتى يطابق ما تسمعه */
+  const DLY = []; function dlyPush() { if (!live) return; const n = performance.now(); DLY.push({ ts: n, v: Float32Array.from(live.vals), s: { voc: STM.voc, drum: STM.drum, crowd: STM.crowd, inst: STM.inst } }); while (DLY.length > 2 && n - DLY[0].ts > 700) DLY.shift(); }
+  function dlyGet() { if (!DLY.length) return null; const lat = ac ? (ac.outputLatency || ac.baseLatency || 0) : 0, tgt = performance.now() - Math.min(0.6, lat) * 1000; let f = DLY[0]; for (let i = DLY.length - 1; i >= 0; i--) if (DLY[i].ts <= tgt) { f = DLY[i]; break; } return f; }
   function specDraw(dt) {
     const cv = g('plrSpec'); if (!cv.offsetWidth) return; const dpr = Math.min(window.devicePixelRatio || 1, 2), w = cv.offsetWidth, h = cv.offsetHeight;
     if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); } const x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, w, h);
-    const S = (live && live.stems) || { voc: 0, drum: 0, crowd: 0, inst: 0 }, V = live ? live.vals : null, half = 22, step = w / 2 / half, bw = Math.max(2, step * 0.42), t = performance.now() / 1000;
+    const fr = dlyGet(), S = (fr && fr.s) || { voc: 0, drum: 0, crowd: 0, inst: 0 }, V = fr ? fr.v : null, half = 22, step = w / 2 / half, bw = Math.max(2, step * 0.42), t = performance.now() / 1000;
     const hx = (h0) => { const n = parseInt(h0.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }; const Z = [['voc', 0, hx(THC.A2)], ['drum', 0.34, [255, 255, 255]], ['crowd', 0.62, hx(THC.A)], ['inst', 0.9, [225, 232, 228]]], ga = (f, m) => Math.exp(-((f - m) * (f - m)) / 0.03);
     for (let i = 0; i < half; i++) { const f = i / (half - 1); let ws = 0, lv = 0, cr = 0, cg = 0, cb = 0; Z.forEach(([k, m, c]) => { const w = ga(f, m); ws += w; lv += w * (S[k] || 0); cr += w * c[0]; cg += w * c[1]; cb += w * c[2]; }); lv /= ws;
-      const bd = V ? V[Math.min(21, Math.round(f * 21))] || 0 : 0, sh = 0.7 + 0.3 * Math.sin(i * 2.1 + t * 4), tgt = A.paused ? 0.06 : Math.min(1, 0.08 + (lv * 0.75 + bd * 0.25) * sh * 1.15);
-      SPC.h[i] = (SPC.h[i] || 0) + (tgt - (SPC.h[i] || 0)) * Math.min(1, dt * (tgt > (SPC.h[i] || 0) ? 22 : 7)); const v = SPC.h[i], bh = Math.max(bw * 1.6, v * (h - 4));
+      const bd = V ? V[Math.min(21, Math.round(f * 21))] || 0 : 0, tgt = A.paused || !useLive ? 0.06 : Math.min(1, 0.06 + lv * 0.62 + bd * 0.42);
+      SPC.h[i] = (SPC.h[i] || 0) + (tgt - (SPC.h[i] || 0)) * Math.min(1, dt * (tgt > (SPC.h[i] || 0) ? 40 : 12)); const v = SPC.h[i], bh = Math.max(bw * 1.6, v * (h - 4));
       x.fillStyle = `rgba(${cr / ws | 0},${cg / ws | 0},${cb / ws | 0},${(0.55 + v * 0.45).toFixed(3)})`;
       [w / 2 - (i + 0.5) * step, w / 2 + (i + 0.5) * step].forEach((cx) => { x.beginPath(); x.roundRect ? x.roundRect(cx - bw / 2, (h - bh) / 2, bw, bh, bw / 2) : x.rect(cx - bw / 2, (h - bh) / 2, bw, bh); x.fill(); }); }
   }
@@ -952,17 +959,6 @@
   }
   /* ضغطة مطوّلة على القصيدة: تشغيل التالي / إضافة للقائمة */
   function lpMenu(c, t) { let tm = 0; c.addEventListener('pointerdown', () => { tm = setTimeout(() => { c._lp = 1; try { navigator.vibrate && navigator.vibrate(15); } catch (e) {} qMenu(t); }, 520); }); ['pointerup', 'pointercancel', 'pointerleave', 'pointermove'].forEach((n) => c.addEventListener(n, (e) => { if (n === 'pointermove' && Math.abs(e.movementY || 0) + Math.abs(e.movementX || 0) < 3) return; clearTimeout(tm); })); }
-  function qMenu(t) {
-    const old = document.getElementById('plrQm'); if (old) old.remove(); const w = el('div', 'qmenu'); w.id = 'plrQm'; const bx = el('div', 'qmb'); bx.appendChild(el('b', '', t.title));
-    const act = (n, f) => { const b = el('button', '', n); b.type = 'button'; b.onclick = () => { f(); w.remove(); }; bx.appendChild(b); };
-    const cur0 = tracks[cur];
-    act('تشغيل الآن', () => { qFrom(t, view.length ? view : tracks); play(tracks.indexOf(t), true); });
-    if (cur0) { act('تشغيل التالي', () => { qEnsure(cur0); Q.ids = Q.ids.filter((id) => id !== t.id); Q.ids.splice(Q.ids.indexOf(cur0.id) + 1, 0, t.id); qSave(); toast('ستُشغَّل بعد الحالية'); });
-      act('إضافة لآخر القائمة', () => { qEnsure(cur0); Q.ids = Q.ids.filter((id) => id !== t.id); Q.ids.push(t.id); qSave(); toast('أُضيفت إلى قائمة التشغيل'); }); }
-    act(st.fav.includes(t.id) ? 'إزالة من المفضلة' : 'إضافة للمفضلة', () => { tog(t.id); render(); });
-    if (t.fs && isOwner()) { act('تعديل بيانات القصيدة', () => upMenu(t)); act('حذف القصيدة', () => upDel(t)); }
-    const cn = el('button', 'cn', 'إلغاء'); cn.onclick = () => w.remove(); bx.appendChild(cn); w.appendChild(bx); w.onclick = (e) => { if (e.target === w) w.remove(); }; root.appendChild(w);
-  }
   g('plrQsv').onclick = () => plSave(); g('plrQsh').onclick = () => g('plrShuf').click(); g('plrQrp').onclick = () => g('plrRep').click();
   g('plrQB').onclick = () => { qBuild(); qs(true); requestAnimationFrame(() => { g('plrQs').scrollTop = 0; }); };
 
@@ -1029,6 +1025,7 @@
   g('plrSearchB').onclick = () => { const s = g('plrSearch'); s.hidden = !s.hidden; if (!s.hidden) g('plrQ').focus(); else { q = ''; g('plrQ').value = ''; render(); } };
   g('plrQ').oninput = () => { q = g('plrQ').value; render(); };
   root.querySelectorAll('.plrnav button').forEach((b) => b.onclick = () => { plSel = null; b.classList.remove('newdot');
+    if (b.dataset.t === 'smp') { root.querySelectorAll('.plrnav button').forEach((x) => x.classList.toggle('on', x === b)); smpOpen(); return; }
     if (b.dataset.t === 'studio') { root.hidden = true; const h = $('home'); if (h && h.hidden && !$('btnHome').hidden) { /* داخل المحرر */ } return; }
     tab = b.dataset.t; root.querySelectorAll('.plrnav button').forEach((x) => x.classList.toggle('on', x === b)); render();
   });
@@ -1276,14 +1273,14 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   async function cmLoad(t) {
     rxLoad(t); cmTrack = t; const loc = (jget(CML, {})[t.id] || []).map((x) => Object.assign({ mine: true }, x)); cmList = loc.slice().sort((a, b) => a.t - b.t); cmReset();
     const db = fdb(); if (!db) return;
-    try { const q = await db.collection('cmts').where('track', '==', t.id).get(); if (cmTrack !== t) return; const u = fuid(), arr = []; q.forEach((d) => { const x = d.data(); if (x && typeof x.t === 'number' && x.text) arr.push({ id: d.id, t: x.t, text: String(x.text).slice(0, 220), name: x.name || '', mine: !!u && x.uid === u, uid: x.uid }); }); cmList = arr.concat(loc.filter((x) => !x.synced)).sort((a, b) => a.t - b.t); cmReset(); if (!g('plrCm').hidden) cmUi(); } catch (e) {}
+    try { const q = await db.collection('cmts').where('track', '==', t.id).get(); if (cmTrack !== t) return; const u = fuid(), arr = []; const adm = isAdm(); q.forEach((d) => { const x = d.data(); if (!x || typeof x.t !== 'number' || !x.text) return; const mine = !!u && x.uid === u, s = x.st || (window.CMF ? CMF.check(x.text).st : 'ok'); if (s === 'block' && !adm) return; if (s === 'review' && !mine && !adm) return; arr.push({ id: d.id, t: x.t, text: String(x.text).slice(0, 70), name: x.name || '', mine, uid: x.uid, st: s }); }); cmList = arr.concat(loc.filter((x) => !x.synced)).sort((a, b) => a.t - b.t); cmReset(); if (!g('plrCm').hidden) cmUi(); } catch (e) {}
   }
   /* عرض ذكي: طابور يوزّع التعليقات على الجانبين بإيقاع هادئ، وعند القفز يعرض ما قيل قبيل الموضع الجديد */
   let cmQ = [], cmSide = 0, cmAt = [0, 0];
   function cmReset() { const L = g('plrCmL'); [...L.children].forEach((d) => { try { d.getAnimations().forEach((a) => a.cancel()); } catch (e) {} d.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250 }).onfinish = () => d.remove(); });
     const now = A.currentTime || 0; cmPtr = 0; while (cmPtr < cmList.length && cmList[cmPtr].t < now - 3) cmPtr++; cmQ = []; cmLast = now; }
   function cmSpawn(c, own) {
-    const L = g('plrCmL'); L.dataset.v = st.cm.view; const max = (st.cm.view === 'side' ? [0, 6, 10, 16] : [0, 3, 6, 10])[st.cm.dens] || 6; if (!own && L.childElementCount >= max) return;
+    const L = g('plrCmL'); L.dataset.v = st.cm.view; const max = st.cm.view === 'side' ? 8 : 5; if (!own && L.childElementCount >= max) return;
     const d = el('div', 'cmi' + (own || c.mine ? ' me' : ''), c.text);
     if (st.cm.view === 'side') {
       const sd = own ? 1 : (cmAt[0] <= cmAt[1] ? 0 : 1); cmAt[sd] = performance.now() / 1000; d.classList.add(sd ? 'R' : 'L'); d.style.bottom = '0px'; L.appendChild(d); const H = L.clientHeight || 300;
@@ -1291,8 +1288,8 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
       a.onfinish = () => d.remove(); if (A.paused) a.pause(); return;
     }
     const W = L.clientWidth || 360; let li = 0, lt = Infinity; const nowP = performance.now(); cmLane.forEach((v, i) => { if (v < lt) { lt = v; li = i; } }); if (!own && nowP - lt < 1600) return; cmLane[li] = nowP;
-    d.style.top = (li * 24) + 'px'; L.appendChild(d); const tw = d.offsetWidth || 120;
-    let m = st.cm.mode; if (m === 'mix') m = ['rtl', 'ltr', 'fade'][Math.floor(Math.random() * 3)];
+    d.style.top = (li * 30 + 4) + 'px'; L.appendChild(d); const tw = d.offsetWidth || 120;
+    const m = ['rtl', 'ltr', 'fade', 'fade'][Math.floor(Math.random() * 4)];
     let kf, dur; if (m === 'fade') { d.style.left = Math.max(6, Math.random() * (W - tw - 12)) + 'px'; kf = [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none', offset: 0.15 }, { opacity: 1, offset: 0.8 }, { opacity: 0, transform: 'translateY(-6px)' }]; dur = 5200; }
     else { d.style.left = '0px'; const a = m === 'rtl' ? W : -tw, b = m === 'rtl' ? -tw : W; kf = [{ transform: `translateX(${a}px)` }, { transform: `translateX(${b}px)` }]; dur = 9000 + Math.random() * 3000; }
     const an2 = d.animate(kf, { duration: dur, easing: m === 'fade' ? 'ease' : 'linear' }); an2.onfinish = () => d.remove(); if (A.paused) an2.pause();
@@ -1303,30 +1300,57 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     if (Math.abs(now - cmLast) > 1.5) cmReset(); cmLast = now; if (A.paused) return;
     while (cmPtr < cmList.length && cmList[cmPtr].t <= now) { cmQ.push(cmList[cmPtr]); cmPtr++; }
     cmQ = cmQ.filter((c) => c.t > now - 7); if (cmQ.length > 12) cmQ = cmQ.slice(-12);
-    const gap = [0, 2.4, 1.4, 0.8][st.cm.dens] || 1.4, pn = performance.now() / 1000; if (cmQ.length && pn - Math.max(cmAt[0], cmAt[1]) > gap / 2 && pn - Math.min(cmAt[0], cmAt[1]) > gap) cmSpawn(cmQ.shift());
+    const gap = 1.6, pn = performance.now() / 1000; if (cmQ.length && pn - Math.max(cmAt[0], cmAt[1]) > gap / 2 && pn - Math.min(cmAt[0], cmAt[1]) > gap) cmSpawn(cmQ.shift());
   }
   ['play', 'pause'].forEach((ev) => A.addEventListener(ev, () => { try { g('plrCmL').getAnimations({ subtree: true }).forEach((a) => ev === 'play' ? a.play() : a.pause()); } catch (e) {} }));
   A.addEventListener('seeked', cmReset);
   g('plrCmI').addEventListener('input', () => { if (cmTime == null) cmTime = A.currentTime || 0; if (!g('plrCmI').value) cmTime = null; });
   g('plrCmI').addEventListener('keydown', (e) => { if (e.key === 'Enter') cmSend(); });
   g('plrCmS').onclick = cmSend;
+  g('plrCmI').addEventListener('input', () => { const n = 70 - g('plrCmI').value.length; g('plrCmN').textContent = n; g('plrCmN').classList.toggle('lo', n < 10); });
+  /* ---------- مراجعة التعليقات (للمشرف) ---------- */
+  async function cmfLoad() { const db = fdb(); if (!db || !window.CMF) return; try { const s = await db.doc('cmfilter/main').get(); if (s.exists) CMF.setExtra(s.data()); } catch (e) {} }
+  cmfLoad();
+  g('plrCmMod').onclick = () => cmMod('review');
+  function cmMod(tab) { const db = fdb(); if (!db) return toast('غير متصل');
+    modal('مراجعة التعليقات', async (bx, close) => {
+      const tb = el('div', 'seg'); [['review', 'تحتاج مراجعة'], ['block', 'محظورة'], ['ok', 'منشورة'], ['words', 'الكلمات']].forEach(([k, n]) => { const b = el('button', k === tab ? 'on' : '', n); b.type = 'button'; b.onclick = () => { close(); cmMod(k); }; tb.appendChild(b); }); bx.appendChild(tb);
+      const L = el('div', 'cmml'); bx.appendChild(L); L.textContent = 'جارٍ التحميل…';
+      if (tab === 'words') { L.textContent = ''; let cur0 = { block: [], review: [], allow: [] }; try { const s = await db.doc('cmfilter/main').get(); if (s.exists) cur0 = Object.assign(cur0, s.data()); } catch (e) {}
+        const fld = (k, lbl, ph) => { L.appendChild(el('h5', '', lbl)); const ta = el('textarea', 'mdin'); ta.rows = 3; ta.placeholder = ph; ta.value = (cur0[k] || []).join('، '); L.appendChild(ta); return ta; };
+        L.appendChild(el('p', 'hint', 'الفلتر يكشف الكلمات حتى لو فُرّقت بمسافات أو نقاط أو رموز، أو تغيّرت همزاتها وحروفها. افصل الكلمات بفاصلة.'));
+        const a1 = fld('block', 'كلمات تُحظر مباشرة', 'كلمة، كلمة'), a2 = fld('review', 'كلمات تحتاج مراجعة', 'كلمة، كلمة'), a3 = fld('allow', 'كلمات مسموحة دائماً (استثناء)', 'كلمة، كلمة');
+        const sp = (v) => v.split(/[،,\n]+/).map((s) => s.trim()).filter(Boolean);
+        const sv = el('button', 'pri', 'حفظ'); sv.type = 'button'; sv.onclick = async () => { const o = { block: sp(a1.value), review: sp(a2.value), allow: sp(a3.value) }; try { await db.doc('cmfilter/main').set(o); CMF.setExtra(o); toast('حُفظ الفلتر'); close(); } catch (e) { toast('تعذّر الحفظ'); } }; bx.appendChild(sv);
+        const ts = el('input', 'mdin'); ts.placeholder = 'جرّب نصاً لترى نتيجة الفلتر'; const tr = el('div', 'hint'); ts.oninput = () => { const r = CMF.check(ts.value); tr.textContent = ts.value ? ({ ok: '✓ مسموح', review: '؟ يحتاج مراجعة', block: '✕ محظور' })[r.st] + (r.hit ? ' — «' + r.hit + '»' : '') : ''; }; L.append(ts, tr); return; }
+      let q; try { q = tab === 'ok' ? await db.collection('cmts').orderBy('at', 'desc').limit(60).get() : await db.collection('cmts').where('st', '==', tab).limit(60).get(); } catch (e) { L.textContent = 'تعذّر التحميل: ' + (e.code || e.message); return; }
+      L.textContent = ''; const rows = []; q.forEach((d) => { const x = d.data(); if (tab === 'ok' && x.st && x.st !== 'ok') return; rows.push([d.id, x]); }); if (!rows.length) { L.appendChild(el('div', 'hint', 'لا يوجد شيء هنا.')); return; }
+      rows.forEach(([id, x]) => { const r = el('div', 'cmmr'), tr = byId(x.track), ck = CMF.check(x.text || ''); r.appendChild(el('b', '', x.text || ''));
+        r.appendChild(el('small', '', (tr ? tr.title : x.track) + ' · ' + fmt(x.t || 0) + (x.name ? ' · ' + x.name : '') + (ck.hit ? ' · «' + ck.hit + '»' : '')));
+        const ac2 = el('div', 'row'); const set = (s) => async () => { try { await db.doc('cmts/' + id).update({ st: s }); r.remove(); toast(s === 'ok' ? 'نُشر' : 'حُظر'); } catch (e) { toast('تعذّر: ' + (e.code || '')); } };
+        if (tab !== 'ok') ac2.appendChild(btn('primary', 'سماح', set('ok'))); if (tab !== 'block') ac2.appendChild(btn('', 'حظر', set('block')));
+        ac2.appendChild(btn('', 'حذف', async () => { try { await db.doc('cmts/' + id).delete(); r.remove(); } catch (e) { toast('تعذّر الحذف'); } })); r.appendChild(ac2); L.appendChild(r); });
+    }); }
   async function cmSend() {
     const t = tracks[cur], inp = g('plrCmI'), txt = inp.value.trim().replace(/\s+/g, ' '); if (!t || !txt) return;
-    if (cmBad(txt)) return toast('التعليق يحتوي روابط أو رموز غير مسموحة'); if (Date.now() - cmSent < 8000) return toast('انتظر قليلاً قبل التعليق التالي');
+    if (Date.now() - cmSent < 8000) return toast('انتظر قليلاً قبل التعليق التالي');
+    const fc = window.CMF ? CMF.check(txt) : { st: cmBad(txt) ? 'block' : 'ok' };
     const tt = r2(cmTime != null ? cmTime : A.currentTime || 0); cmTime = null; inp.value = ''; cmSent = Date.now();
     const u = window.firebase && firebase.auth ? firebase.auth().currentUser : null, c = { t: tt, text: txt.slice(0, 220), name: (u && u.displayName) || '', mine: true, ts: Date.now() };
+    c.text = txt.slice(0, 70); c.st = fc.st; const db = fdb(); let ok = false;
+    if (fc.st === 'block') { inp.value = ''; if (db && u) { try { await db.collection('cmts').add({ track: t.id, t: c.t, text: c.text, uid: u.uid, name: c.name, st: 'block', at: firebase.firestore.FieldValue.serverTimestamp() }); } catch (e) {} } return toast('التعليق يحتوي ألفاظاً غير لائقة ولن يُنشر'); }
     cmList.push(c); cmList.sort((a, b) => a.t - b.t); cmReset(); if (c.t <= (A.currentTime || 0) + 0.05) cmPtr = Math.max(cmPtr, cmList.indexOf(c) + 1); if (st.cm.on) cmSpawn(c, true);
-    const db = fdb(); let ok = false;
-    if (db && u) { try { const r = await db.collection('cmts').add({ track: t.id, t: c.t, text: c.text, uid: u.uid, name: c.name, at: firebase.firestore.FieldValue.serverTimestamp() }); c.id = r.id; c.uid = u.uid; ok = true; } catch (e) {} }
+    if (db && u) { try { const r = await db.collection('cmts').add({ track: t.id, t: c.t, text: c.text, uid: u.uid, name: c.name, st: fc.st, at: firebase.firestore.FieldValue.serverTimestamp() }); c.id = r.id; c.uid = u.uid; ok = true; } catch (e) {} }
+    if (fc.st === 'review') { toast('سيظهر تعليقك للجميع بعد المراجعة'); cmUi(); if (!ok) { const all = jget(CML, {}); (all[t.id] = all[t.id] || []).push({ t: c.t, text: c.text, ts: c.ts }); jset(CML, all); } return; }
     if (!ok) { const all = jget(CML, {}); (all[t.id] = all[t.id] || []).push({ t: c.t, text: c.text, ts: c.ts }); jset(CML, all); }
     toast(ok ? 'نُشر تعليقك عند ' + fmt(c.t) : 'حُفظ التعليق على هذا الجهاز' + (u ? '' : ' — سجّل الدخول لنشره للجميع')); cmUi();
   }
   function cmUi() {
     const seg = (id, items, key) => { const b = g(id); b.textContent = ''; items.forEach(([v, n]) => { const x = el('button', st.cm[key] === v ? 'on' : '', n); x.onclick = () => { st.cm[key] = v; save(); if ((key === 'on' && !v) || key === 'view') g('plrCmL').textContent = ''; cmUi(); rxUi(); }; b.appendChild(x); }); };
-    seg('plrCmOn', [[true, 'إظهار'], [false, 'إخفاء']], 'on'); seg('plrCmV', [['float', 'عائمة'], ['side', 'جانبية']], 'view'); seg('plrCmD', [[1, 'قليلة'], [2, 'متوسطة'], [3, 'كثيرة']], 'dens'); seg('plrCmM', [['mix', 'منوّعة'], ['rtl', 'من اليمين'], ['ltr', 'من اليسار'], ['fade', 'ظهور وتلاشٍ']], 'mode'); g('plrCmM').hidden = st.cm.view !== 'float'; g('plrCmL').dataset.v = st.cm.view;
+    seg('plrCmOn', [[true, 'إظهار'], [false, 'إخفاء']], 'on'); seg('plrCmV', [['float', 'عائمة'], ['side', 'جانبية']], 'view'); g('plrCmL').dataset.v = st.cm.view; g('plrCmMod').hidden = !isAdm();
     const box = g('plrCmList'); box.textContent = ''; if (!cmList.length) { box.appendChild(el('div', 'hint', 'لا توجد تعليقات.')); return; }
     const adm = isAdm();
-    cmList.forEach((c) => { const r = el('div', 'cmr' + (c.mine ? ' me' : '')), tb = el('button', 'tm', fmt(c.t)); tb.onclick = () => { A.currentTime = Math.max(0, c.t - 1); A.play().catch(() => {}); }; const tx = el('span', '', c.text); r.append(tb, tx);
+    cmList.forEach((c) => { const r = el('div', 'cmr' + (c.mine ? ' me' : '')), tb = el('button', 'tm', fmt(c.t)); tb.onclick = () => { A.currentTime = Math.max(0, c.t - 1); A.play().catch(() => {}); }; const tx = el('span', '', c.text); r.append(tb, tx); if (c.st === 'review') r.appendChild(el('em', 'cmst', 'بانتظار المراجعة'));
       if ((adm || c.mine)) { const x = el('button', 'x', '×'); x.onclick = async () => { cmList = cmList.filter((y) => y !== c); if (c.id) { try { await fdb().doc('cmts/' + c.id).delete(); } catch (e) { toast('تعذّر الحذف'); } } else { const all = jget(CML, {}); all[tracks[cur].id] = (all[tracks[cur].id] || []).filter((y) => y.ts !== c.ts); jset(CML, all); } cmUi(); }; r.appendChild(x); }
       box.appendChild(r); });
   }
@@ -1371,11 +1395,15 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     if (!g('plrAuPL').hidden) { g('plrAuPL').hidden = true; return true; }
     if (!g('plrAu').hidden) { au(false); return true; }
     if (!g('plrCm').hidden) { cmS(false); return true; }
+    { const sh = document.getElementById('plrSh'); if (sh) { sh.remove(); return true; } }
     if (!g('plrTp').hidden) { tp(false); return true; }
     if (!g('plrQs').hidden) { qs(false); return true; }
     if (!g('plrLys').hidden) { closeLys(); return true; }
     if (!g('plrFull').hidden) { closeFull(); return true; }
     if (!g('plrSearch').hidden) { g('plrSearchB').onclick(); return true; }
+    if (smpOn) { smpClose(); return true; }
+    if (tab === 'lib' && libSel) { libSel = null; render(); return true; }
+    if (tab === 'lib' && libV !== 'all') { libV = 'all'; render(); return true; }
     if (tab !== 'lib' || cat !== 'الكل') { tab = 'lib'; cat = 'الكل'; root.querySelectorAll('.plrnav button').forEach((x) => x.classList.toggle('on', x.dataset.t === 'lib')); render(); return true; }
     return false;
   }
@@ -1553,7 +1581,19 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
       x.upload.onprogress = (e) => { if (e.lengthComputable && onp) onp(e.loaded / e.total); }; x.onload = () => { let j = {}; try { j = JSON.parse(x.responseText); } catch (e) {} if (x.status === 200 && j.ok) ok(j); else no(new Error(j.error || ('فشل الرفع (' + x.status + ')'))); }; x.onerror = () => no(new Error('انقطع الاتصال أثناء الرفع')); x.send(body); })); }
   async function upDelKey(key) { try { const tk = await idTok(); await fetch('api/up/' + key, { method: 'DELETE', headers: { authorization: 'Bearer ' + tk } }); } catch (e) {} }
   const keyOf = (url) => ((url || '').match(/media\/u\/(.+)$/) || [])[1];
-  function coverJpg(file) { return new Promise((ok, no) => { const i = new Image(); i.onload = () => { const s = Math.min(i.naturalWidth, i.naturalHeight), c = document.createElement('canvas'); c.width = c.height = Math.min(900, s); c.getContext('2d').drawImage(i, (i.naturalWidth - s) / 2, (i.naturalHeight - s) / 2, s, s, 0, 0, c.width, c.height); URL.revokeObjectURL(i.src); c.toBlob((b) => b ? ok(b) : no(new Error('تعذّر تجهيز الغلاف')), 'image/jpeg', 0.86); }; i.onerror = () => no(new Error('صورة الغلاف غير صالحة')); i.src = URL.createObjectURL(file); }); }
+  /* تحسين الغلاف تلقائياً: قصّ مربع، تكبير ناعم، توازن إضاءة وتباين، تشبّع خفيف وحدّة — حتى يناسب الفلاتر والعرض */
+  function enhance(c) { const x = c.getContext('2d', { willReadFrequently: true }), W = c.width, H = c.height, im = x.getImageData(0, 0, W, H), d = im.data, n = W * H;
+    const hs = [new Uint32Array(256), new Uint32Array(256), new Uint32Array(256)]; let lum = 0; for (let i = 0; i < d.length; i += 4) { hs[0][d[i]]++; hs[1][d[i + 1]]++; hs[2][d[i + 2]]++; lum += 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]; } lum /= n * 255;
+    const pc = (h, q) => { let s = 0; for (let v = 0; v < 256; v++) { s += h[v]; if (s >= q * n) return v; } return 255; };
+    const lo = Math.min(pc(hs[0], 0.005), pc(hs[1], 0.005), pc(hs[2], 0.005)), hi = Math.max(pc(hs[0], 0.995), pc(hs[1], 0.995), pc(hs[2], 0.995)), sc = Math.min(1.5, 255 / Math.max(40, hi - lo));
+    const gm = Math.max(0.8, Math.min(1.25, Math.log(0.46) / Math.log(Math.max(0.05, Math.min(0.95, lum))))), LUT = new Uint8ClampedArray(256);
+    for (let v = 0; v < 256; v++) LUT[v] = 255 * Math.pow(Math.max(0, Math.min(1, (v - lo) * sc / 255)), gm);
+    for (let i = 0; i < d.length; i += 4) { let r = LUT[d[i]], g2 = LUT[d[i + 1]], b2 = LUT[d[i + 2]]; const l = 0.299 * r + 0.587 * g2 + 0.114 * b2, s = 1.08; d[i] = l + (r - l) * s; d[i + 1] = l + (g2 - l) * s; d[i + 2] = l + (b2 - l) * s; }
+    /* حدّة (unsharp خفيف) */
+    const src = new Uint8ClampedArray(d), k = 0.38;
+    for (let y = 1; y < H - 1; y++) for (let x2 = 1; x2 < W - 1; x2++) { const o = (y * W + x2) * 4; for (let ch = 0; ch < 3; ch++) { const v = src[o + ch], bl = (src[o - 4 + ch] + src[o + 4 + ch] + src[o - W * 4 + ch] + src[o + W * 4 + ch]) / 4; d[o + ch] = v + (v - bl) * k; } }
+    x.putImageData(im, 0, 0); }
+  function coverJpg(file) { return new Promise((ok, no) => { const i = new Image(); i.onload = () => { const s = Math.min(i.naturalWidth, i.naturalHeight), out = s >= 1000 ? 1100 : Math.min(1000, Math.max(720, Math.round(s * 1.35))), c = document.createElement('canvas'); c.width = c.height = out; const x = c.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.drawImage(i, (i.naturalWidth - s) / 2, (i.naturalHeight - s) / 2, s, s, 0, 0, out, out); URL.revokeObjectURL(i.src); try { enhance(c); } catch (e) {} c.toBlob((b) => b ? ok(b) : no(new Error('تعذّر تجهيز الغلاف')), 'image/jpeg', 0.9); }; i.onerror = () => no(new Error('صورة الغلاف غير صالحة')); i.src = URL.createObjectURL(file); }); }
   const durOf = (file) => new Promise((ok) => { const a = new Audio(); a.preload = 'metadata'; a.onloadedmetadata = () => { ok(isFinite(a.duration) ? Math.round(a.duration) : 0); URL.revokeObjectURL(a.src); }; a.onerror = () => ok(0); a.src = URL.createObjectURL(file); });
   function upMenu(t) { if (!isOwner()) return toast('الإضافة متاحة للمالك فقط'); const ed = !!t;
     modal(ed ? 'تعديل القصيدة' : 'إضافة قصيدة', (bx, close) => {
@@ -1567,6 +1607,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
       const acv = fl('غلاف الإصدار', 'image/*'); const au = fl(ed ? 'استبدال ملف الصوت (اختياري)' : 'ملف الصوت * (حتى 24 م.ب)', 'audio/*'), cv = fl('', 'image/*');
       const abUi = () => { const v = ab.value, a = ALB[v]; anw.hidden = v !== '+'; acv.parentNode.hidden = !v; const s1 = acv.nextSibling; if (!acv.files[0]) s1.textContent = v === '+' ? 'غلاف الإصدار (يُستخدم لكل قصائده)' : (a && a.cover ? 'استبدال غلاف الإصدار (اختياري)' : 'غلاف الإصدار (اختياري)');
         const s2 = cv.nextSibling; if (!cv.files[0]) s2.textContent = v ? 'غلاف خاص بهذه القصيدة (اختياري — وإلا غلاف الإصدار)' : (ed ? 'استبدال الغلاف (اختياري)' : 'صورة الغلاف (اختياري)'); }; ab.onchange = abUi; abUi();
+      const smI = inp('بداية العينة (اختياري، مثل 1:25) — وإلا تُختار أقوى لحظة تلقائياً', t && t.sample ? fmt(t.sample.a) : '');
       const pr = el('div', 'upp'); pr.innerHTML = '<i></i><span></span>'; pr.hidden = true; bx.appendChild(pr);
       const setP = (f, m) => { pr.hidden = false; pr.firstChild.style.width = Math.round(f * 100) + '%'; pr.lastChild.textContent = m; };
       const go = el('button', 'pri', ed ? 'حفظ التعديلات' : 'رفع القصيدة'); go.type = 'button'; bx.appendChild(go); const cn = el('button', 'cn', 'إلغاء'); cn.type = 'button'; cn.onclick = close; bx.appendChild(cn);
@@ -1575,7 +1616,8 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
         const db = fdb(); if (!db) return toast('لا يوجد اتصال'); go.disabled = true; cn.disabled = true;
         const id = ed ? t.id : 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), o = { title: T, reciter: Rr, poet: po.value.trim(), cat: ca.value, upd: Date.now() }; const old = [];
         try { if (af) { const ext = ((af.name.split('.').pop() || 'mp3').toLowerCase().match(/^(mp3|m4a|aac|ogg|opus|wav)$/) || ['mp3'])[0], v = Date.now().toString(36); setP(0, 'رفع الصوت…');
-            const r = await upPut('a/' + id + v + '.' + ext, af, af.type || 'audio/mpeg', (f) => setP(f * 0.85, 'رفع الصوت… ' + Math.round(f * 100) + '%')); if (ed && keyOf(t.audio)) old.push(keyOf(t.audio)); o.audio = r.url.replace(/^\//, ''); o.size = r.size; o.dur = await durOf(af); }
+            const r = await upPut('a/' + id + v + '.' + ext, af, af.type || 'audio/mpeg', (f) => setP(f * 0.85, 'رفع الصوت… ' + Math.round(f * 100) + '%')); if (ed && keyOf(t.audio)) old.push(keyOf(t.audio)); o.audio = r.url.replace(/^\//, ''); o.size = r.size; o.dur = await durOf(af); setP(0.86, 'اختيار أجمل مقطع للعينات…'); try { o.sample = await bestSeg(af); } catch (e) {} }
+          const mt = /^(\d+):(\d{1,2})$/.exec(smI.value.trim()); if (mt) o.sample = { a: +mt[1] * 60 + +mt[2], d: (o.sample && o.sample.d) || (t && t.sample && t.sample.d) || 45, man: 1 };
           let alb = ab.value; if (alb === '+') { const n = anw.value.trim(); if (!n) throw new Error('اكتب اسم الإصدار الجديد'); alb = 'al' + Date.now().toString(36); await db.collection('albums').doc(alb).set({ name: n, reciter: Rr, at: Date.now() }); ALB[alb] = { id: alb, name: n, reciter: Rr }; ab.value = alb; }
           const acf = acv.files[0]; if (alb && acf) { setP(0.86, 'رفع غلاف الإصدار…'); const b = await coverJpg(acf); const r = await upPut('c/' + alb + Date.now().toString(36) + '.jpg', b, 'image/jpeg'); if (keyOf(ALB[alb] && ALB[alb].cover)) old.push(keyOf(ALB[alb].cover)); await db.collection('albums').doc(alb).set({ cover: r.url.replace(/^\//, '') }, { merge: true }); }
           o.album = alb || '';
@@ -1583,9 +1625,156 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
           setP(0.95, 'حفظ البيانات…'); if (!ed) { o.at = Date.now(); o.lyrics = []; } await db.collection('tracks').doc(id).set(o, { merge: true }); old.forEach(upDelKey);
           setP(1, 'تم'); toast(ed ? 'حُفظت التعديلات' : 'أُضيفت القصيدة'); close(); fsLoad(); } catch (e) { go.disabled = false; cn.disabled = false; setP(0, e.message || 'فشل الرفع'); toast(e.message || 'فشل الرفع'); } };
     }); }
+  /* أقوى 45 ثانية في القصيدة (طاقة صوتية + بداية بيت) لتكون العينة */
+  async function bestSeg(file) { const ab = await file.arrayBuffer(); const oc = new OfflineAudioContext(1, 1, 8000), d = (await oc.decodeAudioData(ab)).getChannelData(0), sr = d.length / Math.max(1, (await durOf(file)) || d.length / 8000);
+    const sec = Math.floor(d.length / sr), e = new Float32Array(sec); for (let i = 0; i < sec; i++) { let s = 0; const a = Math.floor(i * sr), b = Math.floor((i + 1) * sr); for (let j = a; j < b; j += 8) s += d[j] * d[j]; e[i] = Math.sqrt(s / ((b - a) / 8)); }
+    const D = Math.min(45, Math.max(20, Math.round(sec * 0.25))); let best = -1, bi = Math.round(sec * 0.3); for (let i = Math.round(sec * 0.08); i + D < sec * 0.95; i++) { let s = 0; for (let j = i; j < i + D; j++) s += e[j]; if (s > best) { best = s; bi = i; } }
+    let lo = bi; for (let j = bi; j > Math.max(0, bi - 6); j--) if (e[j] < e[lo]) lo = j; return { a: lo, d: D }; }
   async function upDel(t) { if (!confirm('حذف «' + t.title + '» نهائياً؟')) return; const db = fdb(); try { await db.collection('tracks').doc(t.id).delete(); [keyOf(t.audio), keyOf(t.ownCover)].filter(Boolean).forEach(upDelKey); toast('حُذفت القصيدة'); fsLoad(); } catch (e) { toast('تعذّر الحذف: ' + (e.code || e.message)); } }
   g('plrAddB').onclick = () => upMenu(null);
   try { firebase.auth().onAuthStateChanged(() => { g('plrAddB').hidden = !isOwner(); fsLoad(); }); } catch (e) {}
+  /* ================= المكتبة: القصائد · الإصدارات · الرواديد ================= */
+  let libV = 'all', libSel = null; /* libSel: {k:'alb'|'rec', id} */
+  const durOfT = (t) => { try { return (JSON.parse(localStorage.getItem(DUK) || '{}'))[t.id] || t.dur || 0; } catch (e) { return t.dur || 0; } };
+  function libTabs(body) {
+    const w = el('div', 'libtabs'); [['all', 'القصائد'], ['alb', 'الإصدارات'], ['rec', 'الرواديد']].forEach(([k, n]) => { const b = el('button', libV === k ? 'on' : '', n); b.type = 'button'; b.onclick = () => { libV = k; libSel = null; render(); }; w.appendChild(b); });
+    body.appendChild(w);
+  }
+  function trackRow(t, list) {
+    const r = el('div', 'trow' + (cur >= 0 && tracks[cur] === t ? ' on' : '')), cv = el('div', 'plrcov'); coverEl(t, cv);
+    const m = el('div', 'trm'); m.append(el('b', '', t.title), el('small', '', [t.reciter, durOfT(t) ? fmt(durOfT(t)) : ''].filter(Boolean).join(' · ')));
+    const mo = el('button', 'tmo'); mo.type = 'button'; mo.innerHTML = ic('more', 20); mo.onclick = (e) => { e.stopPropagation(); qMenu(t); };
+    r.append(cv, m, mo); r.onclick = () => { if (r._lp) { r._lp = 0; return; } qFrom(t, list); play(tracks.indexOf(t), true); }; lpMenu(r, t); return r;
+  }
+  function groupPage(body, title, sub, coverT, list) {
+    const hd = el('div', 'grph'); const bk = el('button', 'ib'); bk.type = 'button'; bk.innerHTML = ic('back', 20); bk.onclick = () => { libSel = null; render(); };
+    const cv = el('div', 'plrcov'); if (coverT) coverEl(coverT, cv); const tx = el('div', 'grt'); tx.append(el('b', '', title), el('small', '', sub));
+    const pa = el('button', 'btn primary small', 'تشغيل الكل'); pa.type = 'button'; pa.onclick = () => { if (!list.length) return; qFrom(list[0], list); play(tracks.indexOf(list[0]), true); };
+    const sh = el('button', 'btn small', 'عشوائي'); sh.type = 'button'; sh.onclick = () => { if (!list.length) return; const t = list[Math.floor(Math.random() * list.length)]; if (!st.shuf) g('plrShuf').click(); qFrom(t, list); play(tracks.indexOf(t), true); };
+    const ac2 = el('div', 'row'); ac2.append(pa, sh); hd.append(bk, cv, tx, ac2); body.appendChild(hd);
+    const L = el('div', 'tlist'); list.forEach((t) => L.appendChild(trackRow(t, list))); body.appendChild(L);
+  }
+  function albOf(t) { return t.album ? t.album : ''; }
+  function libRender(body) {
+    libTabs(body);
+    if (libV === 'alb') {
+      const map = new Map(); tracks.forEach((t) => { const k = albOf(t); if (!k) return; if (!map.has(k)) map.set(k, []); map.get(k).push(t); });
+      if (libSel && libSel.k === 'alb') { const L = map.get(libSel.id) || []; const a = ALB[libSel.id] || {}; groupPage(body, a.name || 'إصدار', [a.reciter, L.length + ' قصيدة'].filter(Boolean).join(' · '), L[0], L); return true; }
+      if (!map.size) { body.appendChild(el('div', 'hint cen', 'لا توجد إصدارات بعد')); return true; }
+      const G = el('div', 'albgrid'); [...map.entries()].sort((a, b) => ((ALB[b[0]] || {}).at || 0) - ((ALB[a[0]] || {}).at || 0)).forEach(([k, L]) => { const a = ALB[k] || {}; const c = el('button', 'albc'); c.type = 'button'; const cv = el('div', 'plrcov'); coverEl(L[0], cv); c.append(cv, el('b', '', a.name || 'إصدار'), el('small', '', (a.reciter || L[0].reciter || '') + ' · ' + L.length + ' قصيدة')); c.onclick = () => { libSel = { k: 'alb', id: k }; render(); g('plrBody').scrollTop = 0; }; G.appendChild(c); });
+      body.appendChild(G); return true;
+    }
+    if (libV === 'rec') {
+      const map = new Map(); tracks.forEach((t) => { const k = (t.reciter || 'غير معروف').trim(); if (!map.has(k)) map.set(k, []); map.get(k).push(t); });
+      if (libSel && libSel.k === 'rec') { const L = map.get(libSel.id) || []; const na = new Set(L.map(albOf).filter(Boolean)).size; groupPage(body, libSel.id, L.length + ' قصيدة' + (na ? ' · ' + na + ' إصدار' : ''), L[0], L); return true; }
+      const R2 = el('div', 'reclist'); [...map.entries()].sort((a, b) => b[1].length - a[1].length).forEach(([k, L]) => { const r = el('button', 'recr'); r.type = 'button'; const cv = el('div', 'plrcov'); coverEl(L[0], cv); const tx = el('div', 'trm'); tx.append(el('b', '', k), el('small', '', L.length + ' قصيدة')); r.append(cv, tx); r.insertAdjacentHTML('beforeend', ic('fwd', 18)); r.onclick = () => { libSel = { k: 'rec', id: k }; render(); g('plrBody').scrollTop = 0; }; R2.appendChild(r); });
+      body.appendChild(R2); return true;
+    }
+    return false;
+  }
+  /* ================= قائمة إجراءات القصيدة (ورقة سفلية) ================= */
+  function sheet(build) { const old = document.getElementById('plrSh'); if (old) old.remove(); const w = el('div', 'shw'); w.id = 'plrSh'; const bx = el('div', 'shb'); bx.appendChild(el('i', 'gr')); w.appendChild(bx);
+    const close = () => { w.classList.add('out'); setTimeout(() => w.remove(), 220); }; w.onclick = (e) => { if (e.target === w) close(); }; build(bx, close); root.appendChild(w); requestAnimationFrame(() => w.classList.add('in')); return close; }
+  function qMenu(t) {
+    sheet((bx, close) => {
+      const hd = el('div', 'shh'), cv = el('div', 'plrcov'); coverEl(t, cv); const tx = el('div', 'trm'); tx.append(el('b', '', t.title), el('small', '', [t.reciter, t.poet].filter(Boolean).join(' · '))); hd.append(cv, tx); bx.appendChild(hd);
+      const L = el('div', 'shl'); bx.appendChild(L); const cur0 = tracks[cur];
+      const act = (icn, n, f, cls) => { const b = el('button', 'sha' + (cls ? ' ' + cls : '')); b.type = 'button'; b.innerHTML = ic(icn, 20) + '<span></span>'; b.lastChild.textContent = n; b.onclick = () => { close(); f(); }; L.appendChild(b); };
+      const q2 = el('div', 'shq'); const qb = (icn, n, f) => { const b = el('button', ''); b.type = 'button'; b.innerHTML = ic(icn, 20) + '<span></span>'; b.lastChild.textContent = n; b.onclick = () => { close(); f(); }; q2.appendChild(b); };
+      qb('play', 'تشغيل الآن', () => { qFrom(t, view.length ? view : tracks); play(tracks.indexOf(t), true); });
+      if (cur0 && cur0 !== t) { qb('queue', 'التالي', () => { qEnsure(cur0); Q.ids = Q.ids.filter((id) => id !== t.id); Q.ids.splice(Q.ids.indexOf(cur0.id) + 1, 0, t.id); qSave(); toast('ستُشغَّل بعد الحالية'); });
+        qb('plist', 'آخر القائمة', () => { qEnsure(cur0); Q.ids = Q.ids.filter((id) => id !== t.id); Q.ids.push(t.id); qSave(); toast('أُضيفت إلى قائمة التشغيل'); }); }
+      bx.insertBefore(q2, L);
+      act('heart', st.fav.includes(t.id) ? 'إزالة من المفضلة' : 'إضافة للمفضلة', () => { tog(t.id); render(); });
+      act('plist', 'إضافة إلى قائمة', () => plPick(t));
+      act('share', 'مشاركة', () => shareSheet(t, 0));
+      if (t.album && ALB[t.album]) act('lib', 'الذهاب للإصدار', () => { goLib('alb', t.album); });
+      if (t.reciter) act('users', 'الذهاب للرادود', () => { goLib('rec', t.reciter.trim()); });
+      if (t.fs && isOwner()) { act('text', 'تعديل بيانات القصيدة', () => upMenu(t)); act('x', 'حذف القصيدة', () => upDel(t), 'dang'); }
+    });
+  }
+  function goLib(k, id) { tab = 'lib'; document.querySelectorAll('.plrnav button').forEach((b) => b.classList.toggle('on', b.dataset.t === 'lib')); libV = k; libSel = { k, id }; if (!g('plrFull').hidden) g('plrClose').click(); render(); g('plrBody').scrollTop = 0; }
+  function plPick(t) { const a = pls(); sheet((bx, close) => { bx.appendChild(el('b', 'sht', 'إضافة «' + t.title + '» إلى')); const L = el('div', 'shl'); bx.appendChild(L);
+      const nb = el('button', 'sha'); nb.type = 'button'; nb.innerHTML = ic('plus', 20) + '<span>قائمة جديدة</span>'; nb.onclick = () => { close(); modal('قائمة جديدة', (b2, c2) => { const inp = el('input', 'mdin'); inp.placeholder = 'اسم القائمة'; b2.appendChild(inp); const ok = el('button', 'pri', 'إنشاء وإضافة'); ok.type = 'button'; ok.onclick = () => { const n = inp.value.trim(); if (!n) return; const a2 = pls(); a2.unshift({ id: 'p' + Date.now().toString(36), name: n, ids: [t.id], at: Date.now() }); plsSet(a2); c2(); toast('أُنشئت القائمة'); }; b2.appendChild(ok); setTimeout(() => inp.focus(), 50); }); }; L.appendChild(nb);
+      a.forEach((p) => { const b = el('button', 'sha'); b.type = 'button'; b.innerHTML = ic('plist', 20) + '<span></span>'; b.lastChild.textContent = p.name + ' (' + p.ids.length + ')'; b.onclick = () => { close(); const a2 = pls(), x = a2.find((y) => y.id === p.id); if (!x) return; if (x.ids.includes(t.id)) return toast('موجودة في القائمة'); x.ids.push(t.id); plsSet(a2); toast('أُضيفت إلى «' + x.name + '»'); }; L.appendChild(b); }); }); }
+  /* ================= المشاركة: رابط + رمز QR لمن بجانبك + صورة اللحظة ================= */
+  function shareSheet(t, at) { const url = location.origin + location.pathname + '?p=' + encodeURIComponent(t.id) + (at ? '&at=' + Math.floor(at) : '');
+    sheet((bx, close) => { bx.appendChild(el('b', 'sht', 'مشاركة «' + t.title + '»' + (at ? ' من ' + fmt(at) : '')));
+      const qw = el('div', 'shqr'), cv = document.createElement('canvas'); qw.append(cv, el('small', '', 'لمن بجانبك: يمسح الرمز بكاميرته ويفتح القصيدة مباشرة')); bx.appendChild(qw); qrDraw(cv, url);
+      const L = el('div', 'shq'); const b = (icn, n, f) => { const x = el('button', ''); x.type = 'button'; x.innerHTML = ic(icn, 20) + '<span></span>'; x.lastChild.textContent = n; x.onclick = f; L.appendChild(x); };
+      b('share', 'إرسال', async () => { try { await navigator.share({ title: t.title, text: t.title + (t.reciter ? ' — ' + t.reciter : '') + ' | منبر', url }); } catch (e) { if (e && e.name !== 'AbortError') { try { await navigator.clipboard.writeText(url); toast('نُسخ الرابط'); } catch (x) {} } } });
+      b('check', 'نسخ الرابط', async () => { try { await navigator.clipboard.writeText(url); toast('نُسخ الرابط'); } catch (e) { toast(url); } });
+      if (tracks[cur] === t) b('color', 'صورة اللحظة', () => { close(); shareMoment(); });
+      bx.appendChild(L); }); }
+  /* ================= عينات: أجمل مقطع من كل قصيدة، تمرير عمودي ================= */
+  const SA = new Audio(); SA.preload = 'auto'; let smpOn = false, smpIdx = -1, smpList = [], smpObs = null, smpRaf = 0;
+  function smpSeg(t) { const d0 = durOfT(t) || 300; if (t.sample && typeof t.sample.a === 'number') return { a: t.sample.a, d: Math.min(55, t.sample.d || 45) };
+    const env = ENV.get(t.id); let a = d0 * 0.3, D = Math.min(45, Math.max(20, d0 * 0.25));
+    if (env && env.length) { const B = env.length, w = Math.max(2, Math.round(D / d0 * B)); let best = -1, bi = 0; for (let i = Math.round(B * 0.08); i + w < B * 0.95; i++) { let s = 0; for (let j = i; j < i + w; j++) s += env[j]; if (s > best) { best = s; bi = i; } } a = bi / B * d0; }
+    const h = rxList && rxTrack === t && rxList.length > 6 ? rxList.slice().sort((x, y) => x.t - y.t) : null; if (h) { let bb = 0, bt = a; for (let i = 0; i < h.length; i++) { let n = 0; for (let j = i; j < h.length && h[j].t < h[i].t + D; j++) n++; if (n > bb) { bb = n; bt = h[i].t; } } a = bt; }
+    const L = linesOf(t); if (L.length) { const ln = L.filter((x) => x.t <= a + 2).pop(); if (ln && a - ln.t < 6) a = ln.t; } return { a: Math.max(0, a), d: D }; }
+  function smpOpen() { if (smpOn) return; const L = tracks.filter((t) => t.audio); if (!L.length) return toast('لا توجد قصائد بعد'); if (!A.paused) fadePause(); smpOn = true;
+    smpList = L.slice().sort((a, b) => (b.at || 0) - (a.at || 0)); const w = g('plrSmp'); w.hidden = false; const sc = g('plrSmpL'); sc.textContent = '';
+    smpList.forEach((t, i) => { const it = el('section', 'smi'); it.dataset.i = i; it.innerHTML = '<div class="smbg"></div><div class="smsh"></div><div class="smc"><div class="plrcov"></div></div><div class="smly"><p class="p0"></p><p class="p1"></p></div><div class="smside"></div><div class="smft"><div class="smpi"><div class="plrcov"></div><div class="trm"><b></b><small></small></div><button class="smgo" type="button"></button></div><div class="smpr"><i></i></div></div><div class="smpz" hidden></div>';
+      const cu = cov(t); if (cu) it.querySelector('.smbg').style.backgroundImage = 'url("' + cu + '")'; else { const c = gOf(t); it.querySelector('.smbg').style.background = `radial-gradient(120% 90% at 30% 20%,${c[0]},${c[1]})`; }
+      it.style.setProperty('--smh', String((hash(t.id) % 360)));
+      coverEl(t, it.querySelector('.smc .plrcov')); coverEl(t, it.querySelector('.smpi .plrcov')); it.querySelector('.smpi .trm b').textContent = t.title; it.querySelector('.smpi .trm small').textContent = [t.reciter, t.poet].filter(Boolean).join(' · ');
+      const go = it.querySelector('.smgo'); go.innerHTML = 'استمع كاملة ' + ic('fwd', 14); go.onclick = (e) => { e.stopPropagation(); smpClose(); qFrom(t, tracks); play(tracks.indexOf(t), true); };
+      const sd = it.querySelector('.smside'); const sb = (icn, n, f) => { const b = el('button', 'smb'); b.type = 'button'; b.innerHTML = ic(icn, 24) + '<span></span>'; b.lastChild.textContent = n; b.onclick = (e) => { e.stopPropagation(); f(b); }; sd.appendChild(b); };
+      sb('heart', 'أعجبني', (b) => { b.classList.toggle('on'); if (b.classList.contains('on') && !st.fav.includes(t.id)) { tog(t.id); toast('أُضيفت للمفضلة'); } else if (!b.classList.contains('on') && st.fav.includes(t.id)) tog(t.id); });
+      if (st.fav.includes(t.id)) sd.firstChild.classList.add('on');
+      sb('down', 'تنزيل', () => smpRender(t)); sb('share', 'مشاركة', () => shareSheet(t, smpSeg(t).a));
+      it.onclick = () => { if (smpIdx !== i) return; if (SA.paused) { SA.play().catch(() => {}); it.querySelector('.smpz').hidden = true; } else { SA.pause(); it.querySelector('.smpz').hidden = false; } };
+      sc.appendChild(it); });
+    smpObs = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting && e.intersectionRatio > 0.6) smpGo(+e.target.dataset.i); }), { root: sc, threshold: [0.6] });
+    sc.querySelectorAll('.smi').forEach((x) => smpObs.observe(x)); sc.scrollTop = 0; smpGo(0); smpLoop(); }
+  function smpGo(i) { if (i === smpIdx) return; smpIdx = i; const t = smpList[i]; if (!t) return; const sg = smpSeg(t); SA.__seg = sg; SA.__t = t;
+    g('plrSmpL').querySelectorAll('.smi').forEach((x) => x.classList.toggle('act', +x.dataset.i === i)); const it = g('plrSmpL').children[i]; it.querySelector('.smpz').hidden = true;
+    const src = new URL(t.audio, location.href).href; if (SA.src !== src) SA.src = t.audio; const go = () => { try { SA.currentTime = sg.a; } catch (e) {} SA.play().catch(() => { it.querySelector('.smpz').hidden = false; }); };
+    if (SA.readyState >= 1) go(); else SA.addEventListener('loadedmetadata', go, { once: true });
+    envLoad(t); const nx = smpList[i + 1]; if (nx) { const l = document.createElement('link'); l.rel = 'prefetch'; l.href = nx.audio; document.head.appendChild(l); } }
+  function smpLoop() { cancelAnimationFrame(smpRaf); if (!smpOn) return; smpRaf = requestAnimationFrame(smpLoop); const t = SA.__t, sg = SA.__seg; if (!t || !sg) return; const it = g('plrSmpL').children[smpIdx]; if (!it) return;
+    const p = (SA.currentTime - sg.a) / sg.d; if (SA.currentTime >= sg.a + sg.d || SA.currentTime < sg.a - 1) { try { SA.currentTime = sg.a; } catch (e) {} }
+    it.querySelector('.smpr i').style.width = Math.max(0, Math.min(100, p * 100)) + '%';
+    const L = linesOf(t); let k = -1; for (let j = 0; j < L.length; j++) { if (L[j].t <= SA.currentTime + 0.15) k = j; else break; } if (it._k !== k) { it._k = k; const a = it.querySelector('.p0'), b = it.querySelector('.p1'); a.textContent = k >= 0 ? L[k].l : ''; b.textContent = L[k + 1] ? L[k + 1].l : ''; a.classList.remove('in'); void a.offsetWidth; a.classList.add('in'); } }
+  function smpClose() { if (!smpOn) return; smpOn = false; SA.pause(); cancelAnimationFrame(smpRaf); try { smpObs && smpObs.disconnect(); } catch (e) {} g('plrSmp').hidden = true; g('plrSmpL').textContent = ''; smpIdx = -1;
+    document.querySelectorAll('.plrnav button').forEach((b) => b.classList.toggle('on', b.dataset.t === tab)); }
+  document.addEventListener('visibilitychange', () => { if (document.hidden && smpOn) SA.pause(); });
+  /* تنزيل العينة فيديو بعلامة منبر المائية (يُسجَّل بزمنه الحقيقي) */
+  let smpBusy = false;
+  async function smpRender(t) { if (smpBusy) return toast('جارٍ تجهيز مقطع آخر'); if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) return toast('جهازك لا يدعم تصدير الفيديو من المتصفح');
+    smpBusy = true; const sg = smpSeg(t); const pz = el('div', 'smrend'); pz.innerHTML = '<b>تجهيز المقطع…</b><div class="bar"><i></i></div><small>يُسجَّل المقطع بزمنه الحقيقي (' + Math.round(sg.d) + ' ثانية)</small>'; const cx = el('button', 'btn small', 'إلغاء'); let stop = false; cx.onclick = () => { stop = true; }; pz.appendChild(cx); g('plrSmp').appendChild(pz); SA.pause();
+    let actx = null;
+    try { const W = 720, H = 1280, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+      const im = await new Promise((ok) => { const cu = cov(t); if (!cu) return ok(null); const i2 = new Image(); i2.crossOrigin = 'anonymous'; i2.onload = () => ok(i2); i2.onerror = () => ok(null); i2.src = cu; });
+      const logo = await new Promise((ok) => { const i2 = new Image(); i2.onload = () => ok(i2); i2.onerror = () => ok(null); i2.src = 'icons/brand-mark.png'; });
+      const ab = await (await fetch(t.audio)).arrayBuffer(); actx = new (window.AudioContext || window.webkitAudioContext)(); const buf = await actx.decodeAudioData(ab);
+      const dst = actx.createMediaStreamDestination(), src = actx.createBufferSource(); src.buffer = buf; const gn = actx.createGain(); src.connect(gn); gn.connect(dst); gn.gain.setValueAtTime(0, actx.currentTime); gn.gain.linearRampToValueAtTime(1, actx.currentTime + 0.6); gn.gain.setValueAtTime(1, actx.currentTime + sg.d - 1.2); gn.gain.linearRampToValueAtTime(0, actx.currentTime + sg.d);
+      const vs = c.captureStream(30), ms = new MediaStream([vs.getVideoTracks()[0], dst.stream.getAudioTracks()[0]]);
+      const mime = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'].find((m) => MediaRecorder.isTypeSupported(m)) || '';
+      const rec = new MediaRecorder(ms, mime ? { mimeType: mime, videoBitsPerSecond: 3500000 } : {}), parts = []; rec.ondataavailable = (e) => { if (e.data && e.data.size) parts.push(e.data); };
+      const L = linesOf(t), hue = hash(t.id) % 360, T0 = performance.now();
+      const frame = () => { const el2 = (performance.now() - T0) / 1000, now = sg.a + el2;
+        x.fillStyle = '#05120e'; x.fillRect(0, 0, W, H); if (im) { const s = 1.25 + 0.06 * Math.sin(el2 * 0.25), m = Math.min(im.naturalWidth, im.naturalHeight); x.save(); x.filter = 'blur(36px) brightness(.5) saturate(1.25)'; x.drawImage(im, (im.naturalWidth - m) / 2, (im.naturalHeight - m) / 2, m, m, (W - H * s) / 2, (H - H * s) / 2, H * s, H * s); x.restore(); }
+        const gr = x.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, 'rgba(0,0,0,.25)'); gr.addColorStop(0.55, `hsla(${hue},40%,12%,.15)`); gr.addColorStop(1, 'rgba(0,0,0,.85)'); x.fillStyle = gr; x.fillRect(0, 0, W, H);
+        const S = 470, cx2 = (W - S) / 2, cy = 230; x.save(); x.shadowColor = 'rgba(0,0,0,.6)'; x.shadowBlur = 50; x.shadowOffsetY = 18; x.beginPath(); x.roundRect ? x.roundRect(cx2, cy, S, S, 34) : x.rect(cx2, cy, S, S); x.fillStyle = '#0c4a39'; x.fill(); x.restore();
+        if (im) { const m = Math.min(im.naturalWidth, im.naturalHeight); x.save(); x.beginPath(); x.roundRect ? x.roundRect(cx2, cy, S, S, 34) : x.rect(cx2, cy, S, S); x.clip(); x.drawImage(im, (im.naturalWidth - m) / 2, (im.naturalHeight - m) / 2, m, m, cx2, cy, S, S); x.restore(); }
+        let k = -1; for (let j = 0; j < L.length; j++) { if (L[j].t <= now + 0.1) k = j; else break; }
+        x.textAlign = 'center'; x.direction = 'rtl'; const wrap = (s, y, f, col, mx) => { x.font = f; x.fillStyle = col; const ws = s.split(' '); let ln = '', yy = y; ws.forEach((w2) => { const tt = ln ? ln + ' ' + w2 : w2; if (x.measureText(tt).width > mx && ln) { x.fillText(ln, W / 2, yy); ln = w2; yy += 66; } else ln = tt; }); if (ln) x.fillText(ln, W / 2, yy); };
+        x.shadowColor = 'rgba(0,0,0,.7)'; x.shadowBlur = 16; if (k >= 0) wrap(L[k].l, 870, `700 50px "${st.ly.font}", F8, serif`, '#fff', 620); if (L[k + 1]) wrap(L[k + 1].l, 1010, `700 34px "${st.ly.font}", F8, serif`, 'rgba(255,255,255,.45)', 600); x.shadowBlur = 0;
+        x.font = '800 34px F0, Cairo, sans-serif'; x.fillStyle = '#fff'; x.fillText(t.title, W / 2, 1120); x.font = '600 26px F0, Cairo, sans-serif'; x.fillStyle = 'rgba(255,255,255,.7)'; x.fillText([t.reciter, t.poet].filter(Boolean).join(' · '), W / 2, 1162);
+        x.globalAlpha = 0.85; if (logo) x.drawImage(logo, W - 96, 40, 56, 56); x.font = '800 30px F0, Cairo, sans-serif'; x.textAlign = 'right'; x.fillStyle = '#E8C468'; x.fillText('منبر', W - 108, 80); x.globalAlpha = 1;
+        x.fillStyle = 'rgba(255,255,255,.18)'; x.fillRect(60, 1210, W - 120, 5); x.fillStyle = '#E8C468'; x.fillRect(W - 60 - (W - 120) * Math.min(1, el2 / sg.d), 1210, (W - 120) * Math.min(1, el2 / sg.d), 5);
+        pz.querySelector('i').style.width = Math.min(100, el2 / sg.d * 100) + '%'; };
+      frame(); rec.start(500); src.start(0, sg.a, sg.d); const tick = setInterval(frame, 1000 / 30);
+      await new Promise((ok) => { const chk = setInterval(() => { if (stop || (performance.now() - T0) / 1000 >= sg.d) { clearInterval(chk); ok(); } }, 100); });
+      clearInterval(tick); try { src.stop(); } catch (e) {} const done = new Promise((ok) => { rec.onstop = ok; }); rec.stop(); await done;
+      if (!stop) { const type = (rec.mimeType || mime || 'video/webm').split(';')[0], blob = new Blob(parts, { type }), ext = /mp4/.test(type) ? 'mp4' : 'webm', name = 'منبر - ' + t.title + '.' + ext;
+        const file = new File([blob], name, { type }); let shared = false; try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: t.title }); shared = true; } } catch (e) {}
+        if (!shared) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); } toast('جاهز — ' + name); }
+    } catch (e) { console.warn(e); toast('تعذّر تجهيز المقطع'); }
+    try { actx && actx.close(); } catch (e) {} pz.remove(); smpBusy = false; if (smpOn) SA.play().catch(() => {}); }
+  g('plrSmpX').onclick = () => smpClose();
   function toolsUi() { const b = g('plrTools'); if (!b) return; b.textContent = ''; const seen = jget('minbar.seen.tools', {});
     [['about', 'info', 'عن القصيدة', 'الرادود والتفاصيل', about], ['share', 'share', 'مشاركة اللحظة', 'من الدقيقة الحالية', shareMoment], ['peak', 'flame', 'الذروة', rxList.length ? 'أكثر لحظة إعجاباً' : 'لا إعجابات', () => { const p = peakT(); if (p == null) return toast('لا توجد تفاعلات بعد على هذه القصيدة'); A.currentTime = p; if (A.paused) fadePlay(); tp(false); }],
       ['majlis', 'users', 'المجلس', MJ.on ? 'مفعّل · ' + MJ.code : 'استماع مشترك', mjMenu], ['latm', 'pulse', 'وضع اللطم', st.latm ? 'مفعّل' : 'اهتزاز مع الإيقاع', () => { st.latm = !st.latm; save(); toolsUi(); toast(st.latm ? 'وضع اللطم: يهتز الهاتف مع إيقاع اللطم' : 'أُوقف وضع اللطم'); }]].forEach(([k, icn, n, s, f]) => {
