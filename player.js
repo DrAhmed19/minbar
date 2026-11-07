@@ -763,7 +763,9 @@
         if (adm) admSoon(t); else if (quiet !== true) toast('تم حفظ التعديل');
       };
       const sp = el('button', 'x sp', '✂'); sp.title = 'تقسيم السطر'; sp.onclick = () => splitLine(t, ln.i, ta);
-      top.append(tm, ta, sp); r.append(top, adj); box.appendChild(r); fitTa(ta);
+      const dl = el('button', 'x sp', '✕'); dl.title = 'حذف السطر'; dl.onclick = () => { const arr = plain(linesOf(t)); arr.splice(ln.i, 1); commit(t, arr); lysEditBuild(); toast('حُذف السطر'); };
+      const gp = el('button', 'x sp', '♪'); gp.title = 'إدراج فراغ موسيقي بعد هذا السطر'; gp.onclick = () => { const arr = plain(linesOf(t)); arr.splice(ln.i + 1, 0, { t: r2(Math.max(ln.t + 0.5, A.currentTime)), l: '♪' }); arr.sort((a, b) => a.t - b.t); commit(t, arr); lysEditBuild(); toast('أُدرج فراغ'); };
+      top.append(tm, ta, sp, gp, dl); r.append(top, adj); box.appendChild(r); fitTa(ta);
     });
   }
   function splitLine(t, i, ta) {
@@ -781,7 +783,7 @@
   let aiQ = localStorage.getItem('minbar.ai.q') || 'good', aiStop = false, aiBusy = false;
   function aiCard(t, L) {
     const c = el('div', 'aic'), h = el('div', 'aih'); h.innerHTML = `<b>${ic('spark', 16)} الكلمات والتوزيع التلقائي</b>`; c.appendChild(h);
-    const uniq = []; L.forEach((x) => { if (x.l && !uniq.includes(x.l)) uniq.push(x.l); });
+    const uniq = []; L.forEach((x) => { if (x.l && x.l !== '♪' && !uniq.includes(x.l)) uniq.push(x.l); });
     const DK = 'minbar.lyr.draft.' + t.id; let dr = null; try { dr = localStorage.getItem(DK); } catch (e) {}
     const ta = mkTa(dr != null ? dr : uniq.join('\n')); ta.className = 'comp'; ta.rows = 5; ta.placeholder = 'سطر لكل بيت أو شطر، ويُفصل الشطران بـ *'; c.appendChild(ta);
     if (dr != null) { const nb = el('div', 'aiql', 'تم استرجاع مسودتك المحفوظة'); c.appendChild(nb); }

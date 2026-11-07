@@ -198,10 +198,12 @@
       while (i + 1 < outR.length && UN[outR[i + 1].u].k === ua.k && UN[outR[i + 1].u].q === q + 1) { i++; parts.push(outR[i]); q++; }
       const whole = ua.q === 0 && parts.length === ua.n, txt = whole ? String(lines[ua.k]).trim() : parts.map((x) => UN[x.u].text).join(' '), id = whole ? 'k' + ua.k : parts.map((x) => x.u).join(',');
       const rep = seenL.has(id) || seenK.has(ua.k); seenL.add(id); seenK.add(ua.k);
-      out.push({ t: a.t, l: txt, k: ua.k, conf: +(parts.reduce((s, x) => s + x.conf, 0) / parts.length).toFixed(2), rep, part: !whole, seen: parts.some((x) => x.seen) });
+      out.push({ t: a.t, e: (isFinite(parts[parts.length - 1].t1) ? parts[parts.length - 1].t1 : NaN), l: txt, k: ua.k, conf: +(parts.reduce((s, x) => s + x.conf, 0) / parts.length).toFixed(2), rep, part: !whole, seen: parts.some((x) => x.seen) });
     }
     for (let i = out.length - 1; i >= 0; i--) if (out[i].rep && out[i].conf < 0.4) out.splice(i, 1);
     let last = -1; out.forEach((o) => { let t = Math.max(0, o.t - 0.15); if (t <= last) t = last + 0.05; o.t = +t.toFixed(2); last = o.t; });
+    /* فراغات موسيقية: إذا طالت المسافة بين نهاية البيت وبداية التالي نضع ♪ حتى لا يبقى البيت ظاهراً طوال الموسيقى */
+    const GAP = opt.gap != null ? opt.gap : 7; for (let i = out.length - 2; i >= 0; i--) { const e = out[i].e; if (isFinite(e) && out[i + 1].t - e > GAP) out.splice(i + 1, 0, { t: +(e + 0.8).toFixed(2), l: '♪', k: -1, conf: 1, rep: false, part: false, seen: true, gap: true }); }
     const sung = new Set(occ.flatMap((o) => Array.from({ length: o.d }, (_, q) => UN[o.u + q].k)));
     return { out, stats: { sung: sung.size, low: out.filter((o) => o.conf < 0.4).length, repeats: out.filter((o) => o.rep).length, missing: K - sung.size, phrases: N } };
   }
