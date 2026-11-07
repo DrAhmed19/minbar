@@ -44,6 +44,7 @@
       <button class="plrib" id="plrMiniPlay"></button><button class="plrib" id="plrMiniNext">${ic('next', 22)}</button></div>
   </div>
   <nav class="plrnav"><button data-t="lib" class="on">${ic('lib', 22)}<span>المكتبة</span></button><button data-t="fav">${ic('heart', 22)}<span>المفضلة</span></button><button data-t="smp">${ic('pulse', 22)}<span>عينات</span></button><button data-t="pls" id="plrNavPl">${ic('plist', 22)}<span>القوائم</span></button><button data-t="studio">${ic('studio', 22)}<span>الاستوديو</span></button></nav>
+  <div class="plrhs" id="plrHs" hidden><div class="hst"></div><div class="hsw"><p class="hsc"></p><p class="hsn"></p></div><div class="hsp"><i></i></div><div class="hsctl"><button class="hspp" type="button">${ic('pause', 22)}</button><button class="hsx" type="button">${ic('x', 22)}</button></div></div>
   <div class="plrsmp" id="plrSmp" hidden><div class="smhd"><b>عينات</b><button class="ib" id="plrSmpX" aria-label="إغلاق">${ic('x', 20)}</button></div><div class="smpl" id="plrSmpL"></div></div>
   <div class="plrfull lay-a" id="plrFull" hidden>
     <div class="plrbgi" id="plrBgI"></div><img class="plrbgf" id="plrBgF" alt="">
@@ -166,7 +167,7 @@
   /* القصائد المرفوعة: بياناتها في Firestore (tracks) وملفاتها في مخزن Cloudflare */
   const FSK = 'minbar.tracks.fs', OWNER = 'ahmad1999199919999@gmail.com'; let BASE = [];
   const isOwner = () => { try { const u = firebase.auth().currentUser; return !!u && u.email === OWNER && u.emailVerified; } catch (e) { return false; } };
-  function fsSet(arr) { const id = cur >= 0 && tracks[cur] ? tracks[cur].id : null; tracks = BASE.concat(arr); if (id) cur = tracks.findIndex((t) => t.id === id); render(); }
+  function fsSet(arr) { const id = cur >= 0 && tracks[cur] ? tracks[cur].id : null; tracks = BASE.concat(arr); if (id) cur = tracks.findIndex((t) => t.id === id); render(); setTimeout(() => { try { newCheck(); } catch (e) {} }, 500); }
   let ALB = {}; try { ALB = JSON.parse(localStorage.getItem(FSK + '.alb') || '{}'); } catch (e) {}
   async function fsLoad() { const db = fdb(); if (!db) return; try { const [s, sa] = await Promise.all([db.collection('tracks').get(), db.collection('albums').get()]); ALB = {}; sa.forEach((d) => { ALB[d.id] = Object.assign({ id: d.id }, d.data()); }); try { localStorage.setItem(FSK + '.alb', JSON.stringify(ALB)); } catch (e) {}
       const arr = []; s.forEach((d) => { const x = d.data(); if (!x || !x.audio || x.hidden) return; const al = x.album && ALB[x.album]; arr.push(Object.assign({ lyrics: [], cat: 'أخرى' }, x, { id: d.id, fs: 1, ownCover: x.cover || '', cover: x.cover || (al && al.cover) || '', albumName: al ? al.name : '' })); }); arr.sort((a, b) => (b.at || 0) - (a.at || 0));
@@ -335,12 +336,14 @@
     boxC = { cx: cx * dpr, cy: cy * dpr, R: R * dpr, w: cv.width }; boxAt = n; return boxC;
   }
   let lnK = 0; A.addEventListener('pause', () => { A.__pz = performance.now(); });
-  let vizAcc = 0, bpLast = -1, vizDpr = 1.5, vizMs = 5, vzSk = false; const vs = { pk: 0, dx: 0, to: 0, drag: false, after: null };
+  let vizAcc = 0, bpLast = -1, vizDpr = 2, vizMs = 5, vzSk = false; const vs = { pk: 0, dx: 0, to: 0, drag: false, after: null };
   /* الوضع الخفيف للأجهزة الضعيفة: تلقائي حسب الجهاز أو حسب الأداء الفعلي */
-  let LITE = localStorage.getItem('minbar.lite') === '1' || (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 3, lfE = 0.016, lfN = 0;
-  const liteSet = (on) => { LITE = on; root.classList.toggle('lite', on); if (on) { vizDpr = Math.min(vizDpr, 1); try { localStorage.setItem('minbar.lite', '1'); } catch (e) {} } };
-  if (LITE) { root.classList.add('lite'); vizDpr = 1; }
-  function liteCheck(raw) { if (LITE || document.hidden) return; lfE = lfE * 0.95 + Math.min(0.2, raw) * 0.05; if (lfE > 1 / 26) { if (++lfN > 90) liteSet(true); } else lfN = Math.max(0, lfN - 2); }
+  /* الوضع الخفيف: للأجهزة الضعيفة فقط، ولا يُحفظ دائماً (كان يُحفظ فيُخفض الجودة إلى الأبد بعد لحظة بطء واحدة) */
+  try { localStorage.removeItem('minbar.lite'); } catch (e) {}
+  let LITE = (navigator.hardwareConcurrency || 8) <= 3 || (navigator.deviceMemory || 8) <= 2, lfE = 0.016, lfN = 0;
+  const liteSet = (on) => { LITE = on; root.classList.toggle('lite', on); if (on) vizDpr = Math.min(vizDpr, 1.5); };
+  if (LITE) { root.classList.add('lite'); vizDpr = 1.5; }
+  function liteCheck(raw) { if (LITE || document.hidden) return; lfE = lfE * 0.95 + Math.min(0.2, raw) * 0.05; if (lfE > 1 / 20) { if (++lfN > 300) liteSet(true); } else lfN = Math.max(0, lfN - 2); }
   function vizLoop(ts) {
     if (root.hidden || g('plrFull').hidden || document.hidden) { vizOn = false; return; }
     requestAnimationFrame(vizLoop);
@@ -357,7 +360,7 @@
       if (st.viz === 'ambient') { drawAmbient(x, cv.width, cv.height, T + ts / 1000, live, B); } else { window.PVZ.draw(x, cv.width, cv.height, st.viz, live, curImg, B, { t: T, now: ts / 1000, dt, paused: A.paused, pk: vs.pk * fa + 0.0001, ctl: window.__plrCtl }); }
       if (fa < 1) { x.setTransform(1, 0, 0, 1, 0, 0); x.globalCompositeOperation = 'destination-in'; x.fillStyle = `rgba(0,0,0,${fa.toFixed(3)})`; x.fillRect(0, 0, cv.width, cv.height); x.globalCompositeOperation = 'source-over'; }
     } catch (e) { console.warn(e); }
-    x.setTransform(1, 0, 0, 1, 0, 0); const dms = performance.now() - t0d; vizMs = vizMs * 0.95 + dms * 0.05; if (vizMs > 9 && vizDpr > (LITE ? 0.75 : 1)) { vizDpr = Math.max(LITE ? 0.75 : 1, vizDpr - 0.25); vizMs = 6; } else if (vizMs < 3 && vizDpr < (LITE ? 1 : 1.5)) { vizDpr = Math.min(LITE ? 1 : 1.5, vizDpr + 0.25); vizMs = 6; }
+    x.setTransform(1, 0, 0, 1, 0, 0); const dms = performance.now() - t0d; vizMs = vizMs * 0.95 + dms * 0.05; if (vizMs > 12 && vizDpr > (LITE ? 1.25 : 1.5)) { vizDpr = Math.max(LITE ? 1.25 : 1.5, vizDpr - 0.25); vizMs = 6; } else if (vizMs < 3 && vizDpr < (LITE ? 1 : 1.5)) { vizDpr = Math.min(LITE ? 1 : 1.5, vizDpr + 0.25); vizMs = 6; }
   }
 
   let vizOn = false, lyBp = 0; document.addEventListener('visibilitychange', () => { if (!document.hidden) { try { if (ac && ac.state !== 'running' && !A.paused) ac.resume().catch(() => {}); COVC2(); window.PVZ && window.PVZ.reset(); amb.ray = null; amb.bg = null; boxC = null; const vc = g('plrViz'); vc.width = 0; } catch (e) {} const w = g('plrWave'); w.width = 0; requestAnimationFrame(() => { waveDraw(); if (!g('plrFull').hidden) { vizStart(); layout(0, false); } }); } }); window.addEventListener('pageshow', () => requestAnimationFrame(waveDraw)); g('plrWave').addEventListener('contextrestored', waveDraw);
@@ -1401,6 +1404,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     if (!g('plrLys').hidden) { closeLys(); return true; }
     if (!g('plrFull').hidden) { closeFull(); return true; }
     if (!g('plrSearch').hidden) { g('plrSearchB').onclick(); return true; }
+    if (hsOn) { hsClose(); return true; }
     if (smpOn) { smpClose(); return true; }
     if (tab === 'lib' && libSel) { libSel = null; render(); return true; }
     if (tab === 'lib' && libV !== 'all') { libV = 'all'; render(); return true; }
@@ -1634,10 +1638,10 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   g('plrAddB').onclick = () => upMenu(null);
   try { firebase.auth().onAuthStateChanged(() => { g('plrAddB').hidden = !isOwner(); fsLoad(); }); } catch (e) {}
   /* ================= المكتبة: القصائد · الإصدارات · الرواديد ================= */
-  let libV = 'all', libSel = null; /* libSel: {k:'alb'|'rec', id} */
+  let libV = 'home', libSel = null; /* libSel: {k:'alb'|'rec', id} */
   const durOfT = (t) => { try { return (JSON.parse(localStorage.getItem(DUK) || '{}'))[t.id] || t.dur || 0; } catch (e) { return t.dur || 0; } };
   function libTabs(body) {
-    const w = el('div', 'libtabs'); [['all', 'القصائد'], ['alb', 'الإصدارات'], ['rec', 'الرواديد']].forEach(([k, n]) => { const b = el('button', libV === k ? 'on' : '', n); b.type = 'button'; b.onclick = () => { libV = k; libSel = null; render(); }; w.appendChild(b); });
+    const w = el('div', 'libtabs'); [['home', 'الرئيسية'], ['all', 'القصائد'], ['alb', 'الإصدارات'], ['rec', 'الرواديد']].forEach(([k, n]) => { const b = el('button', libV === k ? 'on' : '', n); b.type = 'button'; b.onclick = () => { libV = k; libSel = null; render(); }; w.appendChild(b); });
     body.appendChild(w);
   }
   function trackRow(t, list) {
@@ -1656,7 +1660,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   }
   function albOf(t) { return t.album ? t.album : ''; }
   function libRender(body) {
-    libTabs(body);
+    libTabs(body); if (libV === 'home') { homeRender(body); return true; }
     if (libV === 'alb') {
       const map = new Map(); tracks.forEach((t) => { const k = albOf(t); if (!k) return; if (!map.has(k)) map.set(k, []); map.get(k).push(t); });
       if (libSel && libSel.k === 'alb') { const L = map.get(libSel.id) || []; const a = ALB[libSel.id] || {}; groupPage(body, a.name || 'إصدار', [a.reciter, L.length + ' قصيدة'].filter(Boolean).join(' · '), L[0], L); return true; }
@@ -1666,7 +1670,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     }
     if (libV === 'rec') {
       const map = new Map(); tracks.forEach((t) => { const k = (t.reciter || 'غير معروف').trim(); if (!map.has(k)) map.set(k, []); map.get(k).push(t); });
-      if (libSel && libSel.k === 'rec') { const L = map.get(libSel.id) || []; const na = new Set(L.map(albOf).filter(Boolean)).size; groupPage(body, libSel.id, L.length + ' قصيدة' + (na ? ' · ' + na + ' إصدار' : ''), L[0], L); return true; }
+      if (libSel && libSel.k === 'rec') { const L = map.get(libSel.id) || []; const na = new Set(L.map(albOf).filter(Boolean)).size; groupPage(body, libSel.id, L.length + ' قصيدة' + (na ? ' · ' + na + ' إصدار' : ''), L[0], L); const fb = el('button', 'btn small' + (isFol(libSel.id) ? '' : ' primary'), isFol(libSel.id) ? '✓ تتابعه' : '＋ متابعة'); fb.type = 'button'; const id0 = libSel.id; fb.onclick = () => folToggle(id0); const rw = body.querySelector('.grph .row'); if (rw) rw.appendChild(fb); return true; }
       const R2 = el('div', 'reclist'); [...map.entries()].sort((a, b) => b[1].length - a[1].length).forEach(([k, L]) => { const r = el('button', 'recr'); r.type = 'button'; const cv = el('div', 'plrcov'); coverEl(L[0], cv); const tx = el('div', 'trm'); tx.append(el('b', '', k), el('small', '', L.length + ' قصيدة')); r.append(cv, tx); r.insertAdjacentHTML('beforeend', ic('fwd', 18)); r.onclick = () => { libSel = { k: 'rec', id: k }; render(); g('plrBody').scrollTop = 0; }; R2.appendChild(r); });
       body.appendChild(R2); return true;
     }
@@ -1688,6 +1692,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
       act('heart', st.fav.includes(t.id) ? 'إزالة من المفضلة' : 'إضافة للمفضلة', () => { tog(t.id); render(); });
       act('plist', 'إضافة إلى قائمة', () => plPick(t));
       act('share', 'مشاركة', () => shareSheet(t, 0));
+      if (offHas(t.id)) act('down', 'حذف التنزيل', () => offDel(t)); else act('down', 'تنزيل للاستماع بدون إنترنت', () => offSave(t));
       if (t.album && ALB[t.album]) act('lib', 'الذهاب للإصدار', () => { goLib('alb', t.album); });
       if (t.reciter) act('users', 'الذهاب للرادود', () => { goLib('rec', t.reciter.trim()); });
       if (t.fs && isOwner()) { act('text', 'تعديل بيانات القصيدة', () => upMenu(t)); act('x', 'حذف القصيدة', () => upDel(t), 'dang'); }
@@ -1713,21 +1718,25 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     if (env && env.length) { const B = env.length, w = Math.max(2, Math.round(D / d0 * B)); let best = -1, bi = 0; for (let i = Math.round(B * 0.08); i + w < B * 0.95; i++) { let s = 0; for (let j = i; j < i + w; j++) s += env[j]; if (s > best) { best = s; bi = i; } } a = bi / B * d0; }
     const h = rxList && rxTrack === t && rxList.length > 6 ? rxList.slice().sort((x, y) => x.t - y.t) : null; if (h) { let bb = 0, bt = a; for (let i = 0; i < h.length; i++) { let n = 0; for (let j = i; j < h.length && h[j].t < h[i].t + D; j++) n++; if (n > bb) { bb = n; bt = h[i].t; } } a = bt; }
     const L = linesOf(t); if (L.length) { const ln = L.filter((x) => x.t <= a + 2).pop(); if (ln && a - ln.t < 6) a = ln.t; } return { a: Math.max(0, a), d: D }; }
-  function smpOpen() { if (smpOn) return; const L = tracks.filter((t) => t.audio); if (!L.length) return toast('لا توجد قصائد بعد'); if (!A.paused) fadePause(); smpOn = true;
+  const SMF = 'F10';
+  function smpOpen() { if (smpOn) return; const L = tracks.filter((t) => t.audio); if (!L.length) return toast('لا توجد قصائد بعد'); if (!A.paused) fadePause(); smpOn = true; try { document.fonts.load('700 40px ' + SMF, 'قصيدة'); } catch (e) {}
     smpList = L.slice().sort((a, b) => (b.at || 0) - (a.at || 0)); const w = g('plrSmp'); w.hidden = false; const sc = g('plrSmpL'); sc.textContent = '';
-    smpList.forEach((t, i) => { const it = el('section', 'smi'); it.dataset.i = i; it.innerHTML = '<div class="smbg"></div><div class="smsh"></div><div class="smc"><div class="plrcov"></div></div><div class="smly"><p class="p0"></p><p class="p1"></p></div><div class="smside"></div><div class="smft"><div class="smpi"><div class="plrcov"></div><div class="trm"><b></b><small></small></div><button class="smgo" type="button"></button></div><div class="smpr"><i></i></div></div><div class="smpz" hidden></div>';
-      const cu = cov(t); if (cu) it.querySelector('.smbg').style.backgroundImage = 'url("' + cu + '")'; else { const c = gOf(t); it.querySelector('.smbg').style.background = `radial-gradient(120% 90% at 30% 20%,${c[0]},${c[1]})`; }
-      it.style.setProperty('--smh', String((hash(t.id) % 360)));
-      coverEl(t, it.querySelector('.smc .plrcov')); coverEl(t, it.querySelector('.smpi .plrcov')); it.querySelector('.smpi .trm b').textContent = t.title; it.querySelector('.smpi .trm small').textContent = [t.reciter, t.poet].filter(Boolean).join(' · ');
-      const go = it.querySelector('.smgo'); go.innerHTML = 'استمع كاملة ' + ic('fwd', 14); go.onclick = (e) => { e.stopPropagation(); smpClose(); qFrom(t, tracks); play(tracks.indexOf(t), true); };
-      const sd = it.querySelector('.smside'); const sb = (icn, n, f) => { const b = el('button', 'smb'); b.type = 'button'; b.innerHTML = ic(icn, 24) + '<span></span>'; b.lastChild.textContent = n; b.onclick = (e) => { e.stopPropagation(); f(b); }; sd.appendChild(b); };
-      sb('heart', 'أعجبني', (b) => { b.classList.toggle('on'); if (b.classList.contains('on') && !st.fav.includes(t.id)) { tog(t.id); toast('أُضيفت للمفضلة'); } else if (!b.classList.contains('on') && st.fav.includes(t.id)) tog(t.id); });
+    smpList.forEach((t, i) => { const it = el('section', 'smi'); it.dataset.i = i; it.innerHTML = '<div class="smbg"></div><div class="smgr"></div><div class="smtop"><i></i></div><div class="smly"></div><div class="smside"></div><div class="smft"><div class="smpi"><div class="plrcov"></div><div class="trm"><b></b><small></small></div><button class="smgo" type="button"></button></div></div><div class="smpz" hidden></div>';
+      const bg = it.querySelector('.smbg'), cu = cov(t); if (cu) bg.style.backgroundImage = 'url("' + cu + '")'; else { const c = gOf(t); bg.style.background = `radial-gradient(120% 90% at 30% 20%,${c[0]},${c[1]})`; }
+      it.style.setProperty('--smh', String(hash(t.id) % 360));
+      coverEl(t, it.querySelector('.smpi .plrcov')); it.querySelector('.smpi .trm b').textContent = t.title; it.querySelector('.smpi .trm small').textContent = [t.reciter, t.poet].filter(Boolean).join(' · ');
+      const go = it.querySelector('.smgo'); go.innerHTML = '<span>استمع كاملة</span>' + ic('fwd', 14); go.onclick = (e) => { e.stopPropagation(); smpClose(); qFrom(t, tracks); play(tracks.indexOf(t), true); };
+      const sd = it.querySelector('.smside'); const sb = (icn, n, f) => { const b = el('button', 'smb'); b.type = 'button'; b.innerHTML = '<i>' + ic(icn, 24) + '</i><span></span>'; b.lastChild.textContent = n; b.onclick = (e) => { e.stopPropagation(); f(b); }; sd.appendChild(b); };
+      sb('heart', 'أعجبني', (b) => { b.classList.toggle('on'); const on = b.classList.contains('on'); if (on !== st.fav.includes(t.id)) tog(t.id); if (on) { toast('أُضيفت للمفضلة'); b.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.35)' }, { transform: 'scale(1)' }], { duration: 350 }); } });
       if (st.fav.includes(t.id)) sd.firstChild.classList.add('on');
       sb('down', 'تنزيل', () => smpRender(t)); sb('share', 'مشاركة', () => shareSheet(t, smpSeg(t).a));
-      it.onclick = () => { if (smpIdx !== i) return; if (SA.paused) { SA.play().catch(() => {}); it.querySelector('.smpz').hidden = true; } else { SA.pause(); it.querySelector('.smpz').hidden = false; } };
+      it.onclick = () => { if (smpIdx !== i) return; const pz = it.querySelector('.smpz'); if (SA.paused) { SA.play().catch(() => {}); pz.hidden = true; } else { SA.pause(); pz.hidden = false; } };
       sc.appendChild(it); });
     smpObs = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting && e.intersectionRatio > 0.6) smpGo(+e.target.dataset.i); }), { root: sc, threshold: [0.6] });
     sc.querySelectorAll('.smi').forEach((x) => smpObs.observe(x)); sc.scrollTop = 0; smpGo(0); smpLoop(); }
+  /* سطر الكلمات: يدخل كلمةً كلمة (صعود + وضوح من الضباب)، ويتلوّن تدريجياً مع الإنشاد، ويخرج للأعلى بتلاشٍ */
+  function smpLine(box, text) { [...box.children].forEach((o) => { o.classList.add('out'); setTimeout(() => o.remove(), 450); }); if (!text) return null;
+    const ln = el('p', 'sl'); text.split(/\s+/).forEach((w, i) => { const s = el('span', '', w); s.style.animationDelay = (i * 70) + 'ms'; ln.appendChild(s); ln.appendChild(document.createTextNode(' ')); }); box.appendChild(ln); return ln; }
   function smpGo(i) { if (i === smpIdx) return; smpIdx = i; const t = smpList[i]; if (!t) return; const sg = smpSeg(t); SA.__seg = sg; SA.__t = t;
     g('plrSmpL').querySelectorAll('.smi').forEach((x) => x.classList.toggle('act', +x.dataset.i === i)); const it = g('plrSmpL').children[i]; it.querySelector('.smpz').hidden = true;
     const src = new URL(t.audio, location.href).href; if (SA.src !== src) SA.src = t.audio; const go = () => { try { SA.currentTime = sg.a; } catch (e) {} SA.play().catch(() => { it.querySelector('.smpz').hidden = false; }); };
@@ -1735,8 +1744,11 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     envLoad(t); const nx = smpList[i + 1]; if (nx) { const l = document.createElement('link'); l.rel = 'prefetch'; l.href = nx.audio; document.head.appendChild(l); } }
   function smpLoop() { cancelAnimationFrame(smpRaf); if (!smpOn) return; smpRaf = requestAnimationFrame(smpLoop); const t = SA.__t, sg = SA.__seg; if (!t || !sg) return; const it = g('plrSmpL').children[smpIdx]; if (!it) return;
     const p = (SA.currentTime - sg.a) / sg.d; if (SA.currentTime >= sg.a + sg.d || SA.currentTime < sg.a - 1) { try { SA.currentTime = sg.a; } catch (e) {} }
-    it.querySelector('.smpr i').style.width = Math.max(0, Math.min(100, p * 100)) + '%';
-    const L = linesOf(t); let k = -1; for (let j = 0; j < L.length; j++) { if (L[j].t <= SA.currentTime + 0.15) k = j; else break; } if (it._k !== k) { it._k = k; const a = it.querySelector('.p0'), b = it.querySelector('.p1'); a.textContent = k >= 0 ? L[k].l : ''; b.textContent = L[k + 1] ? L[k + 1].l : ''; a.classList.remove('in'); void a.offsetWidth; a.classList.add('in'); } }
+    it.querySelector('.smtop i').style.transform = 'scaleX(' + Math.max(0, Math.min(1, p)).toFixed(4) + ')';
+    const L = linesOf(t), now = SA.currentTime; let k = -1; for (let j = 0; j < L.length; j++) { if (L[j].t <= now + 0.12) k = j; else break; }
+    if (it._k !== k) { it._k = k; it._ln = smpLine(it.querySelector('.smly'), k >= 0 ? L[k].l : ''); }
+    const ln = it._ln; if (ln && k >= 0) { const end = L[k + 1] ? L[k + 1].t : L[k].t + 5, f = Math.max(0, Math.min(1, (now - L[k].t) / Math.max(0.8, (end - L[k].t) * 0.85))), ws = ln.querySelectorAll('span'), n = Math.ceil(f * ws.length);
+      if (ln._n !== n) { ln._n = n; ws.forEach((s, i) => s.classList.toggle('on', i < n)); } } }
   function smpClose() { if (!smpOn) return; smpOn = false; SA.pause(); cancelAnimationFrame(smpRaf); try { smpObs && smpObs.disconnect(); } catch (e) {} g('plrSmp').hidden = true; g('plrSmpL').textContent = ''; smpIdx = -1;
     document.querySelectorAll('.plrnav button').forEach((b) => b.classList.toggle('on', b.dataset.t === tab)); }
   document.addEventListener('visibilitychange', () => { if (document.hidden && smpOn) SA.pause(); });
@@ -1753,18 +1765,24 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
       const vs = c.captureStream(30), ms = new MediaStream([vs.getVideoTracks()[0], dst.stream.getAudioTracks()[0]]);
       const mime = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'].find((m) => MediaRecorder.isTypeSupported(m)) || '';
       const rec = new MediaRecorder(ms, mime ? { mimeType: mime, videoBitsPerSecond: 3500000 } : {}), parts = []; rec.ondataavailable = (e) => { if (e.data && e.data.size) parts.push(e.data); };
-      const L = linesOf(t), hue = hash(t.id) % 360, T0 = performance.now();
+      const L = linesOf(t), hue = hash(t.id) % 360; let T0 = performance.now();
+      try { await document.fonts.load('700 60px ' + SMF, 'قصيدة'); await document.fonts.load('800 30px F0', 'منبر'); } catch (e) {} T0 = performance.now();
+      const segs = []; /* {k, t0} لتحريك دخول السطر */ let lastK = -2, kT = 0;
       const frame = () => { const el2 = (performance.now() - T0) / 1000, now = sg.a + el2;
-        x.fillStyle = '#05120e'; x.fillRect(0, 0, W, H); if (im) { const s = 1.25 + 0.06 * Math.sin(el2 * 0.25), m = Math.min(im.naturalWidth, im.naturalHeight); x.save(); x.filter = 'blur(36px) brightness(.5) saturate(1.25)'; x.drawImage(im, (im.naturalWidth - m) / 2, (im.naturalHeight - m) / 2, m, m, (W - H * s) / 2, (H - H * s) / 2, H * s, H * s); x.restore(); }
-        const gr = x.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, 'rgba(0,0,0,.25)'); gr.addColorStop(0.55, `hsla(${hue},40%,12%,.15)`); gr.addColorStop(1, 'rgba(0,0,0,.85)'); x.fillStyle = gr; x.fillRect(0, 0, W, H);
-        const S = 470, cx2 = (W - S) / 2, cy = 230; x.save(); x.shadowColor = 'rgba(0,0,0,.6)'; x.shadowBlur = 50; x.shadowOffsetY = 18; x.beginPath(); x.roundRect ? x.roundRect(cx2, cy, S, S, 34) : x.rect(cx2, cy, S, S); x.fillStyle = '#0c4a39'; x.fill(); x.restore();
-        if (im) { const m = Math.min(im.naturalWidth, im.naturalHeight); x.save(); x.beginPath(); x.roundRect ? x.roundRect(cx2, cy, S, S, 34) : x.rect(cx2, cy, S, S); x.clip(); x.drawImage(im, (im.naturalWidth - m) / 2, (im.naturalHeight - m) / 2, m, m, cx2, cy, S, S); x.restore(); }
-        let k = -1; for (let j = 0; j < L.length; j++) { if (L[j].t <= now + 0.1) k = j; else break; }
-        x.textAlign = 'center'; x.direction = 'rtl'; const wrap = (s, y, f, col, mx) => { x.font = f; x.fillStyle = col; const ws = s.split(' '); let ln = '', yy = y; ws.forEach((w2) => { const tt = ln ? ln + ' ' + w2 : w2; if (x.measureText(tt).width > mx && ln) { x.fillText(ln, W / 2, yy); ln = w2; yy += 66; } else ln = tt; }); if (ln) x.fillText(ln, W / 2, yy); };
-        x.shadowColor = 'rgba(0,0,0,.7)'; x.shadowBlur = 16; if (k >= 0) wrap(L[k].l, 870, `700 50px "${st.ly.font}", F8, serif`, '#fff', 620); if (L[k + 1]) wrap(L[k + 1].l, 1010, `700 34px "${st.ly.font}", F8, serif`, 'rgba(255,255,255,.45)', 600); x.shadowBlur = 0;
-        x.font = '800 34px F0, Cairo, sans-serif'; x.fillStyle = '#fff'; x.fillText(t.title, W / 2, 1120); x.font = '600 26px F0, Cairo, sans-serif'; x.fillStyle = 'rgba(255,255,255,.7)'; x.fillText([t.reciter, t.poet].filter(Boolean).join(' · '), W / 2, 1162);
-        x.globalAlpha = 0.85; if (logo) x.drawImage(logo, W - 96, 40, 56, 56); x.font = '800 30px F0, Cairo, sans-serif'; x.textAlign = 'right'; x.fillStyle = '#E8C468'; x.fillText('منبر', W - 108, 80); x.globalAlpha = 1;
-        x.fillStyle = 'rgba(255,255,255,.18)'; x.fillRect(60, 1210, W - 120, 5); x.fillStyle = '#E8C468'; x.fillRect(W - 60 - (W - 120) * Math.min(1, el2 / sg.d), 1210, (W - 120) * Math.min(1, el2 / sg.d), 5);
+        x.fillStyle = '#05120e'; x.fillRect(0, 0, W, H);
+        if (im) { const m = Math.min(im.naturalWidth, im.naturalHeight), z = 1.04 + 0.1 * (el2 / sg.d), sw = m * (W / H) / z, sh = m / z, sx = (im.naturalWidth - sw) / 2 + Math.sin(el2 * 0.12) * sw * 0.03, sy = (im.naturalHeight - sh) / 2; x.save(); x.filter = 'brightness(.72) contrast(1.06) saturate(1.12)'; x.drawImage(im, sx, sy, sw, sh, 0, 0, W, H); x.restore(); }
+        const gr = x.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, 'rgba(0,0,0,.45)'); gr.addColorStop(0.18, 'rgba(0,0,0,0)'); gr.addColorStop(0.5, `hsla(${hue},45%,10%,.12)`); gr.addColorStop(0.72, 'rgba(0,0,0,.55)'); gr.addColorStop(1, 'rgba(0,0,0,.92)'); x.fillStyle = gr; x.fillRect(0, 0, W, H);
+        let k = -1; for (let j = 0; j < L.length; j++) { if (L[j].t <= now + 0.1) k = j; else break; } if (k !== lastK) { lastK = k; kT = el2; }
+        if (k >= 0) { const ws = L[k].l.split(/\s+/), end = L[k + 1] ? L[k + 1].t : L[k].t + 5, f = Math.max(0, Math.min(1, (now - L[k].t) / Math.max(0.8, (end - L[k].t) * 0.85))), lit = Math.ceil(f * ws.length);
+          x.font = `700 58px ${SMF}, F8, serif`; x.textAlign = 'right'; x.direction = 'rtl'; const rows = []; let row = []; ws.forEach((w2) => { const tt = row.concat(w2).join(' '); if (x.measureText(tt).width > W - 120 && row.length) { rows.push(row); row = [w2]; } else row.push(w2); }); if (row.length) rows.push(row);
+          let wi = 0, y0 = 930 - (rows.length - 1) * 84; rows.forEach((r2, ri) => { const lw = x.measureText(r2.join(' ')).width; let xx = W / 2 + lw / 2; r2.forEach((w2) => { const ww = x.measureText(w2).width, sp = x.measureText(' ').width, a = Math.max(0, Math.min(1, (el2 - kT - wi * 0.07) / 0.35)), on = wi < lit;
+              x.save(); x.globalAlpha = a; x.shadowColor = on ? 'rgba(232,196,104,.55)' : 'rgba(0,0,0,.7)'; x.shadowBlur = on ? 22 : 14; x.fillStyle = on ? '#fff' : 'rgba(255,255,255,.5)'; x.fillText(w2, xx, y0 + ri * 84 + (1 - a) * 22); x.restore(); xx -= ww + sp; wi++; }); }); }
+        /* شريط القصيدة */
+        const py = H - 150; x.save(); x.fillStyle = 'rgba(255,255,255,.12)'; x.beginPath(); x.roundRect ? x.roundRect(36, py, W - 72, 92, 24) : x.rect(36, py, W - 72, 92); x.fill(); x.restore();
+        if (im) { const m = Math.min(im.naturalWidth, im.naturalHeight); x.save(); x.beginPath(); x.roundRect ? x.roundRect(W - 52 - 68, py + 12, 68, 68, 14) : x.rect(W - 120, py + 12, 68, 68); x.clip(); x.drawImage(im, (im.naturalWidth - m) / 2, (im.naturalHeight - m) / 2, m, m, W - 120, py + 12, 68, 68); x.restore(); }
+        x.textAlign = 'right'; x.font = '800 30px F0, Cairo, sans-serif'; x.fillStyle = '#fff'; x.fillText(t.title, W - 136, py + 42); x.font = '600 22px F0, Cairo, sans-serif'; x.fillStyle = 'rgba(255,255,255,.7)'; x.fillText([t.reciter, t.poet].filter(Boolean).join(' · '), W - 136, py + 74);
+        x.fillStyle = 'rgba(255,255,255,.22)'; x.fillRect(36, 34, W - 72, 4); x.fillStyle = '#fff'; const pw = (W - 72) * Math.min(1, el2 / sg.d); x.fillRect(W - 36 - pw, 34, pw, 4);
+        x.globalAlpha = 0.9; if (logo) x.drawImage(logo, W - 92, 58, 50, 50); x.font = '800 30px F0, Cairo, sans-serif'; x.textAlign = 'right'; x.fillStyle = '#E8C468'; x.fillText('منبر', W - 102, 94); x.font = '600 16px F0, Cairo, sans-serif'; x.fillStyle = 'rgba(255,255,255,.75)'; x.fillText('استمع للقصيدة كاملة في منبر', W - 36, 130); x.globalAlpha = 1;
         pz.querySelector('i').style.width = Math.min(100, el2 / sg.d * 100) + '%'; };
       frame(); rec.start(500); src.start(0, sg.a, sg.d); const tick = setInterval(frame, 1000 / 30);
       await new Promise((ok) => { const chk = setInterval(() => { if (stop || (performance.now() - T0) / 1000 >= sg.d) { clearInterval(chk); ok(); } }, 100); });
@@ -1775,9 +1793,66 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     } catch (e) { console.warn(e); toast('تعذّر تجهيز المقطع'); }
     try { actx && actx.close(); } catch (e) {} pz.remove(); smpBusy = false; if (smpOn) SA.play().catch(() => {}); }
   g('plrSmpX').onclick = () => smpClose();
+  /* ================= الصفحة الرئيسية ================= */
+  const FOLK = 'minbar.follow', SEENK = 'minbar.seen.ids', OFFK = 'minbar.offline';
+  const follows = () => jget(FOLK, []), isFol = (r) => follows().includes(r);
+  function hsec(body, title, items, mk, more) { if (!items.length) return; const s = el('section', 'hsec'), h = el('div', 'hsh'); h.appendChild(el('b', '', title)); if (more) { const m = el('button', 'hsm', 'الكل'); m.type = 'button'; m.onclick = more; h.appendChild(m); } const row = el('div', 'hrow'); items.forEach((x) => row.appendChild(mk(x))); s.append(h, row); body.appendChild(s); }
+  function hcard(t, sub, prog) { const c = el('button', 'hcd'); c.type = 'button'; const cv = el('div', 'plrcov'); coverEl(t, cv); c.appendChild(cv); if (prog != null) { const p = el('i', 'hpr'); p.style.setProperty('--p', prog); cv.appendChild(p); } if (offHas(t.id)) cv.appendChild(el('em', 'hoff', '⬇')); c.append(el('b', '', t.title), el('small', '', sub != null ? sub : (t.reciter || ''))); c.onclick = () => { qFrom(t, tracks); play(tracks.indexOf(t), true); }; lpMenu(c, t); return c; }
+  let HOT = { at: 0, plays: [], likes: [] };
+  async function hotLoad() { const db = fdb(); if (!db || Date.now() - HOT.at < 10 * 60000) return; HOT.at = Date.now();
+    try { const s = await db.collection('stats').orderBy('plays', 'desc').limit(12).get(); HOT.plays = []; s.forEach((d) => HOT.plays.push([d.id, d.data().plays || 0])); } catch (e) {}
+    try { const wk = firebase.firestore.Timestamp.fromMillis(Date.now() - 7 * 864e5), s = await db.collection('rx').where('at', '>=', wk).limit(800).get(), c = {}; s.forEach((d) => { const x = d.data(); c[x.track] = (c[x.track] || 0) + 1; }); HOT.likes = Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 12); } catch (e) {}
+    if (tab === 'lib' && libV === 'home') render(); }
+  function homeRender(body) {
+    occRender(body); const nx = occNext(); if (nx && !occasion()) { const b = el('div', 'occ soon'); b.append(el('small', '', 'مناسبة قادمة'), el('b', '', nx.t), el('span', '', nx.d === 1 ? 'غداً' : 'بعد ' + nx.d + ' أيام')); body.appendChild(b); }
+    const pos = jget(POSK, {}), du = (() => { try { return JSON.parse(localStorage.getItem(DUK) || '{}'); } catch (e) { return {}; } })();
+    hsec(body, 'أكمل الاستماع', Object.keys(pos).reverse().map(byId).filter(Boolean).slice(0, 10), (t) => hcard(t, du[t.id] ? 'متبقٍ ' + fmt(du[t.id] - pos[t.id]) : 'من ' + fmt(pos[t.id]), du[t.id] ? (pos[t.id] / du[t.id]).toFixed(3) : 0));
+    const fol = follows(); if (fol.length) hsec(body, 'من رواديد تتابعهم', tracks.filter((t) => fol.includes((t.reciter || '').trim())).sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 12), (t) => hcard(t));
+    const albs = Object.values(ALB).filter((a) => tracks.some((t) => t.album === a.id)).sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 10);
+    hsec(body, 'جديد الإصدارات', albs, (a) => { const L = tracks.filter((t) => t.album === a.id), c = el('button', 'hcd'); c.type = 'button'; const cv = el('div', 'plrcov'); coverEl(L[0], cv); c.append(cv, el('b', '', a.name), el('small', '', (a.reciter || '') + ' · ' + L.length + ' قصيدة')); c.onclick = () => { libV = 'alb'; libSel = { k: 'alb', id: a.id }; render(); g('plrBody').scrollTop = 0; }; return c; }, () => { libV = 'alb'; render(); });
+    hsec(body, 'أُضيفت حديثاً', tracks.filter((t) => t.at).sort((a, b) => b.at - a.at).slice(0, 12), (t) => hcard(t));
+    hsec(body, 'الأكثر إعجاباً هذا الأسبوع', HOT.likes.map(([id, n]) => [byId(id), n]).filter((x) => x[0]), ([t, n]) => hcard(t, '❤ ' + n));
+    hsec(body, 'الأكثر استماعاً', HOT.plays.map(([id, n]) => [byId(id), n]).filter((x) => x[0]), ([t, n]) => hcard(t, n + ' استماع'));
+    hsec(body, 'التنزيلات (بدون إنترنت)', jget(OFFK, []).map(byId).filter(Boolean), (t) => hcard(t));
+    if (!body.querySelector('.hsec')) { const h = el('div', 'hint cen', tracks.length ? 'ابدأ الاستماع لتظهر هنا اقتراحاتك' : 'لا توجد قصائد بعد'); body.appendChild(h); }
+    hotLoad(); }
+  /* المناسبة القادمة (خلال 10 أيام) */
+  function occNext() { for (let i = 1; i <= 10; i++) { const d = new Date(Date.now() + i * 864e5); let dd, mm; try { const f = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', { day: 'numeric', month: 'numeric' }).formatToParts(d); dd = +f.find((x) => x.type === 'day').value; mm = +f.find((x) => x.type === 'month').value; } catch (e) { return null; }
+      const M = [[1, 1, 'محرم الحرام'], [2, 15, 'المسير إلى الأربعين'], [2, 20, 'زيارة الأربعين'], [2, 28, 'وفاة النبي ﷺ والإمام الحسن'], [5, 13, 'الأيام الفاطمية'], [6, 3, 'الأيام الفاطمية الثانية'], [9, 19, 'ليالي القدر وشهادة الإمام علي']]; const m = M.find((x) => x[0] === mm && x[1] === dd); if (m) return { t: m[2], d: i }; } return null; }
+  /* ================= متابعة الرواديد + تنبيه بالجديد ================= */
+  function folToggle(r) { let a = follows(); if (a.includes(r)) { a = a.filter((x) => x !== r); toast('ألغيت متابعة ' + r); } else { a.push(r); toast('تتابع ' + r + ' — ننبهك بإصداراته الجديدة'); try { if (window.Notification && Notification.permission === 'default') Notification.requestPermission(); } catch (e) {} } jset(FOLK, a); render(); }
+  function newCheck() { const seen = jget(SEENK, null), ids = tracks.map((t) => t.id); if (!seen) { jset(SEENK, ids); return; } const fol = follows(), nw = tracks.filter((t) => !seen.includes(t.id));
+    jset(SEENK, ids); const mine = nw.filter((t) => fol.includes((t.reciter || '').trim())); if (!mine.length) return; const t = mine[0], msg = 'جديد من ' + t.reciter + ': «' + t.title + '»' + (mine.length > 1 ? ' و' + (mine.length - 1) + ' غيرها' : '');
+    snack(msg, 'استمع', () => { qFrom(t, tracks); play(tracks.indexOf(t), true); }, 12000); document.querySelector('.plrnav [data-t=lib]').classList.add('newdot');
+    try { if (window.Notification && Notification.permission === 'granted' && document.hidden) navigator.serviceWorker.ready.then((r) => r.showNotification('منبر', { body: msg, icon: 'icons/icon-192.png', tag: 'minbar-new' })); } catch (e) {} }
+  /* ================= التنزيل للاستماع بدون إنترنت ================= */
+  const offHas = (id) => jget(OFFK, []).includes(id);
+  async function offSave(t) { if (offHas(t.id)) return; toast('جارٍ تنزيل «' + t.title + '»…'); try { try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {} const c = await caches.open('mbr-offline'); const au = new URL(t.audio, location.href).href, r = await fetch(au); if (!r.ok) throw 0; await c.put(au, r);
+      if (cov(t)) { try { const cu = new URL(cov(t), location.href).href, r2 = await fetch(cu); if (r2.ok) await c.put(cu, r2); } catch (e) {} } const a = jget(OFFK, []); a.push(t.id); jset(OFFK, a); toast('نُزّلت — تعمل بدون إنترنت'); render(); } catch (e) { toast('تعذّر التنزيل'); } }
+  async function offDel(t) { try { const c = await caches.open('mbr-offline'); await c.delete(new URL(t.audio, location.href).href); if (cov(t)) await c.delete(new URL(cov(t), location.href).href); } catch (e) {} jset(OFFK, jget(OFFK, []).filter((x) => x !== t.id)); toast('حُذف التنزيل'); render(); }
+  /* ================= عدّاد الاستماع (بعد 30 ثانية استماع فعلي) ================= */
+  let plCnt = { id: null, s: 0, done: {} };
+  A.addEventListener('timeupdate', () => { const t = tracks[cur]; if (!t || A.paused || MJ.on && !MJ.host) return; if (plCnt.id !== t.id) { plCnt.id = t.id; plCnt.s = 0; plCnt.lt = A.currentTime; return; } const d = A.currentTime - (plCnt.lt || 0); plCnt.lt = A.currentTime; if (d > 0 && d < 2) plCnt.s += d;
+    if (plCnt.s >= 30 && !plCnt.done[t.id] && t.fs) { plCnt.done[t.id] = 1; const db = fdb(); if (db) db.doc('stats/' + t.id).set({ plays: firebase.firestore.FieldValue.increment(1) }, { merge: true }).catch(() => {}); } });
+  async function statsPanel() { const db = fdb(); if (!db) return toast('غير متصل'); modal('إحصائيات القصائد', async (bx) => { const L = el('div', 'stl'); L.textContent = 'جارٍ التحميل…'; bx.appendChild(L);
+      try { const [s, c] = await Promise.all([db.collection('stats').orderBy('plays', 'desc').limit(60).get(), db.collection('rx').limit(2000).get()]); const lk = {}; c.forEach((d) => { const x = d.data(); lk[x.track] = (lk[x.track] || 0) + 1; }); L.textContent = ''; let tot = 0;
+        const rows = []; s.forEach((d) => { const t = byId(d.id); if (t) { rows.push([t, d.data().plays || 0]); tot += d.data().plays || 0; } }); tracks.filter((t) => t.fs && !rows.some((r) => r[0] === t)).forEach((t) => rows.push([t, 0]));
+        L.appendChild(el('div', 'stt', 'مجموع الاستماعات: ' + tot + ' · القصائد: ' + tracks.filter((t) => t.fs).length)); const mx = Math.max(1, ...rows.map((r) => r[1]));
+        rows.forEach(([t, n]) => { const r = el('div', 'str'); const cv = el('div', 'plrcov'); coverEl(t, cv); const m = el('div', 'trm'); m.append(el('b', '', t.title), el('small', '', n + ' استماع · ❤ ' + (lk[t.id] || 0))); const bar = el('i', 'stb'); bar.style.setProperty('--p', (n / mx).toFixed(3)); m.appendChild(bar); r.append(cv, m); L.appendChild(r); });
+      } catch (e) { L.textContent = 'تعذّر التحميل: ' + (e.code || e.message); } }); }
+  /* ================= وضع الحسينية: كلمات كبيرة للعرض على شاشة أو بروجكتر ================= */
+  let hsOn = false, hsRaf = 0, hsWl = null;
+  async function hsOpen() { const t = tracks[cur]; if (!t) return; if (!linesOf(t).length) return toast('لا توجد كلمات لهذه القصيدة'); hsOn = true; const w = g('plrHs'); w.hidden = false; w.querySelector('.hst').textContent = t.title + (t.reciter ? ' — ' + t.reciter : ''); w.style.setProperty('--hsf', `"${st.ly.font}", F8, serif`);
+    try { hsWl = await navigator.wakeLock.request('screen'); } catch (e) {} try { if (w.requestFullscreen) await w.requestFullscreen(); } catch (e) {} if (A.paused) fadePlay(); hsLoop(); }
+  function hsClose() { hsOn = false; cancelAnimationFrame(hsRaf); g('plrHs').hidden = true; try { hsWl && hsWl.release(); } catch (e) {} hsWl = null; try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) {} }
+  function hsLoop() { if (!hsOn) return; hsRaf = requestAnimationFrame(hsLoop); const t = tracks[cur], w = g('plrHs'); if (!t) return; const L = linesOf(t), now = A.currentTime; let k = -1; for (let j = 0; j < L.length; j++) { if (L[j].t <= now + 0.1) k = j; else break; }
+    if (w._k !== k) { w._k = k; const c = w.querySelector('.hsc'), n = w.querySelector('.hsn'); c.textContent = k >= 0 ? L[k].l : '…'; n.textContent = L[k + 1] ? L[k + 1].l : ''; c.classList.remove('in'); void c.offsetWidth; c.classList.add('in'); }
+    w.querySelector('.hsp i').style.transform = 'scaleX(' + (A.duration ? (now / A.duration).toFixed(4) : 0) + ')'; }
+  g('plrHs').onclick = (e) => { if (e.target.closest('.hsx')) return hsClose(); if (e.target.closest('.hspp')) { toggle(); return; } g('plrHs').classList.toggle('ui'); };
+  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && hsOn) { /* يبقى الوضع، فقط خرج من ملء الشاشة */ } });
   function toolsUi() { const b = g('plrTools'); if (!b) return; b.textContent = ''; const seen = jget('minbar.seen.tools', {});
     [['about', 'info', 'عن القصيدة', 'الرادود والتفاصيل', about], ['share', 'share', 'مشاركة اللحظة', 'من الدقيقة الحالية', shareMoment], ['peak', 'flame', 'الذروة', rxList.length ? 'أكثر لحظة إعجاباً' : 'لا إعجابات', () => { const p = peakT(); if (p == null) return toast('لا توجد تفاعلات بعد على هذه القصيدة'); A.currentTime = p; if (A.paused) fadePlay(); tp(false); }],
-      ['majlis', 'users', 'المجلس', MJ.on ? 'مفعّل · ' + MJ.code : 'استماع مشترك', mjMenu], ['latm', 'pulse', 'وضع اللطم', st.latm ? 'مفعّل' : 'اهتزاز مع الإيقاع', () => { st.latm = !st.latm; save(); toolsUi(); toast(st.latm ? 'وضع اللطم: يهتز الهاتف مع إيقاع اللطم' : 'أُوقف وضع اللطم'); }]].forEach(([k, icn, n, s, f]) => {
+      ['majlis', 'users', 'المجلس', MJ.on ? 'مفعّل · ' + MJ.code : 'استماع مشترك', mjMenu], ['husn', 'text', 'وضع الحسينية', 'كلمات كبيرة للشاشة', () => { tp(false); hsOpen(); }], ['latm', 'pulse', 'وضع اللطم', st.latm ? 'مفعّل' : 'اهتزاز مع الإيقاع', () => { st.latm = !st.latm; save(); toolsUi(); toast(st.latm ? 'وضع اللطم: يهتز الهاتف مع إيقاع اللطم' : 'أُوقف وضع اللطم'); }]].concat(isOwner() ? [['stats', 'eq', 'الإحصائيات', 'الاستماعات والإعجابات', statsPanel]] : []).forEach(([k, icn, n, s, f]) => {
       const t = el('button', 'ptl' + ((k === 'latm' && st.latm) || (k === 'majlis' && MJ.on) ? ' on' : '')); t.type = 'button'; t.innerHTML = '<i class="pci">' + ic(icn, 18) + '</i><span></span><small></small>'; t.children[1].textContent = n; t.children[2].textContent = s; if (!seen[k]) t.appendChild(el('i', 'nb', 'جديد')); t.onclick = () => { const sn = jget('minbar.seen.tools', {}); sn[k] = 1; jset('minbar.seen.tools', sn); f(); toolsUi(); }; b.appendChild(t); }); }
 
   g('plrRecB').onclick = recognize; g('plrMj').onclick = () => mjMenu(); g('plrTitle').onclick = about; g('plrTitle').style.cursor = 'pointer';

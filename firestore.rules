@@ -78,6 +78,12 @@ service cloud.firestore { match /databases/{db}/documents {
     allow update: if isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st']);
     allow delete: if isAdmin() || (signed() && resource.data.uid == request.auth.uid);
   }
+  // عدّاد الاستماع: الكل يقرأ، والزيادة بواحد فقط
+  match /stats/{id} {
+    allow read: if true;
+    allow create: if request.resource.data.keys().hasOnly(['plays']) && request.resource.data.plays == 1;
+    allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['plays']) && request.resource.data.plays == resource.data.plays + 1;
+  }
   // فلتر التعليقات (كلمات إضافية يديرها المشرف)
   match /cmfilter/{id} {
     allow read: if true;
