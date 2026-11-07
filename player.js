@@ -34,7 +34,7 @@
 
   const root = document.createElement('div'); root.id = 'plr'; root.className = 'ovl plr'; root.hidden = true;
   root.innerHTML = `
-  <div class="ovh"><div class="brand"><img src="icons/brand-mark.png" alt=""><span>منبر</span></div><div class="plrsb"><button class="ib" id="plrRecB" aria-label="التعرّف على القصيدة">${ic('mic', 21)}</button><button class="ib" id="plrAddB" aria-label="إضافة قصيدة" hidden>${ic('plus', 22)}</button><button class="ib" id="plrSearchB" aria-label="بحث">${ic('search', 22)}</button></div></div>
+  <div class="ovh"><div class="brand"><img src="icons/brand-mark.png" alt=""><span>منبر</span></div><div class="plrsb"><button class="ib" id="plrRecB" aria-label="التعرّف على القصيدة">${ic('mic', 21)}</button><button class="aqc" id="plrAq" type="button" hidden><i></i><b></b><small></small></button><button class="ib" id="plrAddB" aria-label="إضافة قصيدة" hidden>${ic('plus', 22)}</button><button class="ib" id="plrSearchB" aria-label="بحث">${ic('search', 22)}</button></div></div>
   <div class="plrsearch" id="plrSearch" hidden><input id="plrQ" placeholder="ابحث باسم القصيدة أو الرادود أو الشاعر" autocomplete="off"></div>
   <div class="plrchips" id="plrCats"></div>
   <div class="ovb plrbody" id="plrBody"></div>
@@ -744,8 +744,9 @@
     if (mine && !adm) { const bar = el('div', 'mybar'); bar.append(el('span', '', 'هذه نسختك الخاصة'), btn('primary', 'إرسال للمراجعة', () => submitLyrics(t, mine)), btn('', 'حذف نسختي', () => { const m = jget(MYK, {}); delete m[t.id]; jset(MYK, m); lyrBuild(); lysEditBuild(); })); box.appendChild(bar); }
     if (!L.length) return;
     box.appendChild(el('h4', 'lsth', 'الأسطر والتوقيت'));
-    L.forEach((ln) => {
-      const r = el('div', 'plrlr' + (ln.ed ? ' ed' : '')), top = el('div', 'lrt'), tm = el('button', 'tm', fmt1(ln.t));
+    const lowS = new Set(jget(LOWK, {})[t.id] || []); if (lowS.size) { const bn = el('div', 'mybar'); bn.append(el('span', '', lowS.size + ' بيت ضبطه تلقائي غير مؤكد (معلّم بالأصفر) — استمع وصحّح')); bn.appendChild(btn('', 'تم', () => { const lw = jget(LOWK, {}); delete lw[t.id]; jset(LOWK, lw); lysEditBuild(); })); box.insertBefore(bn, box.querySelector('.lsth')); }
+    L.forEach((ln, li) => {
+      const r = el('div', 'plrlr' + (ln.ed ? ' ed' : '') + (lowS.has(li) ? ' low' : '')), top = el('div', 'lrt'), tm = el('button', 'tm', fmt1(ln.t));
       const ta = mkTa(ln.l); roTa(ta); const adj = el('div', 'adj'); adj.hidden = true;
       const setT = (v) => {
         v = Math.max(0, r2(v)); const all = jget(TMK, {}); all[t.id] = all[t.id] || {}; if (Math.abs(v - ln.ot) > 0.001) all[t.id][ln.i] = v; else delete all[t.id][ln.i]; jset(TMK, all);
@@ -1602,7 +1603,13 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   function upMenu(t) { if (!isOwner()) return toast('الإضافة متاحة للمالك فقط'); const ed = !!t;
     modal(ed ? 'تعديل القصيدة' : 'إضافة قصيدة', (bx, close) => {
       const inp = (ph, v) => { const i = el('input', 'mdin'); i.placeholder = ph; i.value = v || ''; bx.appendChild(i); return i; };
-      const ti = inp('اسم القصيدة *', t && t.title), re = inp('الرادود *', t && t.reciter), po = inp('الشاعر', t && t.poet);
+      /* اختيار من القائمة (الرواديد/الشعراء السابقين) مع إمكانية كتابة اسم جديد */
+      const pick = (ph, v, k) => { const w = el('div', 'pkw'), i = el('input', 'mdin'); i.placeholder = ph + ' — اختر أو اكتب اسماً جديداً'; i.value = v || ''; const ch = el('div', 'pkc'); w.append(i, ch); bx.appendChild(w);
+        const all = [...new Set(tracks.map((x) => (x[k] || '').trim()).filter(Boolean))].sort((a, b) => tracks.filter((x) => x[k] === b).length - tracks.filter((x) => x[k] === a).length);
+        const draw = () => { ch.textContent = ''; const q = CMF.norm(i.value.trim()); const L = all.filter((n) => !q || CMF.norm(n).includes(q)); L.slice(0, 12).forEach((n) => { const b = el('button', n === i.value.trim() ? 'on' : '', n); b.type = 'button'; b.onmousedown = (e) => e.preventDefault(); b.onclick = () => { i.value = n; draw(); }; ch.appendChild(b); });
+          if (i.value.trim() && !all.includes(i.value.trim())) ch.appendChild(el('span', 'pkn', '＋ اسم جديد: ' + i.value.trim())); ch.hidden = !ch.children.length; };
+        i.addEventListener('input', draw); draw(); return i; };
+      const ti = inp('اسم القصيدة *', t && t.title), re = pick('الرادود *', t && t.reciter, 'reciter'), po = pick('الشاعر', t && t.poet, 'poet');
       const cats = [...new Set(CATS0.concat(tracks.map((x) => x.cat).filter(Boolean)))]; const ca = el('select', 'mdin'); cats.forEach((c) => { const o = el('option', '', c); o.value = c; ca.appendChild(o); }); ca.value = (t && t.cat) || cats[0]; bx.appendChild(ca);
       const als = Object.values(ALB).sort((a, b) => (b.at || 0) - (a.at || 0)); const ab = el('select', 'mdin'); const opt = (v, n) => { const o = el('option', '', n); o.value = v; ab.appendChild(o); };
       opt('', 'بدون إصدار'); als.forEach((a) => opt(a.id, 'الإصدار: ' + a.name + (a.reciter ? ' — ' + a.reciter : ''))); opt('+', '＋ إصدار جديد'); ab.value = (t && t.album && ALB[t.album]) ? t.album : ''; bx.appendChild(ab);
@@ -1611,6 +1618,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
       const acv = fl('غلاف الإصدار', 'image/*'); const au = fl(ed ? 'استبدال ملف الصوت (اختياري)' : 'ملف الصوت * (حتى 24 م.ب)', 'audio/*'), cv = fl('', 'image/*');
       const abUi = () => { const v = ab.value, a = ALB[v]; anw.hidden = v !== '+'; acv.parentNode.hidden = !v; const s1 = acv.nextSibling; if (!acv.files[0]) s1.textContent = v === '+' ? 'غلاف الإصدار (يُستخدم لكل قصائده)' : (a && a.cover ? 'استبدال غلاف الإصدار (اختياري)' : 'غلاف الإصدار (اختياري)');
         const s2 = cv.nextSibling; if (!cv.files[0]) s2.textContent = v ? 'غلاف خاص بهذه القصيدة (اختياري — وإلا غلاف الإصدار)' : (ed ? 'استبدال الغلاف (اختياري)' : 'صورة الغلاف (اختياري)'); }; ab.onchange = abUi; abUi();
+      const lyT = el('textarea', 'mdin lyta'); lyT.rows = 6; lyT.placeholder = 'كلمات القصيدة (اختياري) — الصق النص كاملاً، كل بيت بسطر.\nتظهر فوراً بتوقيت تقريبي، ثم تُضبط تلقائياً بالخلفية.'; const curL = t ? linesOf(t) : []; lyT.value = curL.map((x) => x.l).join('\n'); bx.appendChild(lyT); const lyOrig = lyT.value.trim();
       const smI = inp('بداية العينة (اختياري، مثل 1:25) — وإلا تُختار أقوى لحظة تلقائياً', t && t.sample ? fmt(t.sample.a) : '');
       const pr = el('div', 'upp'); pr.innerHTML = '<i></i><span></span>'; pr.hidden = true; bx.appendChild(pr);
       const setP = (f, m) => { pr.hidden = false; pr.firstChild.style.width = Math.round(f * 100) + '%'; pr.lastChild.textContent = m; };
@@ -1618,24 +1626,54 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
       go.onclick = async () => { const T = ti.value.trim(), Rr = re.value.trim(); if (!T || !Rr) return toast('اكتب اسم القصيدة والرادود'); const af = au.files[0], cf = cv.files[0];
         if (!ed && !af) return toast('اختر ملف الصوت'); if (af && af.size > 24 * 1048576) return toast('ملف الصوت أكبر من 24 ميغابايت — صغّر جودته أولاً');
         const db = fdb(); if (!db) return toast('لا يوجد اتصال'); go.disabled = true; cn.disabled = true;
-        const id = ed ? t.id : 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), o = { title: T, reciter: Rr, poet: po.value.trim(), cat: ca.value, upd: Date.now() }; const old = [];
+        let EN = null; const id = ed ? t.id : 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), o = { title: T, reciter: Rr, poet: po.value.trim(), cat: ca.value, upd: Date.now() }; const old = [];
         try { if (af) { const ext = ((af.name.split('.').pop() || 'mp3').toLowerCase().match(/^(mp3|m4a|aac|ogg|opus|wav)$/) || ['mp3'])[0], v = Date.now().toString(36); setP(0, 'رفع الصوت…');
-            const r = await upPut('a/' + id + v + '.' + ext, af, af.type || 'audio/mpeg', (f) => setP(f * 0.85, 'رفع الصوت… ' + Math.round(f * 100) + '%')); if (ed && keyOf(t.audio)) old.push(keyOf(t.audio)); o.audio = r.url.replace(/^\//, ''); o.size = r.size; o.dur = await durOf(af); setP(0.86, 'اختيار أجمل مقطع للعينات…'); try { o.sample = await bestSeg(af); } catch (e) {} }
+            const r = await upPut('a/' + id + v + '.' + ext, af, af.type || 'audio/mpeg', (f) => setP(f * 0.85, 'رفع الصوت… ' + Math.round(f * 100) + '%')); if (ed && keyOf(t.audio)) old.push(keyOf(t.audio)); o.audio = r.url.replace(/^\//, ''); o.size = r.size; o.dur = await durOf(af); setP(0.86, 'تحليل الصوت…'); try { EN = await energyOf(af); o.sample = bestSegE(EN); } catch (e) {} }
           const mt = /^(\d+):(\d{1,2})$/.exec(smI.value.trim()); if (mt) o.sample = { a: +mt[1] * 60 + +mt[2], d: (o.sample && o.sample.d) || (t && t.sample && t.sample.d) || 45, man: 1 };
           let alb = ab.value; if (alb === '+') { const n = anw.value.trim(); if (!n) throw new Error('اكتب اسم الإصدار الجديد'); alb = 'al' + Date.now().toString(36); await db.collection('albums').doc(alb).set({ name: n, reciter: Rr, at: Date.now() }); ALB[alb] = { id: alb, name: n, reciter: Rr }; ab.value = alb; }
           const acf = acv.files[0]; if (alb && acf) { setP(0.86, 'رفع غلاف الإصدار…'); const b = await coverJpg(acf); const r = await upPut('c/' + alb + Date.now().toString(36) + '.jpg', b, 'image/jpeg'); if (keyOf(ALB[alb] && ALB[alb].cover)) old.push(keyOf(ALB[alb].cover)); await db.collection('albums').doc(alb).set({ cover: r.url.replace(/^\//, '') }, { merge: true }); }
           o.album = alb || '';
           if (cf) { setP(0.88, 'رفع الغلاف…'); const b = await coverJpg(cf); const r = await upPut('c/' + id + Date.now().toString(36) + '.jpg', b, 'image/jpeg'); if (ed && keyOf(t.ownCover)) old.push(keyOf(t.ownCover)); o.cover = r.url.replace(/^\//, ''); }
-          setP(0.95, 'حفظ البيانات…'); if (!ed) { o.at = Date.now(); o.lyrics = []; } await db.collection('tracks').doc(id).set(o, { merge: true }); old.forEach(upDelKey);
+          const lyN = lyT.value.trim(), lyCh = lyN !== lyOrig || (af && lyN); let lyLines = null;
+          if (lyCh && lyN) { lyLines = lyN.split(/\n+/).map((s) => s.replace(/\s+/g, ' ').trim()).filter(Boolean); o.lyrics = estLines(lyLines, o.dur || (t && t.dur) || 300, EN); o.lyrEst = true; } else if (!ed) o.lyrics = [];
+          setP(0.95, 'حفظ البيانات…'); if (!ed) o.at = Date.now(); await db.collection('tracks').doc(id).set(o, { merge: true }); old.forEach(upDelKey);
+          if (lyLines) { if (ed) { try { await applyGlobal(Object.assign({}, t), o.lyrics, true); } catch (e) {} } aqAdd(id, lyLines); }
           setP(1, 'تم'); toast(ed ? 'حُفظت التعديلات' : 'أُضيفت القصيدة'); close(); fsLoad(); } catch (e) { go.disabled = false; cn.disabled = false; setP(0, e.message || 'فشل الرفع'); toast(e.message || 'فشل الرفع'); } };
     }); }
   /* أقوى 45 ثانية في القصيدة (طاقة صوتية + بداية بيت) لتكون العينة */
-  async function bestSeg(file) { const ab = await file.arrayBuffer(); const oc = new OfflineAudioContext(1, 1, 8000), d = (await oc.decodeAudioData(ab)).getChannelData(0), sr = d.length / Math.max(1, (await durOf(file)) || d.length / 8000);
-    const sec = Math.floor(d.length / sr), e = new Float32Array(sec); for (let i = 0; i < sec; i++) { let s = 0; const a = Math.floor(i * sr), b = Math.floor((i + 1) * sr); for (let j = a; j < b; j += 8) s += d[j] * d[j]; e[i] = Math.sqrt(s / ((b - a) / 8)); }
-    const D = Math.min(45, Math.max(20, Math.round(sec * 0.25))); let best = -1, bi = Math.round(sec * 0.3); for (let i = Math.round(sec * 0.08); i + D < sec * 0.95; i++) { let s = 0; for (let j = i; j < i + D; j++) s += e[j]; if (s > best) { best = s; bi = i; } }
+  /* طاقة الصوت لكل ثانية (للعينة والتوقيت التقريبي للكلمات) */
+  async function energyOf(file) { const ab = await file.arrayBuffer(); const oc = new OfflineAudioContext(1, 1, 8000), bf = await oc.decodeAudioData(ab), d = bf.getChannelData(0), sr = bf.sampleRate;
+    const sec = Math.floor(d.length / sr), e = new Float32Array(sec); for (let i = 0; i < sec; i++) { let s = 0; const a = Math.floor(i * sr), b = Math.floor((i + 1) * sr); for (let j = a; j < b; j += 8) s += d[j] * d[j]; e[i] = Math.sqrt(s / ((b - a) / 8)); } return e; }
+  function bestSegE(e) { const sec = e.length, D = Math.min(45, Math.max(20, Math.round(sec * 0.25))); let best = -1, bi = Math.round(sec * 0.3); for (let i = Math.round(sec * 0.08); i + D < sec * 0.95; i++) { let s = 0; for (let j = i; j < i + D; j++) s += e[j]; if (s > best) { best = s; bi = i; } }
     let lo = bi; for (let j = bi; j > Math.max(0, bi - 6); j--) if (e[j] < e[lo]) lo = j; return { a: lo, d: D }; }
+  /* توقيت تقريبي فوري: نوزّع الأبيات على منطقة الإنشاد حسب طول كل بيت */
+  function estLines(lines, dur, e) { let a = Math.min(8, dur * 0.03), b = dur - Math.min(6, dur * 0.02);
+    if (e && e.length > 10) { let mx = 0; for (const v of e) mx = Math.max(mx, v); const th = mx * 0.3; let i = 0; while (i < e.length && e[i] < th) i++; let j = e.length - 1; while (j > i && e[j] < th) j--; a = Math.max(0, i - 0.5); b = Math.max(a + lines.length * 2, j); }
+    const w = lines.map((l) => Math.max(6, l.length)), W = w.reduce((s, x) => s + x, 0); let t = a; return lines.map((l, k) => { const r = { t: r2(t), l }; t += (b - a) * w[k] / W; return r; }); }
+  /* ================= طابور الضبط التلقائي بالخلفية (على جهاز المالك) ================= */
+  const AQK = 'minbar.lyr.queue', LOWK = 'minbar.lyr.low'; let aqBusy = false, aqStopF = false;
+  function aqAdd(id, lines) { const q = jget(AQK, []).filter((x) => x.id !== id); q.push({ id, lines, at: Date.now() }); jset(AQK, q); aqUi(); setTimeout(aqRun, 1500); }
+  function aqUi() { const q = jget(AQK, []), c = g('plrAq'); if (!c) return; c.hidden = !q.length || !isOwner(); if (!q.length) return; c.querySelector('b').textContent = aqBusy ? 'ضبط الكلمات… (' + q.length + ')' : 'بانتظار ضبط الكلمات (' + q.length + ')'; c.classList.toggle('on', aqBusy); }
+  async function aqRun() { if (aqBusy || aiBusy || !isOwner() || document.hidden || !window.LYAI) return; const q = jget(AQK, []); if (!q.length) return aqUi(); const it = q[0], t = byId(it.id); if (!t) { jset(AQK, q.slice(1)); return aqRun(); }
+    aqBusy = true; aqStopF = false; aqUi(); const PK = 'minbar.asr.part.' + t.id + '.good';
+    try { const part = { get: () => JSON.parse(localStorage.getItem(PK) || 'null'), put: (o) => { try { localStorage.setItem(PK, JSON.stringify(o)); } catch (e) {} } };
+      const segs = await window.LYAI.transcribe(t.audio, 'good', (s, v) => { const c = g('plrAq'); if (c) c.querySelector('small').textContent = Math.round(v * 100) + '% · ' + t.title; }, () => aqStopF || document.hidden, part);
+      try { localStorage.removeItem(PK); localStorage.setItem(ASRK(t, 'good'), JSON.stringify(segs.map((x) => [r2(x.t0), r2(x.t1), x.text]))); } catch (e) {}
+      const r = window.LYAI.alignP(it.lines, segs, { base: 0.35 }), rows = r.out.filter((x) => !x.del && x.l && x.l.trim()), arr = rows.map((x) => ({ t: r2(x.t), l: x.l.trim() })), low = rows.map((x, k) => x.conf < 0.45 ? k : -1).filter((k) => k >= 0);
+      await applyGlobal(t, arr, true); const db = fdb(); if (db && t.fs) { try { await db.collection('tracks').doc(t.id).set({ lyrEst: false }, { merge: true }); } catch (e) {} }
+      const lw = jget(LOWK, {}); if (low.length) lw[t.id] = low; else delete lw[t.id]; jset(LOWK, lw); jset(AQK, jget(AQK, []).filter((x) => x.id !== it.id));
+      snack('ضُبطت كلمات «' + t.title + '»' + (low.length ? ' — ' + low.length + ' بيت يحتاج مراجعة' : ' بدقة جيدة'), low.length ? 'مراجعة' : 'تشغيل', () => lyrReview(t), 10000);
+    } catch (e) { if (!(e && e.message === 'cancel')) { const q2 = jget(AQK, []); const x = q2.find((y) => y.id === it.id); if (x) { x.fail = (x.fail || 0) + 1; if (x.fail > 2) q2.splice(q2.indexOf(x), 1); jset(AQK, q2); } } }
+    aqBusy = false; try { window.LYAI.free(); } catch (e) {} aqUi(); if (!aqStopF) setTimeout(aqRun, 3000); }
+  function lyrReview(t) { qFrom(t, tracks); play(tracks.indexOf(t), true); setTimeout(() => { openFull(); g('plrLyT').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x.dataset.k === 'edit')); openLys(); }, 400); }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(aqRun, 2000); });
+  setTimeout(() => { aqUi(); aqRun(); }, 6000);
   async function upDel(t) { if (!confirm('حذف «' + t.title + '» نهائياً؟')) return; const db = fdb(); try { await db.collection('tracks').doc(t.id).delete(); [keyOf(t.audio), keyOf(t.ownCover)].filter(Boolean).forEach(upDelKey); toast('حُذفت القصيدة'); fsLoad(); } catch (e) { toast('تعذّر الحذف: ' + (e.code || e.message)); } }
   g('plrAddB').onclick = () => upMenu(null);
+  g('plrAq').onclick = () => { const q = jget(AQK, []); sheet((bx, close) => { bx.appendChild(el('b', 'sht', 'ضبط الكلمات التلقائي')); bx.appendChild(el('p', 'hint', 'يعمل على جهازك وأنت داخل التطبيق، قصيدة بعد قصيدة. الكلمات تظهر للجميع بتوقيت تقريبي حتى ينتهي الضبط.'));
+      const L = el('div', 'shl'); q.forEach((x, i) => { const t = byId(x.id); if (!t) return; const b = el('div', 'sha'); b.innerHTML = ic(i === 0 && aqBusy ? 'spark' : 'timer', 20) + '<span></span>'; b.lastChild.textContent = t.title + (i === 0 && aqBusy ? ' — جارٍ' : '') + (x.fail ? ' (محاولة ' + (x.fail + 1) + ')' : ''); L.appendChild(b); }); bx.appendChild(L);
+      const lw = jget(LOWK, {}), rv = Object.keys(lw).map(byId).filter(Boolean); if (rv.length) { bx.appendChild(el('b', 'sht', 'تحتاج مراجعة')); const L2 = el('div', 'shl'); rv.forEach((t) => { const b = el('button', 'sha'); b.type = 'button'; b.innerHTML = ic('text', 20) + '<span></span>'; b.lastChild.textContent = t.title + ' — ' + lw[t.id].length + ' بيت'; b.onclick = () => { close(); lyrReview(t); }; L2.appendChild(b); }); bx.appendChild(L2); }
+      const r = el('div', 'row'); r.appendChild(btn('', aqBusy ? 'إيقاف مؤقت' : 'تشغيل الآن', () => { if (aqBusy) { aqStopF = true; toast('سيتوقف بعد المقطع الحالي'); } else aqRun(); close(); })); r.appendChild(btn('', 'مسح الطابور', () => { if (confirm('مسح طابور الضبط؟ الكلمات تبقى بتوقيتها التقريبي.')) { aqStopF = true; jset(AQK, []); aqUi(); close(); } })); bx.appendChild(r); }); };
   try { firebase.auth().onAuthStateChanged(() => { g('plrAddB').hidden = !isOwner(); fsLoad(); }); } catch (e) {}
   /* ================= المكتبة: القصائد · الإصدارات · الرواديد ================= */
   let libV = 'home', libSel = null; /* libSel: {k:'alb'|'rec', id} */
