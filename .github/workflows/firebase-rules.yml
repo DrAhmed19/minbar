@@ -1,0 +1,20 @@
+# ينشر قواعد Firestore تلقائياً كلما تغيّر الملف firestore.rules
+name: نشر قواعد Firebase
+on:
+  push:
+    branches: [main]
+    paths: [firestore.rules, firebase.json, .github/workflows/firebase-rules.yml]
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: مفتاح الخدمة
+        run: echo '${{ secrets.FIREBASE_SA }}' > "$RUNNER_TEMP/sa.json"
+      - name: نشر القواعد
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: npx --yes firebase-tools@latest deploy --only firestore:rules --project minbar-8f037 --non-interactive
