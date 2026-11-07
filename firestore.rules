@@ -89,6 +89,11 @@ service cloud.firestore { match /databases/{db}/documents {
     allow read: if true;
     allow write: if isAdmin();
   }
+  // الإصدارات (الألبومات): الكل يقرأ، والمالك وحده يكتب
+  match /albums/{id} {
+    allow read: if true;
+    allow write: if isAdmin();
+  }
   // وضع المجلس: الجميع يقرأ برمز المجلس، والمضيف وحده يحدّث أو ينهي
   match /majlis/{code} {
     allow read: if true;
