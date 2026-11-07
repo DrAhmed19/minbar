@@ -1252,3 +1252,12 @@ select.mdin{appearance:none;-webkit-appearance:none}select.mdin option{color:#00
 .aqc b{font:700 10.5px Cairo,sans-serif;white-space:nowrap}.aqc small{font-size:9.5px;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px}.aqc[hidden]{display:none}
 .aqc.on i{position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(232,196,104,.25),transparent);animation:aqs 1.6s linear infinite}@keyframes aqs{from{transform:translateX(100%)}to{transform:translateX(-100%)}}
 .plrlr.low{box-shadow:inset 3px 0 0 #E8C468;background:rgba(232,196,104,.08);border-radius:10px}
+
+/* v3.51 إصلاح نافذة الإضافة: سكرول داخلي، لوحة المفاتيح، لا تكبير تلقائي */
+.qmenu{bottom:auto;height:var(--vvh,100%);overscroll-behavior:contain;touch-action:none}
+.qmb{box-sizing:border-box;max-height:calc(100% - 10px);overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+.qmb.md>*{flex-shrink:0}
+.mdin{font-size:16px!important}
+textarea.mdin{resize:none}
+.pkc{max-height:104px;overflow-y:auto;overscroll-behavior:contain}
+.toast{z-index:300}

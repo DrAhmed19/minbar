@@ -1394,6 +1394,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   /* زر الرجوع: يغلق أعلى طبقة مفتوحة، ويرجع true إذا تعامل معها */
   function back() {
     if (root.hidden) return false;
+    { const md = document.getElementById('plrMd'); if (md) { md.remove(); return true; } }
     if (!g('plrAdm').hidden) { admShow(false); return true; }
     if (!g('plrCv').hidden) { cvClose(); return true; }
     if (!g('plrAuPL').hidden) { g('plrAuPL').hidden = true; return true; }
@@ -1438,7 +1439,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   /* ======================= الإصدار 3.35: أدوات القصيدة والقوائم والمجلس ======================= */
   const NEWK = 'minbar.seen.335', nw = () => localStorage.getItem(NEWK) !== '1';
   if (nw()) g('plrMore').classList.add('newdot');
-  const modal = (title, build) => { const old = document.getElementById('plrMd'); if (old) old.remove(); const w = el('div', 'qmenu'); w.id = 'plrMd'; const bx = el('div', 'qmb md'); if (title) bx.appendChild(el('b', '', title)); build(bx, () => w.remove()); w.appendChild(bx); w.onclick = (e) => { if (e.target === w) w.remove(); }; root.appendChild(w); return w; };
+  const modal = (title, build) => { const old = document.getElementById('plrMd'); if (old) old.remove(); const w = el('div', 'qmenu'); w.id = 'plrMd'; const bx = el('div', 'qmb md'); if (title) bx.appendChild(el('b', '', title)); build(bx, () => w.remove()); w.appendChild(bx); w.onclick = (e) => { if (e.target === w) w.remove(); }; w.addEventListener('focusin', (e) => { const f = e.target; if (!f || !/TEXTAREA|INPUT|SELECT/.test(f.tagName)) return; setTimeout(() => { try { f.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (x) {} }, 350); }); root.appendChild(w); return w; };
   const snack = (msg, act, fn, ms) => { let s = document.getElementById('plrSnack'); if (!s) { s = el('div', 'snack'); s.id = 'plrSnack'; root.appendChild(s); } s.textContent = ''; s.appendChild(el('span', '', msg)); if (act) { const b = el('button', '', act); b.onclick = () => { s.classList.remove('on'); fn(); }; s.appendChild(b); } s.classList.add('on'); clearTimeout(snack.h); snack.h = setTimeout(() => s.classList.remove('on'), ms || 5000); };
   /* ---------- 1) القوائم المحفوظة ---------- */
   const PLK = 'minbar.pls'; let plSel = null; const pls = () => jget(PLK, []), plsSet = (a) => jset(PLK, a);
@@ -1619,7 +1620,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
       const abUi = () => { const v = ab.value, a = ALB[v]; anw.hidden = v !== '+'; acv.parentNode.hidden = !v; const s1 = acv.nextSibling; if (!acv.files[0]) s1.textContent = v === '+' ? 'غلاف الإصدار (يُستخدم لكل قصائده)' : (a && a.cover ? 'استبدال غلاف الإصدار (اختياري)' : 'غلاف الإصدار (اختياري)');
         const s2 = cv.nextSibling; if (!cv.files[0]) s2.textContent = v ? 'غلاف خاص بهذه القصيدة (اختياري — وإلا غلاف الإصدار)' : (ed ? 'استبدال الغلاف (اختياري)' : 'صورة الغلاف (اختياري)'); }; ab.onchange = abUi; abUi();
       const lyT = el('textarea', 'mdin lyta'); lyT.rows = 6; lyT.placeholder = 'كلمات القصيدة (اختياري) — الصق النص كاملاً، كل بيت بسطر.\nتظهر فوراً بتوقيت تقريبي، ثم تُضبط تلقائياً بالخلفية.'; const curL = t ? linesOf(t) : []; lyT.value = curL.map((x) => x.l).join('\n'); bx.appendChild(lyT); const lyOrig = lyT.value.trim();
-      const smI = inp('بداية العينة (اختياري، مثل 1:25) — وإلا تُختار أقوى لحظة تلقائياً', t && t.sample ? fmt(t.sample.a) : '');
+      const smI = inp('بداية العينة (اختياري، مثل 1:25)', t && t.sample ? fmt(t.sample.a) : '');
       const pr = el('div', 'upp'); pr.innerHTML = '<i></i><span></span>'; pr.hidden = true; bx.appendChild(pr);
       const setP = (f, m) => { pr.hidden = false; pr.firstChild.style.width = Math.round(f * 100) + '%'; pr.lastChild.textContent = m; };
       const go = el('button', 'pri', ed ? 'حفظ التعديلات' : 'رفع القصيدة'); go.type = 'button'; bx.appendChild(go); const cn = el('button', 'cn', 'إلغاء'); cn.type = 'button'; cn.onclick = close; bx.appendChild(cn);
