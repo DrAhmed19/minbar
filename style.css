@@ -1261,3 +1261,7 @@ select.mdin{appearance:none;-webkit-appearance:none}select.mdin option{color:#00
 textarea.mdin{resize:none}
 .pkc{max-height:104px;overflow-y:auto;overscroll-behavior:contain}
 .toast{z-index:300}
+
+/* v3.52 شريط الرئيسية/القصائد ثابت داخل رأس منبر */
+.plrlt{flex:none;padding:0 16px 8px;position:relative}.plrlt[hidden]{display:none}
+.plrlt .libtabs{margin:0}

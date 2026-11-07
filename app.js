@@ -1463,7 +1463,7 @@ function renderDevice() {
 $('devRe').addEventListener('click', () => deviceCheck(true));
 function afterLogin(u) {
   const go = () => { if (u.trial) { PID = ''; enterEditor(); } else showHome(); };
-  if (DEV || u.mj) go(); else deviceCheck(!u.trial).then(go);
+  go();
 }
 
 /* ---------- الإعدادات والمظهر ---------- */
@@ -2402,7 +2402,10 @@ if (AUTH && AUTH.enabled && AUTH.fetchPublic) AUTH.fetchPublic().then((c) => { c
 refreshTrialBtns(); if ($('gTrial')) $('gTrial').addEventListener('click', startTrial);
 if (user && user.trial) { if (trialLeft() > 0) runTrial(); else { user = null; LS.set('basim.user', null); } }
 if (!(AUTH && AUTH.enabled) && user) { loadSpace(user); afterLogin(user); }
-if (AUTH && AUTH.enabled) { document.body.classList.add('fbmode'); showLogin(); AUTH.start({ onEnter: finishLogin, toast }); }
+if (AUTH && AUTH.enabled) { document.body.classList.add('fbmode');
+  const fast = user && user.uid && !user.trial && !user.guest;
+  if (fast) { const u0 = user; user = null; finishLogin(u0); $('login').classList.remove('show', 'leave'); $('app').classList.remove('enter'); } else showLogin();
+  AUTH.start({ onEnter: finishLogin, toast, onOut: () => { if (fast && user && user.uid) { user = null; LS.set('basim.user', null); showLogin(); } } }); }
 else if (!user) { setLoginMode('in'); showLogin(); }
 loadFont();
 document.fonts.ready.then(() => { loadLogo(); dirty(); });

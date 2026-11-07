@@ -35,6 +35,7 @@
   const root = document.createElement('div'); root.id = 'plr'; root.className = 'ovl plr'; root.hidden = true;
   root.innerHTML = `
   <div class="ovh"><div class="brand"><img src="icons/brand-mark.png" alt=""><span>منبر</span></div><div class="plrsb"><button class="ib" id="plrRecB" aria-label="التعرّف على القصيدة">${ic('mic', 21)}</button><button class="aqc" id="plrAq" type="button" hidden><i></i><b></b><small></small></button><button class="ib" id="plrAddB" aria-label="إضافة قصيدة" hidden>${ic('plus', 22)}</button><button class="ib" id="plrSearchB" aria-label="بحث">${ic('search', 22)}</button></div></div>
+  <div class="plrlt" id="plrLt" hidden></div>
   <div class="plrsearch" id="plrSearch" hidden><input id="plrQ" placeholder="ابحث باسم القصيدة أو الرادود أو الشاعر" autocomplete="off"></div>
   <div class="plrchips" id="plrCats"></div>
   <div class="ovb plrbody" id="plrBody"></div>
@@ -43,7 +44,7 @@
     <div class="plrmrow"><div class="plrcov sm" id="plrMiniC"></div><div class="plrmt" id="plrMiniT"><b></b><small></small></div>
       <button class="plrib" id="plrMiniPlay"></button><button class="plrib" id="plrMiniNext">${ic('next', 22)}</button></div>
   </div>
-  <nav class="plrnav"><button data-t="lib" class="on">${ic('lib', 22)}<span>المكتبة</span></button><button data-t="fav">${ic('heart', 22)}<span>المفضلة</span></button><button data-t="smp">${ic('pulse', 22)}<span>عينات</span></button><button data-t="pls" id="plrNavPl">${ic('plist', 22)}<span>القوائم</span></button><button data-t="studio">${ic('studio', 22)}<span>الاستوديو</span></button></nav>
+  <nav class="plrnav"><button data-t="lib" class="on">${ic('lib', 22)}<span>المكتبة</span></button><button data-t="fav">${ic('heart', 22)}<span>المفضلة</span></button><button data-t="smp">${ic('pulse', 22)}<span>عينات</span></button><button data-t="pls" id="plrNavPl">${ic('plist', 22)}<span>القوائم</span></button></nav>
   <div class="plrhs" id="plrHs" hidden><div class="hst"></div><div class="hsw"><p class="hsc"></p><p class="hsn"></p></div><div class="hsp"><i></i></div><div class="hsctl"><button class="hspp" type="button">${ic('pause', 22)}</button><button class="hsx" type="button">${ic('x', 22)}</button></div></div>
   <div class="plrsmp" id="plrSmp" hidden><div class="smhd"><b>عينات</b><button class="ib" id="plrSmpX" aria-label="إغلاق">${ic('x', 20)}</button></div><div class="smpl" id="plrSmpL"></div></div>
   <div class="plrfull lay-a" id="plrFull" hidden>
@@ -179,7 +180,7 @@
   function render() {
     const cs = ['الكل'].concat([...new Set(tracks.map((t) => t.cat).filter(Boolean))]); const bar = g('plrCats'); bar.textContent = '';
     cs.forEach((c) => { const b = document.createElement('button'); b.className = 'plrchip' + (c === cat ? ' on' : ''); b.textContent = c; b.onclick = () => { cat = c; render(); }; bar.appendChild(b); });
-    const body = g('plrBody'); body.textContent = ''; view = filtered(); g('plrCats').hidden = tab === 'pls';
+    const body = g('plrBody'); body.textContent = ''; g('plrLt').hidden = true; view = filtered(); g('plrCats').hidden = tab === 'pls';
     if (tab === 'pls') { if (!plSel) return plRender(body); const pl = pls().find((x) => x.id === plSel); if (!pl) { plSel = null; return render(); } const hb = el('div', 'plhd'); const bk = el('button', 'ib'); bk.innerHTML = ic('next', 18); bk.onclick = () => { plSel = null; render(); }; const nm = el('b', '', pl.name); const pa = el('button', 'btn small primary', 'تشغيل الكل'); pa.onclick = () => plPlay(pl); const dl = el('button', 'btn small', 'حذف'); dl.onclick = () => { if (!confirm('حذف القائمة «' + pl.name + '»؟')) return; plsSet(pls().filter((x) => x.id !== pl.id)); plSel = null; render(); }; hb.append(bk, nm, pa, dl); body.appendChild(hb); }
     g('plrCats').hidden = tab === 'pls' || (tab === 'lib' && libV !== 'all'); if (tab === 'lib' && libRender(body)) return; if (tab === 'lib' && tracks.length) body.insertBefore(el('div'), null);
     if (!view.length) { const d = document.createElement('div'); d.className = 'hint'; d.style.textAlign = 'center'; d.textContent = tab === 'fav' ? 'لا توجد عناصر في المفضلة' : (tracks.length ? 'لا توجد نتائج' : 'لا توجد قصائد بعد'); body.appendChild(d); return; }
@@ -1680,8 +1681,8 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   let libV = 'home', libSel = null; /* libSel: {k:'alb'|'rec', id} */
   const durOfT = (t) => { try { return (JSON.parse(localStorage.getItem(DUK) || '{}'))[t.id] || t.dur || 0; } catch (e) { return t.dur || 0; } };
   function libTabs(body) {
-    const w = el('div', 'libtabs'); [['home', 'الرئيسية'], ['all', 'القصائد'], ['alb', 'الإصدارات'], ['rec', 'الرواديد']].forEach(([k, n]) => { const b = el('button', libV === k ? 'on' : '', n); b.type = 'button'; b.onclick = () => { libV = k; libSel = null; render(); }; w.appendChild(b); });
-    body.appendChild(w);
+    const w = el('div', 'libtabs'), hd = g('plrLt'); hd.textContent = ''; hd.hidden = false; [['home', 'الرئيسية'], ['all', 'القصائد'], ['alb', 'الإصدارات'], ['rec', 'الرواديد']].forEach(([k, n]) => { const b = el('button', libV === k ? 'on' : '', n); b.type = 'button'; b.onclick = () => { libV = k; libSel = null; render(); }; w.appendChild(b); });
+    hd.appendChild(w);
   }
   function trackRow(t, list) {
     const r = el('div', 'trow' + (cur >= 0 && tracks[cur] === t ? ' on' : '')), cv = el('div', 'plrcov'); coverEl(t, cv);

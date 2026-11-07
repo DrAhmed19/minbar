@@ -22,7 +22,7 @@
     }
   }
   async function handle(u) {
-    if (!u) { A.admin = false; $('btnAdmin').hidden = true; $('btnTrialReset').hidden = true; pane('gSign'); if (window.__mjCode) return cb.onEnter({ uid: '', name: 'ضيف المجلس', email: '', photo: '', chan: '', guest: true, mj: true }); return; }
+    if (!u) { if (cb.onOut) cb.onOut(); A.admin = false; $('btnAdmin').hidden = true; $('btnTrialReset').hidden = true; pane('gSign'); if (window.__mjCode) return cb.onEnter({ uid: '', name: 'ضيف المجلس', email: '', photo: '', chan: '', guest: true, mj: true }); return; }
     pane('gLoad');
     try {
       let open = false;
