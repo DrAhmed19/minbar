@@ -1,0 +1,94 @@
+rules_version = '2';
+service cloud.firestore { match /databases/{db}/documents {
+  function isAdmin() { return request.auth != null && request.auth.token.email_verified == true && request.auth.token.email == 'ahmad1999199919999@gmail.com'; }
+  function signed() { return request.auth != null; }
+
+  // ===== القواعد السابقة كما هي =====
+  match /waitlist/{uid} {
+    allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
+    allow create: if request.auth != null && request.auth.uid == uid
+      && request.resource.data.status == 'pending'
+      && request.resource.data.createdAt == request.time
+      && request.resource.data.keys().hasOnly(['name','email','photo','handle','note','status','createdAt'])
+      && request.resource.data.name.size() <= 200 && request.resource.data.handle.size() <= 100 && request.resource.data.note.size() <= 300;
+    allow update, delete: if isAdmin();
+  }
+  match /config/{d} { allow read: if d == 'public' || d == 'app' || request.auth != null; allow write: if isAdmin(); }
+  match /surveys/{id} {
+    allow create: if request.resource.data.keys().hasOnly(['rating','used','ease','needs','issue','willUse','notes','src','who','createdAt'])
+      && request.resource.data.rating is int && request.resource.data.rating >= 1 && request.resource.data.rating <= 5
+      && request.resource.data.createdAt == request.time
+      && request.resource.data.used.size() <= 300 && request.resource.data.needs.size() <= 300
+      && request.resource.data.ease.size() <= 60 && request.resource.data.issue.size() <= 100
+      && request.resource.data.willUse.size() <= 40 && request.resource.data.notes.size() <= 1500
+      && request.resource.data.src.size() <= 20 && request.resource.data.who.size() <= 200;
+    allow read, update, delete: if isAdmin();
+  }
+  match /trialLogs/{id} {
+    allow create: if request.resource.data.keys().hasOnly(['deviceId','event','createdAt'])
+      && request.resource.data.deviceId is string && request.resource.data.deviceId.size() <= 40
+      && request.resource.data.event in ['start','end'] && request.resource.data.createdAt == request.time;
+    allow read, update, delete: if isAdmin();
+  }
+  match /requests/{id} {
+    allow create: if request.resource.data.keys().hasOnly(['name','contact','type','note','deviceId','status','createdAt'])
+      && request.resource.data.status == 'pending' && request.resource.data.createdAt == request.time
+      && request.resource.data.name.size() >= 2 && request.resource.data.name.size() <= 100
+      && request.resource.data.contact.size() >= 3 && request.resource.data.contact.size() <= 120
+      && request.resource.data.type in ['extend','unlock'] && request.resource.data.note.size() <= 500
+      && request.resource.data.deviceId.size() <= 40;
+    allow read, update, delete: if isAdmin();
+  }
+  match /grants/{id} { allow get: if true; allow list, write: if isAdmin(); }
+
+  // ===== المشغّل: الكلمات =====
+  // تصويت على تعديل كلمة أو توقيت: كل مستخدم يضيف نفسه فقط مرة واحدة
+  match /lyrEdits/{id} {
+    allow read: if true;
+    allow create: if signed() && request.resource.data.voters == [request.auth.uid]
+      && request.resource.data.keys().hasOnly(['track','line','field','val','voters'])
+      && request.resource.data.field in ['l','t'];
+    allow update: if signed()
+      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['voters'])
+      && request.resource.data.voters.toSet() == resource.data.voters.toSet().union([request.auth.uid].toSet());
+    allow delete: if isAdmin();
+  }
+  // طلبات إضافة كلمات أو توقيت: المستخدم يرسل، والمدير فقط يقرأ ويوافق أو يرفض
+  match /lyrSubs/{id} {
+    allow create: if signed() && request.resource.data.uid == request.auth.uid
+      && request.resource.data.status == 'pending'
+      && request.resource.data.keys().hasOnly(['track','title','json','uid','status','createdAt'])
+      && request.resource.data.json is string && request.resource.data.json.size() <= 200000;
+    allow read, update, delete: if isAdmin();
+  }
+  // الكلمات المعتمدة: الجميع يقرأ، والمدير فقط يكتب
+  match /lyrApproved/{id} {
+    allow read: if true;
+    allow write: if isAdmin();
+  }
+
+  // ===== المشغّل: التفاعل =====
+  // التعليقات على لحظات القصيدة (220 حرفاً كحد أقصى)
+  match /cmts/{id} {
+    allow read: if true;
+    allow create: if signed() && request.resource.data.uid == request.auth.uid
+      && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 220
+      && request.resource.data.t is number && request.resource.data.track is string;
+    allow delete: if isAdmin() || (signed() && resource.data.uid == request.auth.uid);
+  }
+  // التفاعلات العائمة ❤️ 😢 🤲 💔
+  match /rx/{id} {
+    allow read: if true;
+    allow create: if signed() && request.resource.data.uid == request.auth.uid
+      && request.resource.data.e in ['❤️','😢','🤲','💔']
+      && request.resource.data.t is number && request.resource.data.track is string;
+    allow delete: if isAdmin() || (signed() && resource.data.uid == request.auth.uid);
+  }
+  // وضع المجلس: الجميع يقرأ برمز المجلس، والمضيف وحده يحدّث أو ينهي
+  match /majlis/{code} {
+    allow read: if true;
+    allow create: if signed() && request.resource.data.uid == request.auth.uid;
+    allow update: if isAdmin() || (signed() && resource.data.uid == request.auth.uid && request.resource.data.uid == request.auth.uid);
+    allow delete: if isAdmin() || (signed() && resource.data.uid == request.auth.uid);
+  }
+}}

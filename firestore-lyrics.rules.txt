@@ -1,0 +1,45 @@
+// أضف هذي القواعد داخل match /databases/{database}/documents في Firebase Console → Firestore → Rules
+function isOwner() { return request.auth != null && request.auth.token.email == 'ahmad1999199919999@gmail.com' && request.auth.token.email_verified == true; }
+
+// تصويت المستخدمين على تعديل كلمة أو توقيت: كل مستخدم يضيف نفسه فقط (مرة واحدة)
+match /lyrEdits/{id} {
+  allow read: if true;
+  allow create: if request.auth != null && request.resource.data.voters == [request.auth.uid];
+  allow update: if request.auth != null
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['voters'])
+    && request.resource.data.voters.toSet() == resource.data.voters.toSet().union([request.auth.uid].toSet());
+}
+// طلبات إضافة كلمات لطمية: المستخدم يرسل، والمالك فقط يقرأ ويوافق
+match /lyrSubs/{id} {
+  allow create: if request.auth != null && request.resource.data.uid == request.auth.uid && request.resource.data.status == 'pending';
+  allow read, update: if isOwner();
+}
+// الكلمات المعتمدة: الجميع يقرأ، والمالك فقط يكتب
+match /lyrApproved/{id} {
+  allow read: if true;
+  allow write: if isOwner();
+}
+// (اختياري) في config/app أضف الحقل lyrThreshold = 10 لتغيير عدد الموافقين المطلوب
+
+// التعليقات العائمة: الجميع يقرأ، المسجّل يكتب تعليقه (220 حرفاً كحد أقصى)، ويحذفه هو أو المالك
+match /cmts/{id} {
+  allow read: if true;
+  allow create: if request.auth != null && request.resource.data.uid == request.auth.uid
+    && request.resource.data.text is string && request.resource.data.text.size() <= 220
+    && request.resource.data.t is number;
+  allow delete: if isOwner() || (request.auth != null && resource.data.uid == request.auth.uid);
+}
+
+// التفاعلات العائمة (❤️ 😢 🤲 💔): الجميع يقرأ، والمسجّل يضيف تفاعله
+match /rx/{id} {
+  allow read: if true;
+  allow create: if request.auth != null && request.resource.data.uid == request.auth.uid
+    && request.resource.data.e in ['❤️', '😢', '🤲', '💔'] && request.resource.data.t is number;
+  allow delete: if isOwner();
+}
+// وضع المجلس: الجميع يقرأ برمز المجلس، والمضيف وحده يحدّثه
+match /majlis/{code} {
+  allow read: if true;
+  allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+  allow update, delete: if request.auth != null && resource.data.uid == request.auth.uid;
+}

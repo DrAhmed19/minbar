@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,viewport-fit=cover,user-scalable=no,interactive-widget=resizes-content">
+<script>window.__mjCode=(location.search.match(/[?&]mj=(\d{6})/)||[])[1]||'';</script>
+<title>منبر | ستوديو القصائد والمراثي</title>
+<meta name="theme-color" content="#F6F1E6">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="login" class="login">
+  <canvas id="lgBg"></canvas>
+  <div class="lcard">
+    <div class="lmark"><img src="icons/brand-mark.png" alt=""></div>
+    <h1>منبر</h1>
+    <p class="ltag">ستوديو القصائد والمراثي<br><span>منصة متخصصة لتصميم مقاطع القصائد والمراثي بمستوى احترافي</span></p>
+    <div id="gBox" hidden>
+      <div id="gLoad" class="gst">جارٍ التحقق...</div>
+      <div id="gSign" class="gst" hidden>
+        <p class="gp">التطبيق قيد التطوير ولم يُطلق رسمياً بعد. يمكنك التسجيل المسبق بحساب Google، وسيتم اختيار عدد محدود من المستخدمين لتجربته قبل الإطلاق.</p>
+        <button class="btn wide big gbtn" id="gBtn" type="button"><svg class="gsv" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> التسجيل المسبق بحساب Google</button>
+        <button class="btn wide" id="gTrial" type="button">تجربة محدودة</button>
+      </div>
+      <div id="gForm" class="gst" hidden>
+        <p class="gp" id="gHello"></p>
+        <div class="lf"><input id="gHandle" maxlength="100" placeholder="حسابك على تيك توك أو يوتيوب (اختياري)"></div>
+        <div class="lf"><input id="gNote" maxlength="300" placeholder="نبذة عن استخدامك للتطبيق (اختياري)"></div>
+        <button class="btn primary wide big" id="gReg" type="button">تأكيد التسجيل المسبق</button>
+        <button class="btn wide" id="gOut1" type="button">تغيير الحساب</button>
+      </div>
+      <div id="gWait" class="gst" hidden>
+        <div class="gok">✓</div><p class="gp" id="gWaitMsg"></p>
+        <button class="btn wide" id="gOut2" type="button">تسجيل الخروج</button>
+      </div>
+    </div>
+    <div class="ltabs"><button type="button" id="ltIn" class="on">تسجيل الدخول</button><button type="button" id="ltUp">حساب جديد</button></div>
+    <form id="lform" autocomplete="off">
+      <div class="lf" id="lfName" hidden><input id="lName" placeholder="الاسم"></div>
+      <div class="lf" id="lfChan" hidden><input id="lChan" placeholder="اسم قناتك أو حسابك (يظهر بشعارك)"></div>
+      <div class="lf"><input id="lMail" type="email" placeholder="البريد الإلكتروني"></div>
+      <div class="lf"><input id="lPass" type="password" placeholder="كلمة المرور"><button type="button" id="lEye" data-ic="eye" aria-label="إظهار"></button></div>
+      <button class="btn primary wide big" id="lGo" type="submit">دخول</button>
+    </form>
+    <div class="lsep"><span>أو</span></div>
+    <button class="btn wide" id="lGuest" type="button">تجربة محدودة</button>
+    <div class="lsoc"><button type="button" disabled>Google<small>قريباً</small></button><button type="button" disabled>Apple<small>قريباً</small></button></div>
+    <div class="lnote">نسخة تجريبية قيد التطوير</div>
+    <a class="tk" href="https://www.tiktok.com/@a1h9mad" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.6 5.82A4.28 4.28 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6 0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64 0 3.33 2.76 5.7 5.73 5.7 3.15 0 5.7-2.55 5.7-5.7V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3s-1.88.09-3.24-1.48z"/></svg><span>تابعنا على تيك توك</span></a>
+  </div>
+</div>
+<div id="app">
+  <header class="bar">
+    <div class="brand"><button class="ib" id="btnHome" data-ic="home" aria-label="الرئيسية" hidden></button><img src="icons/brand-mark.png" alt=""><span>منبر</span><em id="trialChip" class="tchip" hidden></em></div>
+    <div class="acts">
+      <button class="ib" id="btnUndo" data-ic="undo" aria-label="تراجع" disabled></button>
+      <button class="ib" id="btnRedo" data-ic="redo" aria-label="إعادة" disabled></button>
+      <button class="exp" id="topExport">تصدير</button>
+    </div>
+  </header>
+
+  <section class="stage">
+    <div class="pwrap"><canvas id="pc" width="540" height="960"></canvas></div>
+  </section>
+
+  <div class="trans">
+    <button id="playBtn" class="pbtn" aria-label="تشغيل">▶</button>
+    <span id="tcur">0:00</span>
+    <input type="range" id="seek" min="0" max="1000" value="0">
+    <span id="tdur">0:00</span>
+  </div>
+
+  <section class="sheet" id="sheet">
+    <div class="grab"><button id="grabBtn" data-ic="chev" aria-label="إخفاء أو إظهار"></button></div>
+    <div class="panel" data-p="media">
+      <div class="chips" id="modeChips"></div>
+      <div id="vidPick">
+        <label class="btn primary wide" for="fileIn">اختيار الفيديو من الجهاز</label>
+        <input type="file" id="fileIn" accept="video/*" hidden>
+      </div>
+      <div id="audPick" hidden>
+        <label class="btn primary wide" for="imgIn">1) اختيار الصورة (الغلاف)</label>
+        <input type="file" id="imgIn" accept="image/*" hidden>
+        <label class="btn wide" for="audIn">2) اختيار الصوت (mp3 أو m4a أو فيديو)</label>
+        <input type="file" id="audIn" accept="audio/*,video/*" hidden>
+      </div>
+      <div class="hint" id="vinfo"></div>
+    </div>
+
+    <div class="panel" data-p="trim">
+      <div class="sec">
+        <div class="tlbar">
+          <button class="tlb" id="tlSplit" type="button" title="تقسيم عند المؤشر"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/></svg><span>تقسيم</span></button>
+          <button class="tlb" id="tlDup" type="button" title="تكرار"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg><span>تكرار</span></button>
+          <button class="tlb" id="tlDel" type="button" title="حذف"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg><span>حذف</span></button>
+          <button class="tlb" id="tlL" type="button" title="تقديم"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg><span>قبل</span></button>
+          <button class="tlb" id="tlR" type="button" title="تأخير"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg><span>بعد</span></button>
+          <button class="tlb" id="tlPlaySel" type="button" title="تشغيل المقطع"><svg viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z"/></svg><span>تشغيل</span></button>
+          <button class="tlb" id="tlZout" type="button" title="تصغير"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M8 11h6"/></svg><span>تصغير</span></button>
+          <button class="tlb" id="tlZin" type="button" title="تكبير"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M8 11h6M11 8v6"/></svg><span>تكبير</span></button>
+        </div>
+        <div class="tlrule" id="tlRule"><span id="tlCur">0:00.0</span><i>اسحب هنا للتنقل</i><span id="tlTot">0:00.0</span></div>
+        <div class="tlscroll" id="tlScroll"><div class="tltrack" id="tlTrack"></div><div class="tlph" id="tlPh"></div></div>
+        <div class="hint" id="tlSegInfo" style="margin:6px 0 0;direction:rtl"></div>
+      </div>
+      <div class="sec">
+        <div class="sech">ظهور واختفاء المقطع المحدد</div>
+        <div class="srow"><span>ظهور تدريجي</span><input type="range" id="tlFi" min="0" max="30" step="1" value="0"><b id="tlFiV">0.0 ث</b></div>
+        <div class="srow"><span>اختفاء تدريجي</span><input type="range" id="tlFo" min="0" max="30" step="1" value="0"><b id="tlFoV">0.0 ث</b></div>
+      </div>
+      <div class="sec">
+        <div class="sech">حذف الصمت تلقائياً</div>
+        <div class="srow"><span>الحساسية</span><input type="range" id="trSilThr" min="-60" max="-20" step="1" value="-42"><b id="trSilThrV"></b></div>
+        <div class="srow"><span>أقل مدة صمت</span><input type="range" id="trSilMin" min="3" max="40" step="1" value="10"><b id="trSilMinV"></b></div>
+        <button class="btn small wide" id="trSilGo" type="button">كشف وحذف الصمت</button>
+      </div>
+      <div class="sec">
+        <div class="hint" id="trInfo" style="margin:0 0 6px"></div>
+        <div class="hint" style="margin:0">اضغط على المقطع للتحديد، اسحب المقبض العلوي ⠿ لتغيير الترتيب، واسحب حافتي المقطع للقص. كله يتم أثناء التصدير بدون إعادة ضغط.</div>
+        <button class="btn small" id="trReset" type="button" style="margin-top:8px">إلغاء كل التعديلات</button>
+      </div>
+    </div>
+
+    <div class="panel" data-p="move">
+      <div class="mvwrap">
+        <div class="mvmodes" id="mvModes">
+          <button type="button" data-m="move" title="نقل"><svg viewBox="0 0 24 24"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></svg></button>
+          <button type="button" data-m="rot" title="تدوير"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg></button>
+          <button type="button" data-m="scale" title="تكبير وتمديد"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></button>
+          <button type="button" data-m="skew" title="ميلان"><svg viewBox="0 0 24 24"><path d="M7 5h13l-3 14H4z"/></svg></button>
+        </div>
+        <div class="mvmain">
+          <div class="mvflds" id="mvFlds"></div>
+          <div class="mvpad" id="mvPad"><span id="mvPadT">اسحب هنا لتحريك الطبقة</span></div>
+        </div>
+      </div>
+      <div class="row"><button class="btn small" id="mvFH" type="button">قلب أفقي</button><button class="btn small" id="mvFV" type="button">قلب عمودي</button><button class="btn small" id="mvR90" type="button">تدوير 90°</button><button class="btn small" id="mvReset" type="button">إعادة الضبط</button></div>
+      <div class="hint" style="margin:8px 0 0">تقدر تسحب الفيديو مباشرة بالمعاينة وتقرص بإصبعين. الخطوط الحمراء تظهر عند المنتصف.</div>
+    </div>
+
+    <div class="panel" data-p="audio">
+      <div class="sec">
+        <div class="sech">فلاتر الصوت <em style="font-weight:400;opacity:.7">(تُطبَّق مباشرة)</em></div>
+        <div class="chips" id="afxPre"></div>
+      </div>
+      <div class="sec" id="afxStrRow">
+        <div class="srow"><span>قوة الفلتر</span><input type="range" id="afxStr" min="0" max="100" step="1" value="100"><b id="afxStrV"></b></div>
+        <div class="hint" id="afxInfo" style="margin:4px 0 0"></div>
+        <button class="btn small" id="afxAdvBtn" type="button" style="margin-top:8px">ضبط متقدم ▾</button>
+      </div>
+      <div class="sec" id="afxAdv" hidden>
+        <div class="srow"><span>مستوى الصوت</span><input type="range" id="afxGain" min="-12" max="12" step="0.5" value="0"><b id="afxGainV"></b></div>
+        <div class="srow"><span>الباص</span><input type="range" id="afxBass" min="-12" max="12" step="0.5" value="0"><b id="afxBassV"></b></div>
+        <div class="srow"><span>الوسط (وضوح الصوت)</span><input type="range" id="afxMid" min="-12" max="12" step="0.5" value="0"><b id="afxMidV"></b></div>
+        <div class="srow"><span>الحدة</span><input type="range" id="afxTreb" min="-12" max="12" step="0.5" value="0"><b id="afxTrebV"></b></div>
+        <div class="srow"><span>الصدى</span><input type="range" id="afxRev" min="0" max="100" step="1" value="0"><b id="afxRevV"></b></div>
+        <div class="srow"><span>ضغط الديناميك</span><input type="range" id="afxComp" min="0" max="100" step="1" value="0"><b id="afxCompV"></b></div>
+        <div class="srow"><span>تقليل الضجيج</span><input type="range" id="afxDen" min="0" max="100" step="1" value="0"><b id="afxDenV"></b></div>
+        <label class="chk"><input type="checkbox" id="afxNorm"> توحيد مستوى الصوت</label>
+      </div>
+    </div>
+
+    <div class="panel" data-p="text">
+      <label>اسم المشروع<input id="fProj" placeholder="مثال: ليلة عاشوراء" autocomplete="off"></label>
+      <label>اسم القصيدة<input id="fTitle" placeholder="اكتب اسم القصيدة" autocomplete="off"></label>
+      <label>الرادود<input id="fReciter" list="dlReciters" placeholder="اسم الرادود" autocomplete="off"></label>
+      <label>الشاعر<input id="fPoet" list="dlPoets" placeholder="اسم الشاعر" autocomplete="off"></label>
+      <label>المناسبة <em>(اختياري)</em><input id="fOcc" placeholder="المناسبة أو الليلة" autocomplete="off"></label>
+      <label>المكان <em>(اختياري)</em><input id="fPlace" placeholder="المكان أو الحسينية" autocomplete="off"></label>
+      <datalist id="dlReciters"></datalist><datalist id="dlPoets"></datalist>
+      <div class="sep"></div>
+      <div class="lbl">عنوان بصورة (خط خطاط)</div>
+      <div class="row">
+        <label class="btn small" for="titleImgIn">اختيار صورة العنوان</label>
+        <input type="file" id="titleImgIn" accept="image/*" hidden>
+        <button class="btn small" id="titleImgClear" hidden>إزالة الصورة</button>
+      </div>
+      <div id="tpBox" hidden>
+        <canvas id="tpPrev" width="680" height="220" class="checker"></canvas>
+        <div class="hint" id="tpMsg"></div>
+        <div class="srow"><span>حساسية القص</span><input type="range" id="tpThr" min="-60" max="60" step="1"><b id="tpThrV"></b></div>
+        <div class="srow"><span>تنظيف الشوائب</span><input type="range" id="tpClean" min="0" max="100" step="1"><b id="tpCleanV"></b></div>
+        <div class="srow"><span>تنعيم الحواف</span><input type="range" id="tpSmooth" min="0" max="100" step="1"><b id="tpSmoothV"></b></div>
+        <div class="srow"><span>رفع الدقة</span><input type="range" id="tpUp" min="1" max="4" step="1"><b id="tpUpV"></b></div>
+        <label class="chk"><input type="checkbox" id="tpInv"> عكس (النص أغمق من الخلفية)</label>
+        <div class="lbl">لون العنوان</div>
+        <div class="chips" id="tpFillChips"></div>
+        <div class="lbl">تأثيرات</div>
+        <div class="chips" id="tpFx"></div>
+      </div>
+    </div>
+
+    <div class="panel" data-p="lyrics">
+      <div class="sec">
+        <div class="sech">نص القصيدة</div>
+        <textarea id="lyrText" rows="5" placeholder="اكتب أو الصق الكلمات، كل بيت بسطر"></textarea>
+        <div class="row"><button class="btn small" id="lyrAsr" type="button">استخراج الكلمات تلقائياً (تجريبي)</button></div>
+        <div class="hint" id="lyrAsrMsg"></div>
+      </div>
+      <div class="sec">
+        <div class="sech">التوقيت والتصحيح</div>
+        <div class="hint" id="lyrInfo" style="margin:0 0 8px"></div>
+        <div class="row"><button class="btn primary small" id="lyrSmart" type="button">مزامنة ذكية حسب الصوت</button><button class="btn small" id="lyrAuto" type="button">توزيع متساوٍ</button><button class="btn small" id="lyrTap" type="button">مزامنة بالنقر</button></div>
+        <div class="hint" id="lyrNext" style="color:var(--gold)"></div>
+        <div id="lyrList"></div>
+      </div>
+      <div class="sec">
+        <div class="sech">العرض</div>
+        <label class="chk"><input type="checkbox" id="lyrOn"> إظهار الكلمات بالفيديو</label>
+        <div class="srow"><span>الموضع</span><input type="range" id="lyrY" min="40" max="92" step="1"><b id="lyrYV"></b></div>
+        <div class="srow"><span>الحجم</span><input type="range" id="lyrSize" min="60" max="150" step="1"><b id="lyrSizeV"></b></div>
+      </div>
+    </div>
+
+    <div class="panel" data-p="design">
+      <div class="sec"><div class="sech">التصميم الكامل</div><div class="gallery" id="layoutGal"></div></div>
+      <div class="sec" data-m="video">
+        <div class="sech">نافذة الفيديو</div>
+        <div class="srow"><span>حجم الفيديو</span><input type="range" id="vsize" min="60" max="100" step="1"><b id="vsizeVal"></b></div>
+        <div class="lbl sm">شكل النافذة</div><div class="chips" id="fitChips"></div>
+        <div class="lbl sm">التفاعل مع صوت الفيديو</div><div class="chips" id="reactChips"></div>
+      </div>
+      <div class="sec" data-m="audio" hidden>
+        <div class="sech">القرص والموجة</div>
+        <div class="srow"><span>سرعة الدوران</span><input type="range" id="dspeed" min="0" max="300" step="10"><b id="dspeedV"></b></div>
+        <div class="lbl sm">شكل الموجة</div><div class="chips" id="waveChips"></div>
+      </div>
+      <div class="sec">
+        <div class="sech">منطقة العرض</div>
+        <label class="chk"><input type="checkbox" id="safeOn"> مراعاة واجهة تيك توك</label>
+        <label class="chk"><input type="checkbox" id="guideOn"> إظهار حدود الواجهة بالمعاينة فقط</label>
+      </div>
+    </div>
+
+    <div class="panel" data-p="color">
+      <div class="sec">
+        <div class="sech">الخلفية</div>
+        <div class="chips" id="bgModeChips"></div>
+        <div id="bgColorBox">
+          <div class="lbl sm">اللون</div><div class="swatches" id="swatches"></div>
+          <div class="lbl sm">النمط</div><div class="chips" id="patChips"></div>
+          <div class="srow"><span>وضوح النمط</span><input type="range" id="patA" min="0" max="200" step="1"><b id="patAV"></b></div>
+        </div>
+        <div id="bgImgBox" hidden>
+          <div class="row"><label class="btn small" for="bgImgIn">اختيار صورة الخلفية</label><input type="file" id="bgImgIn" accept="image/*" hidden></div>
+          <div class="srow"><span>التمويه</span><input type="range" id="bgBlur" min="0" max="100" step="1"><b id="bgBlurV"></b></div>
+          <div class="srow"><span>التعتيم</span><input type="range" id="bgDim" min="0" max="90" step="1"><b id="bgDimV"></b></div>
+        </div>
+      </div>
+      <div class="sec"><div class="sech">اللون المميز</div><div class="hint" style="margin:0 0 8px">للإطار والزخارف والموجة</div><div class="chips" id="accChips"></div></div>
+    </div>
+
+    <div class="panel" data-p="font">
+      <div class="sec"><div class="sech">الخط</div><div class="chips fonts" id="fontChips"></div></div>
+      <div class="sec">
+        <div class="sech">العنوان</div>
+        <div class="chips" id="tcolChips"></div>
+        <div class="srow"><span>حجم العنوان</span><input type="range" id="tscale" min="70" max="130" step="1"><b id="tscaleV"></b></div>
+        <div class="srow"><span>التوهج</span><input type="range" id="tglow" min="0" max="100" step="1"><b id="tglowV"></b></div>
+        <div class="srow"><span>الظل</span><input type="range" id="tshadow" min="0" max="100" step="1"><b id="tshadowV"></b></div>
+        <label class="chk"><input type="checkbox" id="toutOn"> حدّ غامق حول حروف العنوان</label>
+      </div>
+      <div class="sec">
+        <div class="sech">الأسماء والوصف</div>
+        <div class="srow"><span>حجم الأسماء</span><input type="range" id="nscale" min="70" max="130" step="1"><b id="nscaleV"></b></div>
+        <div class="srow"><span>لون الوصف</span><input type="color" id="lblCol"><span style="width:auto">لون الاسم</span><input type="color" id="valCol"></div>
+      </div>
+      <div class="sec"><div class="sech">حركة ظهور النص</div><div class="chips" id="animChips"></div></div>
+    </div>
+
+    <div class="panel" data-p="frame">
+      <div class="sec" data-m="video">
+        <div class="sech">إطار الفيديو</div>
+        <div class="chips" id="frameChips"></div>
+        <div class="srow"><span>سماكة الإطار</span><input type="range" id="fthick" min="50" max="200" step="1"><b id="fthickV"></b></div>
+        <div class="srow"><span>استدارة الزوايا</span><input type="range" id="vrad" min="0" max="80" step="1"><b id="vradV"></b></div>
+      </div>
+      <div class="sec" data-m="audio" hidden>
+        <div class="sech">إطار الصورة</div>
+        <div class="chips" id="coverChips"></div>
+        <label class="chk"><input type="checkbox" id="cborder"> إطار حول الصورة</label>
+      </div>
+      <div class="hint">لون الإطار يتغير من تبويب الألوان (اللون المميز).</div>
+    </div>
+
+    <div class="panel" data-p="filter">
+      <div class="tiles" id="filterTiles"></div>
+      <div class="srow"><span>قوة الفلتر</span><input type="range" id="fint" min="0" max="100" step="1"><b id="fintV"></b></div>
+      <div class="srow"><span>السطوع</span><input type="range" id="fbri" min="-50" max="50" step="1"><b id="fbriV"></b></div>
+      <div class="srow"><span>التباين</span><input type="range" id="fcon" min="-50" max="50" step="1"><b id="fconV"></b></div>
+      <div class="srow"><span>التشبّع</span><input type="range" id="fsat" min="-100" max="100" step="1"><b id="fsatV"></b></div>
+      <div class="srow"><span>دافئ ↔ بارد</span><input type="range" id="fwarm" min="-100" max="100" step="1"><b id="fwarmV"></b></div>
+      <div class="srow"><span>تعتيم الأطراف</span><input type="range" id="fvig" min="0" max="100" step="1"><b id="fvigV"></b></div>
+      <div class="sech" style="margin-top:12px">تأثيرات</div>
+      <div class="srow"><span>ضبابية</span><input type="range" id="fxBlur" min="0" max="100" step="1"><b></b></div>
+      <div class="srow"><span>توهّج</span><input type="range" id="fxGlow" min="0" max="100" step="1"><b></b></div>
+      <div class="srow"><span>اهتزاز</span><input type="range" id="fxShake" min="0" max="100" step="1"><b></b></div>
+      <div class="srow"><span>نبض مع الصوت</span><input type="range" id="fxPulse" min="0" max="100" step="1"><b></b></div>
+      <div class="srow"><span>حبيبات فيلم</span><input type="range" id="fxGrain" min="0" max="100" step="1"><b></b></div>
+      <button class="btn small" id="fReset">إعادة ضبط الفلاتر</button>
+    </div>
+
+    <div class="panel" data-p="logo">
+      <div class="lgprev"><canvas id="lgPrev" width="300" height="300"></canvas></div>
+      <div class="lbl">شعارات جاهزة</div>
+      <div class="logos" id="logoGrid"></div>
+      <div class="sep"></div>
+      <div class="lbl">تخصيص الشعار</div>
+      <div class="lbl sm">الإطار</div><div class="chips" id="lgFrame"></div>
+      <div class="lbl sm">الرمز</div><div class="chips" id="lgEmb"></div>
+      <label>الكتابة<input id="lgText" placeholder="نص الشعار" autocomplete="off"></label>
+      <div class="lbl sm">خط الكتابة</div><div class="chips fonts" id="lgFont"></div>
+      <div class="lbl sm">لون الإطار</div><div class="colrow" id="lgFcol"></div>
+      <div class="lbl sm">لون الرمز</div><div class="colrow" id="lgEcol"></div>
+      <div class="lbl sm">لون الكتابة</div><div class="colrow" id="lgTcol"></div>
+      <div class="srow"><span>سماكة الإطار</span><input type="range" id="lgThick" min="50" max="220" step="1"><b id="lgThickV"></b></div>
+      <div class="srow"><span>حجم الكتابة</span><input type="range" id="lgTsize" min="50" max="160" step="1"><b id="lgTsizeV"></b></div>
+      <label class="chk"><input type="checkbox" id="lgDeco"> خط زخرفي تحت الكتابة</label>
+      <div class="sep"></div>
+      <label class="chk"><input type="checkbox" id="logoOn"> إظهار الشعار بالفيديو</label>
+      <label class="chk"><input type="checkbox" id="logoOrn"> الخطوط الزخرفية على جانبي الشعار</label>
+      <div class="srow"><span>حجم الشعار</span><input type="range" id="logoSize" min="50" max="140" step="1"><b id="logoSizeV"></b></div>
+      <div class="row">
+        <label class="btn small" for="logoIn">استخدام صورة شعار خاصة</label>
+        <input type="file" id="logoIn" accept="image/*" hidden>
+        <button class="btn small" id="logoBack" hidden>الرجوع للشعار المصمّم</button>
+      </div>
+    </div>
+
+    <div class="panel" data-p="tpl">
+      <button class="btn primary wide" id="tplOpenAll" type="button">فتح معرض القوالب الكامل</button>
+      <div class="lbl">قوالب جاهزة</div>
+      <div class="gallery" id="tplGal"></div>
+      <div class="sep"></div>
+      <div class="lbl">قوالبي</div>
+      <div class="row"><input id="tplName" placeholder="اسم القالب" autocomplete="off" style="flex:1"><button class="btn primary small" id="tplSave">حفظ الحالي</button></div>
+      <div id="tplList" class="tpls"></div>
+    </div>
+
+    
+
+    <div class="panel" data-p="export">
+      <div class="xcard"><div class="xh">ملخص المقطع</div><div id="xsum"></div></div>
+      <div class="xcard"><div class="xh">جودة التصدير</div><div class="chips" id="qChips"></div>
+        <div class="lbl sm">معدل الإطارات الأقصى</div><div class="chips" id="fpsChips"></div>
+        <div class="hint" id="qInfo"></div></div>
+      <button class="btn primary wide big" id="btnExport">تصدير الفيديو</button>
+      <div class="prog" id="prog" hidden><div id="progBar"></div></div>
+      <div class="hint" id="expMsg"></div>
+      <div id="result" class="xcard" hidden>
+        <div class="xh">المقطع جاهز</div>
+        <video id="resVideo" controls playsinline></video>
+        <div class="hint" id="resMeta"></div>
+        <div class="row">
+          <button class="btn primary" id="btnSave">حفظ على الجهاز</button>
+          <button class="btn" id="btnShare">مشاركة</button>
+        </div>
+        <div class="xsv" id="svPrompt" hidden><b>رأيك يهمنا</b><span>ساهم في تطوير التطبيق بالإجابة عن أسئلة قصيرة.</span><button class="btn small" id="svOpen" type="button">المشاركة في الاستبيان</button></div>
+      </div>
+      <button class="btn wide" id="btnCap" type="button">نسخ وصف تيك توك للنشر</button>
+    </div>
+  </section>
+
+  <nav class="dock" id="dock"></nav>
+</div>
+
+<div id="home" class="ovl" hidden>
+  <div class="ovh"><div class="brand"><img src="icons/brand-mark.png" alt=""><span>منبر</span></div><button class="ib" id="homeSet" data-ic="gear" aria-label="الإعدادات"></button></div>
+  <div class="ovb">
+    <div class="hello" id="homeHello"></div>
+    <button class="btn wide" id="homeToPlr" type="button" style="margin-bottom:8px">♪ العودة للمشغل</button>
+    <button class="btn primary wide big" id="homeNew" type="button">+ مشروع جديد</button>
+    <button class="btn wide" id="homeTpl" type="button" style="margin-top:8px">✦ ابدأ من قالب جاهز</button>
+    <div class="lbl">مشاريعي</div>
+    <div id="projList"></div>
+  </div>
+</div>
+
+<div id="tplOv" class="ovl wide" hidden>
+  <div class="ovh"><button class="ib" id="tovBack" data-ic="back" aria-label="رجوع"></button><b>معرض القوالب</b><span style="width:40px"></span></div>
+  <div class="ovb">
+    <div class="chips" id="tovCats"></div>
+    <div class="hint" id="tovHint" style="margin:8px 0">اختر قالباً، وراح تنعبّى النصوص الفارغة بمثال جاهز تغيّره بعدين.</div>
+    <div class="gallery big" id="tovGal"></div>
+  </div>
+</div>
+
+<div id="settings" class="ovl" hidden>
+  <div class="ovh"><button class="ib" id="setBack" data-ic="back" aria-label="رجوع"></button><b id="setTitle">الإعدادات</b><span style="width:40px"></span></div>
+  <div class="ovb">
+    <div class="spage" data-sp="main">
+      <div class="pcard prof"><div class="av" id="avMain"></div><div class="pm"><b id="acctName"></b><small id="acctMail"></small></div></div>
+      <button class="lrow" data-go="account" type="button"><span class="li" data-ic="user"></span><span class="lt2"><b>الحساب</b><small>الاسم والبريد وحساب Google</small></span><span class="lc" data-ic="chevl"></span></button>
+      <button class="lrow" data-go="appearance" type="button"><span class="li" data-ic="color"></span><span class="lt2"><b>المظهر</b><small>الوضع الليلي ولون الخلفية وحجم الواجهة</small></span><span class="lc" data-ic="chevl"></span></button>
+      <button class="lrow" data-go="touch" type="button"><span class="li" data-ic="spark"></span><span class="lt2"><b>اللمس والحركة</b><small>الاهتزاز والانتقالات</small></span><span class="lc" data-ic="chevl"></span></button>
+      <button class="lrow" data-go="device" type="button"><span class="li" data-ic="gear"></span><span class="lt2"><b>أداء الجهاز</b><small>فحص الإمكانيات ودقة المعاينة والإطارات</small></span><span class="lc" data-ic="chevl"></span></button>
+      <button class="lrow" data-go="data" type="button"><span class="li" data-ic="set"></span><span class="lt2"><b>البيانات والإعدادات</b><small>الأسماء المحفوظة وإعادة الضبط والتثبيت</small></span><span class="lc" data-ic="chevl"></span></button>
+      <button class="lrow" data-go="about" type="button"><span class="li" data-ic="lock"></span><span class="lt2"><b>حول التطبيق والشروط</b><small>الإصدار وشروط الاستخدام والخصوصية</small></span><span class="lc" data-ic="chevl"></span></button>
+      <button class="btn wide danger" id="btnLogout" type="button">تسجيل الخروج</button>
+    </div>
+    <div class="spage" data-sp="account" hidden>
+      <div class="pcard prof big"><div class="av lg" id="avBig"></div><div class="pm"><b id="acctName2"></b><small id="acctMail2"></small></div></div>
+      <div class="hint">الاسم والبريد والصورة مأخوذة من حساب Google، وتتغير بتغييرها هناك.</div>
+      <button class="btn wide" id="btnAdmin" type="button" hidden>لوحة الإدارة (الطلبات والاستبيانات)</button>
+      <button class="btn wide" id="btnTrialReset" type="button" hidden>إعادة فتح الفترة التجريبية للجميع</button>
+    </div>
+    <div class="spage" data-sp="appearance" hidden>
+      <div class="sec"><div class="sech">الوضع</div><div class="chips" id="uiMode"></div></div>
+      <div class="sec"><div class="sech">لون الخلفية</div><div class="swatches" id="uiTint"></div></div>
+      <div class="sec"><div class="sech">حجم الواجهة</div><div class="chips" id="uiSize"></div></div>
+    </div>
+    <div class="spage" data-sp="touch" hidden>
+      <div class="sec"><label class="chk"><input type="checkbox" id="uiHaptic"> اهتزاز خفيف عند الضغط</label><label class="chk"><input type="checkbox" id="uiMotion"> تقليل الحركة والانتقالات</label></div>
+    </div>
+    <div class="spage" data-sp="device" hidden>
+      <div class="xcard"><div class="xh">نتيجة الفحص</div><div id="devSum"></div></div>
+      <div class="sec"><div class="sech">دقة المعاينة</div><div class="chips" id="devPrev"></div></div>
+      <div class="sec"><div class="sech">معدل الإطارات الأقصى للتصدير</div><div class="chips" id="devFps"></div><div class="hint" id="devNote"></div></div>
+      <button class="btn wide" id="devRe" type="button">إعادة فحص الجهاز</button>
+    </div>
+    <div class="spage" data-sp="data" hidden>
+      <div class="sec"><div class="sech">الأسماء المحفوظة (الرواديد والشعراء)</div><div class="chips" id="libList"></div></div>
+      <div class="sec">
+        <button class="btn wide" id="btnInstall" type="button" hidden>تثبيت التطبيق</button>
+        <div class="hint" id="iosHint" hidden>على الآيفون: زر المشاركة ثم «إضافة إلى الشاشة الرئيسية».</div>
+        <button class="btn wide" id="btnReset" type="button">إعادة ضبط إعدادات التصميم</button>
+        <button class="btn wide danger" id="btnWipe" type="button">حذف كل المشاريع المحفوظة على الجهاز</button>
+      </div>
+    </div>
+    <div class="spage" data-sp="about" hidden>
+      <div class="sec"><div class="sech">منبر · الإصدار 3.44</div><div class="hint" style="margin:0">منصة متخصصة لتصميم مقاطع القصائد والمراثي. التطبيق قيد التطوير ولم يُطلق رسمياً بعد.</div></div>
+      <div class="sec"><div class="sech">ما الجديد</div><div class="hint" style="margin:0;line-height:2">• قائمة المشاريع وحفظها تلقائياً<br>• فحص الجهاز وضبط الأداء تلقائياً<br>• تصدير حتى 120 إطاراً بالثانية<br>• استخراج الكلمات ومزامنة أدق<br>• صفحة إعدادات ووضع فاتح</div></div>
+      <div class="sec"><div class="sech">شروط الاستخدام</div><div class="hint" style="margin:0;line-height:1.9">يُقدَّم التطبيق كما هو خلال مرحلة التطوير. المستخدم مسؤول عن المحتوى الذي يصمّمه وعن امتلاكه حقوق استخدام المواد الصوتية والمرئية، ولا يجوز استخدام التطبيق لأي غرض مخالف للقانون.</div></div>
+      <div class="sec"><div class="sech">الخصوصية</div><div class="hint" style="margin:0;line-height:1.9">تبقى ملفاتك ومشاريعك (الفيديو والصوت والصور) على جهازك ولا تُرفع إلى أي خادم. نحتفظ فقط باسمك وبريدك من حساب Google لإدارة الوصول، وبإجابات الاستبيان إن شاركت بها.</div></div>
+      <a class="tk" href="https://www.tiktok.com/@a1h9mad" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.6 5.82A4.28 4.28 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6 0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64 0 3.33 2.76 5.7 5.73 5.7 3.15 0 5.7-2.55 5.7-5.7V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3s-1.88.09-3.24-1.48z"/></svg><span>صفحتنا على تيك توك</span></a>
+    </div>
+  </div>
+</div>
+
+<div id="expOv" class="ovl" hidden>
+  <div class="ovb mid"><div class="xcard dvc">
+    <div class="xh" id="eoTitle">جارٍ التصدير</div>
+    <div class="eoname" id="eoName"></div>
+    <div class="eopct" id="eoPct">0%</div>
+    <div class="prog"><div id="eoBar"></div></div>
+    <div class="hint" id="eoMsg"></div>
+    <div class="xrow"><span>حجم الملف</span><b id="eoSize">—</b></div>
+    <div id="expRes"></div>
+    <div class="row"><button class="btn danger" id="eoCancel" type="button">إلغاء التصدير</button><button class="btn primary" id="eoClose" type="button" hidden>إغلاق</button></div>
+  </div></div>
+</div>
+
+<div id="devchk" class="ovl" hidden>
+  <div class="ovb mid"><div class="xcard dvc">
+    <div class="xh">فحص الجهاز</div>
+    <div id="dvMsg" class="gp">جارٍ فحص إمكانيات جهازك لتحديد أنسب الإعدادات...</div>
+    <div class="spin" id="dvSpin"></div>
+    <div id="dvRes" hidden></div>
+    <div class="row" id="dvBtns" hidden><button class="btn primary" id="dvApply" type="button">تطبيق الإعدادات الموصى بها</button><button class="btn" id="dvSkip" type="button">لاحقاً</button></div>
+  </div></div>
+</div>
+
+<video id="pv" playsinline preload="auto" class="hv"></video>
+<div id="toast" class="toast" hidden></div>
+
+<script src="lib/mp4-muxer.js"></script>
+<script src="lib/mp4box.all.min.js"></script>
+<script src="lib/firebase-app-compat.js"></script>
+<script src="lib/firebase-auth-compat.js"></script>
+<script src="lib/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="auth.js"></script>
+<script src="maint.js"></script>
+<script src="audiofx.js"></script>
+<script src="plrviz.js"></script>
+<script src="plrdev.js"></script>
+<script src="lyrai.js"></script>
+<script src="player.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
