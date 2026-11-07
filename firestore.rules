@@ -84,6 +84,11 @@ service cloud.firestore { match /databases/{db}/documents {
       && request.resource.data.t is number && request.resource.data.track is string;
     allow delete: if isAdmin() || (signed() && resource.data.uid == request.auth.uid);
   }
+  // القصائد المرفوعة: الكل يقرأ، والمالك وحده يضيف ويعدّل ويحذف
+  match /tracks/{id} {
+    allow read: if true;
+    allow write: if isAdmin();
+  }
   // وضع المجلس: الجميع يقرأ برمز المجلس، والمضيف وحده يحدّث أو ينهي
   match /majlis/{code} {
     allow read: if true;

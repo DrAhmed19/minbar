@@ -4,6 +4,7 @@
   const $ = (id) => document.getElementById(id);
   const LSK = 'minbar.plr', CATK = 'minbar.catalog', CATC = 'minbar.catalog.cache';
   const I = {
+    plus: '<path d="M12 5v14M5 12h14"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>', share: '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>', users: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 4.6a3 3 0 010 6M18 14c2 .6 3.5 2.6 3.5 5"/>', pulse: '<path d="M3 12h4l2-6 4 12 2-6h6"/>', flame: '<path d="M12 21c4 0 7-2.7 7-6.5 0-3.5-2.5-5.5-4-8-1 2-2 3-3.5 3.5C11 7 10 5 9.5 3 7 6 5 9 5 14.5 5 18.3 8 21 12 21z"/>', mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/>', plist: '<path d="M4 6h12M4 11h12M4 16h7M17 14v6M14 17h6"/>',
     play: '<path d="M7 4.5v15l13-7.5z" fill="currentColor" stroke-linejoin="round"/>', pause: '<path d="M7 4h3.5v16H7zM13.5 4H17v16h-3.5z" fill="currentColor"/>',
     next: '<path d="M5 5l10 7-10 7z" fill="currentColor"/><path d="M19 5v14"/>', prev: '<path d="M19 5L9 12l10 7z" fill="currentColor"/><path d="M5 5v14"/>',
@@ -28,7 +29,7 @@
 
   const root = document.createElement('div'); root.id = 'plr'; root.className = 'ovl plr'; root.hidden = true;
   root.innerHTML = `
-  <div class="ovh"><div class="brand"><img src="icons/brand-mark.png" alt=""><span>منبر</span></div><div class="plrsb"><button class="ib" id="plrRecB" aria-label="التعرّف على القصيدة">${ic('mic', 21)}</button><button class="ib" id="plrSearchB" aria-label="بحث">${ic('search', 22)}</button></div></div>
+  <div class="ovh"><div class="brand"><img src="icons/brand-mark.png" alt=""><span>منبر</span></div><div class="plrsb"><button class="ib" id="plrRecB" aria-label="التعرّف على القصيدة">${ic('mic', 21)}</button><button class="ib" id="plrAddB" aria-label="إضافة قصيدة" hidden>${ic('plus', 22)}</button><button class="ib" id="plrSearchB" aria-label="بحث">${ic('search', 22)}</button></div></div>
   <div class="plrsearch" id="plrSearch" hidden><input id="plrQ" placeholder="ابحث باسم القصيدة أو الرادود أو الشاعر" autocomplete="off"></div>
   <div class="plrchips" id="plrCats"></div>
   <div class="ovb plrbody" id="plrBody"></div>
@@ -153,9 +154,15 @@
     const url = localStorage.getItem(CATK) || 'catalog.json'; let j = null;
     try { const r = await fetch(url, { cache: 'no-cache' }); if (r.ok) { j = await r.json(); try { localStorage.setItem(CATC, JSON.stringify(j)); } catch (e) {} } } catch (e) {}
     if (!j) { try { j = JSON.parse(localStorage.getItem(CATC) || 'null'); } catch (e) {} }
-    catCovers = (j && j.covers) || []; tracks = ((j && j.tracks) || []).map((t, i) => Object.assign({ id: 't' + i, lyrics: [], cat: 'أخرى' }, t));
-    render(); setTimeout(() => { if (deepAt) deepGo(); else lastRestore(); }, 300);
+    catCovers = (j && j.covers) || []; BASE = ((j && j.tracks) || []).map((t, i) => Object.assign({ id: 't' + i, lyrics: [], cat: 'أخرى' }, t));
+    let fsc = []; try { fsc = JSON.parse(localStorage.getItem(FSK) || '[]'); } catch (e) {} tracks = BASE.concat(fsc); render(); fsLoad(); setTimeout(() => { if (deepAt) deepGo(); else lastRestore(); }, 300);
   }
+  /* القصائد المرفوعة: بياناتها في Firestore (tracks) وملفاتها في مخزن Cloudflare */
+  const FSK = 'minbar.tracks.fs', OWNER = 'ahmad1999199919999@gmail.com'; let BASE = [];
+  const isOwner = () => { try { const u = firebase.auth().currentUser; return !!u && u.email === OWNER && u.emailVerified; } catch (e) { return false; } };
+  function fsSet(arr) { const id = cur >= 0 && tracks[cur] ? tracks[cur].id : null; tracks = BASE.concat(arr); if (id) cur = tracks.findIndex((t) => t.id === id); render(); }
+  async function fsLoad() { const db = fdb(); if (!db) return; try { const s = await db.collection('tracks').get(); const arr = []; s.forEach((d) => { const x = d.data(); if (x && x.audio && !x.hidden) arr.push(Object.assign({ lyrics: [], cat: 'أخرى' }, x, { id: d.id, fs: 1 })); }); arr.sort((a, b) => (b.at || 0) - (a.at || 0));
+      const js = JSON.stringify(arr); if (js !== localStorage.getItem(FSK)) { try { localStorage.setItem(FSK, js); } catch (e) {} fsSet(arr); } } catch (e) {} }
   function filtered() {
     const k = q.trim().toLowerCase(); if (tab === 'pls') { const pl = pls().find((x) => x.id === plSel); return pl ? pl.ids.map(byId).filter(Boolean).filter((t) => !k || [t.title, t.reciter, t.poet].some((v) => (v || '').toLowerCase().includes(k))) : []; }
     return tracks.filter((t) => (tab !== 'fav' || st.fav.includes(t.id)) && (cat === 'الكل' || t.cat === cat) && (!k || [t.title, t.reciter, t.poet].some((v) => (v || '').toLowerCase().includes(k))));
@@ -903,6 +910,7 @@
     if (cur0) { act('تشغيل التالي', () => { qEnsure(cur0); Q.ids = Q.ids.filter((id) => id !== t.id); Q.ids.splice(Q.ids.indexOf(cur0.id) + 1, 0, t.id); qSave(); toast('ستُشغَّل بعد الحالية'); });
       act('إضافة لآخر القائمة', () => { qEnsure(cur0); Q.ids = Q.ids.filter((id) => id !== t.id); Q.ids.push(t.id); qSave(); toast('أُضيفت إلى قائمة التشغيل'); }); }
     act(st.fav.includes(t.id) ? 'إزالة من المفضلة' : 'إضافة للمفضلة', () => { tog(t.id); render(); });
+    if (t.fs && isOwner()) { act('تعديل بيانات القصيدة', () => upMenu(t)); act('حذف القصيدة', () => upDel(t)); }
     const cn = el('button', 'cn', 'إلغاء'); cn.onclick = () => w.remove(); bx.appendChild(cn); w.appendChild(bx); w.onclick = (e) => { if (e.target === w) w.remove(); }; root.appendChild(w);
   }
   g('plrQsv').onclick = () => plSave(); g('plrQsh').onclick = () => g('plrShuf').click(); g('plrQrp').onclick = () => g('plrRep').click();
@@ -1488,6 +1496,38 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     btn.addEventListener('pointerdown', down); ['pointerup', 'pointercancel', 'pointerleave'].forEach((n) => btn.addEventListener(n, up)); btn.addEventListener('contextmenu', (e) => e.preventDefault()); }
   holdSeek(g('plrNext'), 1); holdSeek(g('plrPrev'), -1);
   /* ---------- لوحة «أدوات القصيدة» ---------- */
+  /* ---------- رفع القصائد (للمالك) ---------- */
+  const CATS0 = ['لطميات', 'قصائد', 'مراثي', 'أناشيد', 'زيارات وأدعية'];
+  async function idTok() { const u = firebase.auth().currentUser; if (!u) throw new Error('سجّل الدخول أولاً'); return u.getIdToken(); }
+  function upPut(key, body, type, onp) { return idTok().then((tk) => new Promise((ok, no) => { const x = new XMLHttpRequest(); x.open('PUT', 'api/up/' + key); x.setRequestHeader('authorization', 'Bearer ' + tk); x.setRequestHeader('content-type', type || 'application/octet-stream');
+      x.upload.onprogress = (e) => { if (e.lengthComputable && onp) onp(e.loaded / e.total); }; x.onload = () => { let j = {}; try { j = JSON.parse(x.responseText); } catch (e) {} if (x.status === 200 && j.ok) ok(j); else no(new Error(j.error || ('فشل الرفع (' + x.status + ')'))); }; x.onerror = () => no(new Error('انقطع الاتصال أثناء الرفع')); x.send(body); })); }
+  async function upDelKey(key) { try { const tk = await idTok(); await fetch('api/up/' + key, { method: 'DELETE', headers: { authorization: 'Bearer ' + tk } }); } catch (e) {} }
+  const keyOf = (url) => ((url || '').match(/media\/u\/(.+)$/) || [])[1];
+  function coverJpg(file) { return new Promise((ok, no) => { const i = new Image(); i.onload = () => { const s = Math.min(i.naturalWidth, i.naturalHeight), c = document.createElement('canvas'); c.width = c.height = Math.min(900, s); c.getContext('2d').drawImage(i, (i.naturalWidth - s) / 2, (i.naturalHeight - s) / 2, s, s, 0, 0, c.width, c.height); URL.revokeObjectURL(i.src); c.toBlob((b) => b ? ok(b) : no(new Error('تعذّر تجهيز الغلاف')), 'image/jpeg', 0.86); }; i.onerror = () => no(new Error('صورة الغلاف غير صالحة')); i.src = URL.createObjectURL(file); }); }
+  const durOf = (file) => new Promise((ok) => { const a = new Audio(); a.preload = 'metadata'; a.onloadedmetadata = () => { ok(isFinite(a.duration) ? Math.round(a.duration) : 0); URL.revokeObjectURL(a.src); }; a.onerror = () => ok(0); a.src = URL.createObjectURL(file); });
+  function upMenu(t) { if (!isOwner()) return toast('الإضافة متاحة للمالك فقط'); const ed = !!t;
+    modal(ed ? 'تعديل القصيدة' : 'إضافة قصيدة', (bx, close) => {
+      const inp = (ph, v) => { const i = el('input', 'mdin'); i.placeholder = ph; i.value = v || ''; bx.appendChild(i); return i; };
+      const ti = inp('اسم القصيدة *', t && t.title), re = inp('الرادود *', t && t.reciter), po = inp('الشاعر', t && t.poet);
+      const cats = [...new Set(CATS0.concat(tracks.map((x) => x.cat).filter(Boolean)))]; const ca = el('select', 'mdin'); cats.forEach((c) => { const o = el('option', '', c); o.value = c; ca.appendChild(o); }); ca.value = (t && t.cat) || cats[0]; bx.appendChild(ca);
+      const fl = (lbl, acc) => { const w = el('label', 'upf'); const i = el('input'); i.type = 'file'; i.accept = acc; const s = el('span', '', lbl); w.append(i, s); i.onchange = () => { s.textContent = i.files[0] ? i.files[0].name + ' · ' + (i.files[0].size / 1048576).toFixed(1) + ' م.ب' : lbl; w.classList.toggle('on', !!i.files[0]); }; bx.appendChild(w); return i; };
+      const au = fl(ed ? 'استبدال ملف الصوت (اختياري)' : 'ملف الصوت * (حتى 24 م.ب)', 'audio/*'), cv = fl(ed ? 'استبدال الغلاف (اختياري)' : 'صورة الغلاف (اختياري)', 'image/*');
+      const pr = el('div', 'upp'); pr.innerHTML = '<i></i><span></span>'; pr.hidden = true; bx.appendChild(pr);
+      const setP = (f, m) => { pr.hidden = false; pr.firstChild.style.width = Math.round(f * 100) + '%'; pr.lastChild.textContent = m; };
+      const go = el('button', 'pri', ed ? 'حفظ التعديلات' : 'رفع القصيدة'); go.type = 'button'; bx.appendChild(go); const cn = el('button', 'cn', 'إلغاء'); cn.type = 'button'; cn.onclick = close; bx.appendChild(cn);
+      go.onclick = async () => { const T = ti.value.trim(), Rr = re.value.trim(); if (!T || !Rr) return toast('اكتب اسم القصيدة والرادود'); const af = au.files[0], cf = cv.files[0];
+        if (!ed && !af) return toast('اختر ملف الصوت'); if (af && af.size > 24 * 1048576) return toast('ملف الصوت أكبر من 24 ميغابايت — صغّر جودته أولاً');
+        const db = fdb(); if (!db) return toast('لا يوجد اتصال'); go.disabled = true; cn.disabled = true;
+        const id = ed ? t.id : 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), o = { title: T, reciter: Rr, poet: po.value.trim(), cat: ca.value, upd: Date.now() }; const old = [];
+        try { if (af) { const ext = ((af.name.split('.').pop() || 'mp3').toLowerCase().match(/^(mp3|m4a|aac|ogg|opus|wav)$/) || ['mp3'])[0], v = Date.now().toString(36); setP(0, 'رفع الصوت…');
+            const r = await upPut('a/' + id + v + '.' + ext, af, af.type || 'audio/mpeg', (f) => setP(f * 0.85, 'رفع الصوت… ' + Math.round(f * 100) + '%')); if (ed && keyOf(t.audio)) old.push(keyOf(t.audio)); o.audio = r.url.replace(/^\//, ''); o.size = r.size; o.dur = await durOf(af); }
+          if (cf) { setP(0.88, 'رفع الغلاف…'); const b = await coverJpg(cf); const r = await upPut('c/' + id + Date.now().toString(36) + '.jpg', b, 'image/jpeg'); if (ed && keyOf(t.cover)) old.push(keyOf(t.cover)); o.cover = r.url.replace(/^\//, ''); }
+          setP(0.95, 'حفظ البيانات…'); if (!ed) { o.at = Date.now(); o.lyrics = []; } await db.collection('tracks').doc(id).set(o, { merge: true }); old.forEach(upDelKey);
+          setP(1, 'تم'); toast(ed ? 'حُفظت التعديلات' : 'أُضيفت القصيدة'); close(); fsLoad(); } catch (e) { go.disabled = false; cn.disabled = false; setP(0, e.message || 'فشل الرفع'); toast(e.message || 'فشل الرفع'); } };
+    }); }
+  async function upDel(t) { if (!confirm('حذف «' + t.title + '» نهائياً؟')) return; const db = fdb(); try { await db.collection('tracks').doc(t.id).delete(); [keyOf(t.audio), keyOf(t.cover)].filter(Boolean).forEach(upDelKey); toast('حُذفت القصيدة'); fsLoad(); } catch (e) { toast('تعذّر الحذف: ' + (e.code || e.message)); } }
+  g('plrAddB').onclick = () => upMenu(null);
+  try { firebase.auth().onAuthStateChanged(() => { g('plrAddB').hidden = !isOwner(); fsLoad(); }); } catch (e) {}
   function toolsUi() { const b = g('plrTools'); if (!b) return; b.textContent = ''; const seen = jget('minbar.seen.tools', {});
     [['about', 'info', 'عن القصيدة', 'الرادود والتفاصيل', about], ['share', 'share', 'مشاركة اللحظة', 'من الدقيقة الحالية', shareMoment], ['peak', 'flame', 'الذروة', rxList.length ? 'أكثر لحظة إعجاباً' : 'لا إعجابات', () => { const p = peakT(); if (p == null) return toast('لا توجد تفاعلات بعد على هذه القصيدة'); A.currentTime = p; if (A.paused) fadePlay(); tp(false); }],
       ['majlis', 'users', 'المجلس', MJ.on ? 'مفعّل · ' + MJ.code : 'استماع مشترك', mjMenu], ['latm', 'pulse', 'وضع اللطم', st.latm ? 'مفعّل' : 'اهتزاز مع الإيقاع', () => { st.latm = !st.latm; save(); toolsUi(); toast(st.latm ? 'وضع اللطم: يهتز الهاتف مع إيقاع اللطم' : 'أُوقف وضع اللطم'); }]].forEach(([k, icn, n, s, f]) => {
