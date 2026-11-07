@@ -3,7 +3,7 @@ name: نشر قواعد Firebase
 on:
   push:
     branches: [main]
-    paths: [firestore.rules, firebase.json, .github/workflows/firebase-rules.yml]
+    paths: [firestore.rules, .github/**]
   workflow_dispatch:
 jobs:
   deploy:
@@ -17,4 +17,6 @@ jobs:
       - name: نشر القواعد
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
-        run: npx --yes firebase-tools@latest deploy --only firestore:rules --project minbar-8f037 --non-interactive
+        run: |
+          npm i --no-save google-auth-library@9 >/dev/null 2>&1
+          node .github/scripts/rules.mjs
