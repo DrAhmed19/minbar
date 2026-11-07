@@ -1,4 +1,4 @@
-const V = 'minbar-v3.53';
+const V = 'minbar-v3.54';
 const FILES = ['./', 'index.html', 'style.css', 'app.js', 'audiofx.js','player.js','cmfilter.js','plrviz.js','plrdev.js','lyrai.js','catalog.json', 'manifest.webmanifest', 'lib/mp4-muxer.js', 'lib/mp4box.all.min.js', 'lib/firebase-app-compat.js', 'lib/firebase-auth-compat.js', 'lib/firebase-firestore-compat.js', 'firebase-config.js', 'auth.js',  'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/brand-mark.png', 'icons/favicon.png', 'icons/apple-touch-icon.png',
   'fonts/cairo.woff2', 'fonts/cairo-latin.woff2', 'fonts/tajawal.woff2', 'fonts/amiri.woff2', 'fonts/aref-ruqaa.woff2', 'fonts/reem-kufi.woff2', 'fonts/el-messiri.woff2', 'fonts/lalezar.woff2', 'fonts/katibeh.woff2', 'fonts/noto-naskh-arabic.woff2', 'fonts/rakkas.woff2', 'fonts/aref-ruqaa-ink.woff2', 'fonts/vibes.woff2', 'fonts/mirza.woff2', 'fonts/scheherazade-new.woff2', 'fonts/noto-kufi-arabic.woff2', 'fonts/reem-kufi-ink.woff2', 'fonts/blaka-ink.woff2', 'fonts/lateef.woff2'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(V).then((c) => c.addAll(FILES)).then(() => self.skipWaiting())); });
@@ -14,8 +14,13 @@ self.addEventListener('fetch', (e) => {
     return;
   }
   if (e.request.method !== 'GET' || new URL(e.request.url).origin !== location.origin || e.request.headers.has('range') || /\/media\//.test(e.request.url)) return;
-  /* كاش أولاً مع تحديث بالخلفية — فتح فوري حتى مع إنترنت ضعيف؛ الكتالوج أولاً من الشبكة */
-  const u = new URL(e.request.url), net = /catalog\.json$/.test(u.pathname);
-  const fresh = fetch(e.request).then((r) => { if (r && r.ok) { const cp = r.clone(); caches.open(V).then((c) => c.put(e.request, cp)); } return r; });
-  e.respondWith(caches.match(e.request, { ignoreSearch: true }).then((hit) => net ? fresh.catch(() => hit) : (hit ? (fresh.catch(() => {}), hit) : fresh)));
+  /* كاش أولاً مع تحديث بالخلفية — فتح فوري؛ الكتالوج أولاً من الشبكة. لا نخزّن ولا نقدّم استجابات محوّلة (redirect) لأنها تُفشل التنقل */
+  const net = /catalog\.json$/.test(new URL(e.request.url).pathname);
+  const clean = (r) => (r && r.redirected) ? r.blob().then((b) => new Response(b, { status: r.status, statusText: r.statusText, headers: r.headers })) : r;
+  const fresh = () => fetch(e.request).then((r) => { if (r && r.ok && !r.redirected && r.type === 'basic') { const cp = r.clone(); caches.open(V).then((c) => c.put(e.request, cp)); } return r; });
+  e.respondWith(caches.match(e.request, { ignoreSearch: true }).then((hit) => {
+    if (net) return fresh().catch(() => hit || fetch(e.request));
+    if (hit) { fresh().catch(() => {}); return clean(hit); }
+    return fresh();
+  }).catch(() => fetch(e.request)));
 });
