@@ -1,5 +1,5 @@
 /* تقديم ملفات القصائد من KV مع دعم التقديم الجزئي (Range) وتخزين مؤقت على حافة الشبكة لتقليل القراءات */
-const TYPES = { mp3: 'audio/mpeg', m4a: 'audio/mp4', aac: 'audio/aac', ogg: 'audio/ogg', opus: 'audio/ogg', wav: 'audio/wav', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
+const TYPES = { mp3: 'audio/mpeg', m4a: 'audio/mp4', aac: 'audio/aac', ogg: 'audio/ogg', opus: 'audio/ogg', wav: 'audio/wav', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', bin: 'application/octet-stream' };
 export async function onRequest({ request, env, params, waitUntil }) {
   if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('', { status: 405 });
   const key = [].concat(params.path || []).join('/'); const ext = (key.split('.').pop() || '').toLowerCase();

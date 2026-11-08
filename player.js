@@ -223,7 +223,7 @@
     try { const r = await fetch(url, { method: 'HEAD', mode: 'cors' }); return (corsC[u.origin] = r.ok); } catch (e) { return (corsC[u.origin] = false); }
   }
   async function startAudio(t) {
-    const tok = ++vTok, ok = await corsOk(t.audio); if (tok !== vTok) return;
+    const tok = ++vTok; anLoad(t); const ok = await corsOk(t.audio); if (tok !== vTok) return;
     const FX = st.fx === true; /* وضع الأداء (الافتراضي): بدون WebAudio = أخف، أبرد، ويستمر بالخلفية */
     if (ok && FX && !ac) { A.crossOrigin = 'anonymous'; }
     A.__seekFail = false; A.src = t.audio; mediaBlob(t); A.playbackRate = st.speed; A.volume = st.uvol == null ? 1 : st.uvol; if (AU.fade && ac) { AU.fade.gain.cancelScheduledValues(0); AU.fade.gain.value = 1; }
@@ -262,34 +262,81 @@
   let fqd = null, tdb = null;
   /* تقدير مكوّنات الصوت: المنشد / الإيقاع (اللطم والطبل) / الجمهور / الآلات — بتطبيع متكيّف */
   let stK = false; const agF = [], agP = [], STM = { voc: 0, drum: 0, crowd: 0, inst: 0, on: 0 }, SAG = {}; let pfq = null;
+  function stemsApply(dt, vb, cb, hb, lb, on) {
+    const ag = (k, db, up, down) => { const q = SAG[k] || (SAG[k] = { f: db - 10, p: db + 4 }); q.f = db < q.f ? q.f + (db - q.f) * Math.min(1, dt * 5) : q.f + dt * (up || 1); q.p = db > q.p ? q.p + (db - q.p) * Math.min(1, dt * 15) : q.p - dt * (down || 2); return Math.max(0, Math.min(1, (db - q.f) / Math.max(14, q.p - q.f))); };
+    const harm = Math.max(0, Math.min(1, (vb.peak - 6) / 22)), noisy = Math.max(0, Math.min(1, (cb.flat - 0.18) / 0.4));
+    const sm = (k, x, at, rl) => { STM[k] += (x - STM[k]) * Math.min(1, dt * (x > STM[k] ? at : rl)); };
+    sm('voc', ag('voc', vb.db) * (0.35 + 0.65 * harm), 14, 5); sm('crowd', ag('crowd', cb.db) * noisy, 10, 4); sm('inst', ag('inst', hb.db) * 0.7 + ag('low', lb.db) * 0.3 * (1 - on), 10, 4);
+    STM.drum = Math.max(STM.drum * Math.pow(0.08, dt), on); STM.on = on > 0.25 ? on : 0;
+  }
   function stemsCalc(dt) {
     const ny = ac.sampleRate / 2, n = fqd.length, bi = (f) => Math.max(1, Math.min(n - 1, Math.round(f / ny * n)));
     const band = (f0, f1) => { const a = bi(f0), b = bi(f1); let s = 0, lg = 0, mx = 0, c = 0; for (let k = a; k < b; k++) { const pw = Math.pow(10, fqd[k] / 10); s += pw; lg += Math.log(pw + 1e-14); if (pw > mx) mx = pw; c++; } const m = s / c; return { db: 10 * Math.log10(m + 1e-14), flat: Math.exp(lg / c) / (m + 1e-14), peak: mx / (m + 1e-14) }; };
     const flux = (f0, f1) => { if (!pfq) return 0; const a = bi(f0), b = bi(f1); let s = 0; for (let k = a; k < b; k++) { const d = fqd[k] - pfq[k]; if (d > 0) s += d; } return s / (b - a); };
-    const ag = (k, db, up, down) => { const q = SAG[k] || (SAG[k] = { f: db - 10, p: db + 4 }); q.f = db < q.f ? q.f + (db - q.f) * Math.min(1, dt * 5) : q.f + dt * (up || 1); q.p = db > q.p ? q.p + (db - q.p) * Math.min(1, dt * 15) : q.p - dt * (down || 2); return Math.max(0, Math.min(1, (db - q.f) / Math.max(14, q.p - q.f))); };
     const vb = band(250, 3500), cb = band(500, 6000), hb = band(5000, 14000), lb = band(40, 160);
-    const harm = Math.max(0, Math.min(1, (vb.peak - 6) / 22)), noisy = Math.max(0, Math.min(1, (cb.flat - 0.18) / 0.4));
     const on = Math.max(0, Math.min(1, (flux(40, 180) * 0.7 + flux(1500, 6000) * 0.5 - 2.2) / 6));
-    const sm = (k, x, at, rl) => { STM[k] += (x - STM[k]) * Math.min(1, dt * (x > STM[k] ? at : rl)); };
-    sm('voc', ag('voc', vb.db) * (0.35 + 0.65 * harm), 14, 5); sm('crowd', ag('crowd', cb.db) * noisy, 10, 4); sm('inst', ag('inst', hb.db) * 0.7 + ag('low', lb.db) * 0.3 * (1 - on), 10, 4);
-    STM.drum = Math.max(STM.drum * Math.pow(0.08, dt), on); STM.on = on > 0.25 ? on : 0;
+    stemsApply(dt, vb, cb, hb, lb, on);
     if (!pfq || pfq.length !== n) pfq = new Float32Array(n); pfq.set(fqd);
   }
+  /* ===== تحليل صوتي مسبق: يُحسب مرة واحدة (بالخلفية عند المالك) ويُقرأ وقت التشغيل بلا أي معالجة صوت — يحرّك الرسم واللطم بدل التحليل الحي ===== */
+  const ANV = 'v1', ANKEY = (t) => 'n/' + t.id + '-' + ANV + '.bin', ANOK = (t) => /^[A-Za-z0-9_-]{3,64}$/.test((t && t.id) || '');
+  let PRE = null; const PF = { dd: new Float32Array(22), vb: { db: 0, peak: 1 }, cb: { db: 0, flat: 0 }, hb: { db: 0 }, lb: { db: 0 }, on: 0 }; let synW = null, synT = 0;
+  async function anLoad(t) { PRE = null; if (!t || t.an !== 1 || !ANOK(t)) return; try { const r = await fetch('media/u/' + ANKEY(t)); if (!r.ok) return; const b = new Uint8Array(await r.arrayBuffer()); if (b.length < 12 || b[0] !== 77 || b[1] !== 66 || b[2] !== 65) return; const nf = new DataView(b.buffer).getUint32(8, true); if (tracks[cur] && tracks[cur].id === t.id) PRE = { id: t.id, fps: b[4], nf, W: b[5] + b[6], d: b, o: 12 }; } catch (e) {} }
+  function preAt(t) { const P = PRE; if (!P || !P.nf || !tracks[cur] || tracks[cur].id !== P.id) return false; let x = Math.max(0, t) * P.fps, i = Math.floor(x); if (i >= P.nf - 1) { i = P.nf - 1; x = i; } const f = x - i, i1 = Math.min(P.nf - 1, i + 1), d = P.d, a = P.o + i * P.W, b = P.o + i1 * P.W, q = (k) => d[a + k] + (d[b + k] - d[a + k]) * f, dq = (k) => q(k) / 1.5 - 140;
+    for (let k = 0; k < 22; k++) PF.dd[k] = dq(k); PF.vb.db = dq(22); PF.cb.db = dq(23); PF.hb.db = dq(24); PF.lb.db = dq(25); PF.vb.peak = Math.pow(2, q(26) / 30); PF.cb.flat = q(27) / 255; PF.on = Math.max(0, Math.min(1, (q(28) / 12 * 0.7 + q(29) / 12 * 0.5 - 2.2) / 6)); return true; }
+  function synWave(v, t) { if (!synW) synW = new Float32Array(2048); let a = 0; for (let i = 0; i < v.length; i++) a += v[i]; a = a / v.length * 0.5; for (let j = 0; j < 2048; j++) synW[j] = a * (0.6 * Math.sin(j * 0.045 + t * 40) + 0.3 * Math.sin(j * 0.19 + t * 27) + 0.2 * (Math.random() - 0.5)); return synW; }
+  const AN = (() => { const N = 2048, rev = new Uint16Array(N), cs = new Float64Array(N / 2), sn = new Float64Array(N / 2), w = new Float64Array(N), bits = 11; for (let i = 0; i < N; i++) { let r = 0; for (let b = 0; b < bits; b++) if (i & (1 << b)) r |= 1 << (bits - 1 - b); rev[i] = r; w[i] = 0.42 - 0.5 * Math.cos(2 * Math.PI * i / N) + 0.08 * Math.cos(4 * Math.PI * i / N); } for (let i = 0; i < N / 2; i++) { cs[i] = Math.cos(2 * Math.PI * i / N); sn[i] = -Math.sin(2 * Math.PI * i / N); } return { N, rev, cs, sn, w }; })();
+  function anFFT(re, im) { const { N, rev, cs, sn } = AN; for (let i = 0; i < N; i++) { const j = rev[i]; if (j > i) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; } }
+    for (let len = 2; len <= N; len <<= 1) { const h = len >> 1, st = N / len; for (let i = 0; i < N; i += len) for (let k = 0, ti = 0; k < h; k++, ti += st) { const wr = cs[ti], wi = sn[ti], a = i + k, b = a + h, xr = re[b] * wr - im[b] * wi, xi = re[b] * wi + im[b] * wr; re[b] = re[a] - xr; im[b] = im[a] - xi; re[a] += xr; im[a] += xi; } } }
+  async function anCompute(x, sr, onp) {
+    const N = AN.N, B = N / 2, hop = sr / 30, nf = Math.floor(x.length / hop), W = 30, out = new Uint8Array(12 + nf * W), ny = sr / 2, re = new Float64Array(N), im = new Float64Array(N), sm = new Float64Array(B), fq = new Float32Array(B), pf = new Float32Array(B);
+    out.set([77, 66, 65, 1, 30, 22, 8, 0]); new DataView(out.buffer).setUint32(8, nf, true);
+    const bi = (f) => Math.max(1, Math.min(B - 1, Math.round(f / ny * B))), bands = [];
+    for (let i = 0; i < 22; i++) { const f0 = 40 * Math.pow(400, i / 22), f1 = 40 * Math.pow(400, (i + 1) / 22), a = Math.max(1, Math.floor(f0 / ny * B)), b = Math.max(a + 1, Math.ceil(f1 / ny * B)); bands.push([a, b, 3.2 * Math.log2(Math.max(1, Math.sqrt(f0 * f1) / 150))]); }
+    const bandS = (f0, f1) => { const a = bi(f0), b = bi(f1); let s = 0, lg = 0, mx = 0, c = 0; for (let k = a; k < b; k++) { const pw = Math.pow(10, fq[k] / 10); s += pw; lg += Math.log(pw + 1e-14); if (pw > mx) mx = pw; c++; } const m = s / c; return { db: 10 * Math.log10(m + 1e-14), flat: Math.exp(lg / c) / (m + 1e-14), peak: mx / (m + 1e-14) }; };
+    const flux = (f0, f1) => { const a = bi(f0), b = bi(f1); let s = 0; for (let k = a; k < b; k++) { const d = fq[k] - pf[k]; if (d > 0) s += d; } return s / (b - a); };
+    const Q = (v) => Math.max(0, Math.min(255, Math.round((v + 140) * 1.5))), U = (v) => Math.max(0, Math.min(255, Math.round(v)));
+    for (let j = 0; j < nf; j++) {
+      const end = Math.round(j * hop); for (let i = 0; i < N; i++) { const s = end - N + i; re[i] = (s >= 0 && s < x.length ? x[s] : 0) * AN.w[i]; im[i] = 0; } anFFT(re, im);
+      for (let k = 0; k < B; k++) { const m = Math.sqrt(re[k] * re[k] + im[k] * im[k]) / N; sm[k] = 0.15 * sm[k] + 0.85 * m; fq[k] = Math.max(-140, 20 * Math.log10(sm[k] + 1e-12)); }
+      const o = 12 + j * W; for (let i = 0; i < 22; i++) { const bd = bands[i]; let s = 0; for (let k = bd[0]; k < bd[1] && k < B; k++) s += Math.pow(10, fq[k] / 10); out[o + i] = Q(10 * Math.log10(s / (bd[1] - bd[0]) + 1e-12) + bd[2]); }
+      const vb = bandS(250, 3500), cb = bandS(500, 6000), hb = bandS(5000, 14000), lb = bandS(40, 160);
+      out[o + 22] = Q(vb.db); out[o + 23] = Q(cb.db); out[o + 24] = Q(hb.db); out[o + 25] = Q(lb.db); out[o + 26] = U(Math.log2(Math.max(1, vb.peak)) * 30); out[o + 27] = U(cb.flat * 255); out[o + 28] = U(flux(40, 180) * 12); out[o + 29] = U(flux(1500, 6000) * 12);
+      pf.set(fq); if (j % 120 === 119) { if (onp) onp(j / nf); await new Promise((z) => setTimeout(z, 0)); }
+    }
+    return out;
+  }
+  let anBusy = false; const anFail = new Set();
+  const anPending = () => tracks.filter((t) => t.fs && t.an !== 1 && ANOK(t) && t.audio && !anFail.has(t.id));
+  async function anRun(manual) {
+    if (anBusy || !isOwner() || !fdb() || document.hidden || (!manual && (!A.paused || aqBusy || aiBusy))) return; let todo = anPending(); if (!todo.length) { if (manual) toast('كل القصائد محلَّلة'); return; }
+    anBusy = true; if (manual) toast('بدأ تحليل ' + todo.length + ' قصيدة بالخلفية'); let n = 0;
+    for (const t of todo) { if (document.hidden || (!manual && !A.paused)) break;
+      try { const ab = await (await fetch(t.audio)).arrayBuffer(), buf = await new OfflineAudioContext(1, 1, 32000).decodeAudioData(ab); if (buf.duration > 1500) throw 0; let x = buf.getChannelData(0); if (buf.numberOfChannels > 1) { const y = buf.getChannelData(1), m = new Float32Array(x.length); for (let i = 0; i < m.length; i++) m[i] = (x[i] + y[i]) / 2; x = m; }
+        const out = await anCompute(x, 32000, (v) => { const c = g('plrAq'); if (c && !c.hidden) c.querySelector('small').textContent = 'تحليل ' + Math.round(v * 100) + '% · ' + t.title; });
+        await upPut(ANKEY(t), out, 'application/octet-stream'); await fdb().collection('tracks').doc(t.id).set({ an: 1 }, { merge: true }); t.an = 1; n++; }
+      catch (e) { anFail.add(t.id); console.warn('an', t.id, e); }
+      await new Promise((z) => setTimeout(z, 800)); }
+    anBusy = false; if (n && manual) toast('اكتمل تحليل ' + n + ' قصيدة');
+  }
+  setInterval(() => { try { anRun(false); } catch (e) {} }, 60000); document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(() => anRun(false), 6000); });
+  function bandUpd(i, dd, dt, k60, v) { if (agF[i] == null) { agF[i] = dd - 12; agP[i] = dd + 6; } agF[i] = dd < agF[i] ? agF[i] + (dd - agF[i]) * Math.min(1, dt * 6) : agF[i] + dt * 1.2; agP[i] = dd > agP[i] ? agP[i] + (dd - agP[i]) * Math.min(1, dt * 20) : agP[i] - dt * 2.2;
+        const span = Math.max(20, agP[i] - agF[i]), xa = Math.max(0, Math.min(1, (dd - agF[i]) / span)), xf = Math.max(0, Math.min(1, (dd + 78) / 54)); const x = Math.pow(xa * 0.7 + xf * 0.3, 1.6) * (dd < -82 ? 0 : 1);
+        v[i] = x > v[i] ? v[i] + (x - v[i]) * Math.min(1, 0.85 * k60 + 0.15) : v[i] + (x - v[i]) * 0.26 * k60; }
   function feat(dt) {
-    const N = 22, v = live ? live.vals : new Float32Array(N), k60 = Math.min(1, dt * 60); let wave = live && live.wave;
+    const N = 22, v = live ? live.vals : new Float32Array(N), k60 = Math.min(1, dt * 60); let wave = live && live.wave, pf = false;
     if (useLive && an && !A.paused) {
       if (!fqd) { fqd = new Float32Array(an.frequencyBinCount); tdb = new Float32Array(an.fftSize); } an.getFloatFrequencyData(fqd); an.getFloatTimeDomainData(tdb); wave = tdb;
       const ny = ac.sampleRate / 2, bins = fqd.length;
       for (let i = 0; i < N; i++) {
         const f0 = 40 * Math.pow(16000 / 40, i / N), f1 = 40 * Math.pow(16000 / 40, (i + 1) / N), a = Math.max(1, Math.floor(f0 / ny * bins)), b = Math.max(a + 1, Math.ceil(f1 / ny * bins));
         let s = 0; for (let k = a; k < b && k < bins; k++) s += Math.pow(10, fqd[k] / 10); const db = 10 * Math.log10(s / (b - a) + 1e-12), fc = Math.sqrt(f0 * f1), tilt = 3.2 * Math.log2(Math.max(1, fc / 150));
-        const dd = db + tilt; if (agF[i] == null) { agF[i] = dd - 12; agP[i] = dd + 6; } agF[i] = dd < agF[i] ? agF[i] + (dd - agF[i]) * Math.min(1, dt * 6) : agF[i] + dt * 1.2; agP[i] = dd > agP[i] ? agP[i] + (dd - agP[i]) * Math.min(1, dt * 20) : agP[i] - dt * 2.2;
-        const span = Math.max(20, agP[i] - agF[i]), xa = Math.max(0, Math.min(1, (dd - agF[i]) / span)), xf = Math.max(0, Math.min(1, (dd + 78) / 54)); const x = Math.pow(xa * 0.7 + xf * 0.3, 1.6) * (dd < -82 ? 0 : 1);
-        v[i] = x > v[i] ? v[i] + (x - v[i]) * Math.min(1, 0.85 * k60 + 0.15) : v[i] + (x - v[i]) * 0.26 * k60;
+        bandUpd(i, db + tilt, dt, k60, v);
       }
-    } else if (!A.paused) { const t = A.currentTime; for (let i = 0; i < N; i++) v[i] = 0.18 + 0.4 * Math.abs(Math.sin(t * 3.1 + i * 0.6)) * (1 - i / N * 0.5); }
+    } else if (!A.paused && preAt(A.currentTime)) { pf = true; for (let i = 0; i < N; i++) bandUpd(i, PF.dd[i], dt, k60, v); if ((synT = (synT + 1) % 2) === 0 || !wave) wave = synWave(v, A.currentTime); }
+    else if (!A.paused) { const t = A.currentTime; for (let i = 0; i < N; i++) v[i] = 0.18 + 0.4 * Math.abs(Math.sin(t * 3.1 + i * 0.6)) * (1 - i / N * 0.5); }
     else for (let i = 0; i < N; i++) v[i] *= Math.pow(0.9, k60);
-    if (useLive && an && !A.paused && fqd && (!LITE || (stK = !stK))) stemsCalc(dt); else { ['voc', 'drum', 'crowd', 'inst'].forEach((k) => { STM[k] *= Math.pow(0.9, k60); }); }
+    if (useLive && an && !A.paused && fqd && (!LITE || (stK = !stK))) stemsCalc(dt); else if (pf) stemsApply(dt, PF.vb, PF.cb, PF.hb, PF.lb, PF.on); else { ['voc', 'drum', 'crowd', 'inst'].forEach((k) => { STM[k] *= Math.pow(0.9, k60); }); }
     const avg = (a, b) => { let s2 = 0; for (let i = a; i < b; i++) s2 += v[i]; return s2 / (b - a); };
     const bass = avg(0, 4), mid = avg(4, 13), hi = avg(13, N), vol = avg(0, N), fl = Math.max(0, bass - pBass); pBass = bass;
     beat = Math.max(beat * Math.pow(0.86, k60), fl > 0.04 ? Math.min(1, fl * 7) : 0, STM.on); cum += dt * (A.paused ? 0 : 0.6 + vol * 1.5);
@@ -1926,7 +1973,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && hsOn) { /* يبقى الوضع، فقط خرج من ملء الشاشة */ } });
   function toolsUi() { const b = g('plrTools'); if (!b) return; b.textContent = ''; const seen = jget('minbar.seen.tools', {});
     [['about', 'info', 'عن القصيدة', 'الرادود والتفاصيل', about], ['share', 'share', 'مشاركة اللحظة', 'من الدقيقة الحالية', shareMoment], ['peak', 'flame', 'الذروة', rxList.length ? 'أكثر لحظة إعجاباً' : 'لا إعجابات', () => { const p = peakT(); if (p == null) return toast('لا توجد تفاعلات بعد على هذه القصيدة'); A.currentTime = p; if (A.paused) fadePlay(); tp(false); }],
-      ['majlis', 'users', 'المجلس', MJ.on ? 'مفعّل · ' + MJ.code : 'استماع مشترك', mjMenu], ['husn', 'text', 'وضع الحسينية', 'كلمات كبيرة للشاشة', () => { tp(false); hsOpen(); }], ['perf', 'eq', 'وضع الأداء', st.fx ? 'معطّل (مؤثرات وتحليل حي)' : 'مفعّل: أخف وأثبت بالخلفية', () => { st.fx = !st.fx; save(); toast(st.fx ? 'سيُعاد تشغيل التطبيق لتفعيل المؤثرات' : 'سيُعاد تشغيل التطبيق لوضع الأداء'); setTimeout(() => location.reload(), 900); }], ['latm', 'pulse', 'وضع اللطم', st.latm ? 'مفعّل' : 'اهتزاز مع الإيقاع', () => { st.latm = !st.latm; save(); toolsUi(); toast(st.latm ? 'وضع اللطم: يهتز الهاتف مع إيقاع اللطم' : 'أُوقف وضع اللطم'); }]].concat(isOwner() ? [['stats', 'eq', 'الإحصائيات', 'الاستماعات والإعجابات', statsPanel]] : []).forEach(([k, icn, n, s, f]) => {
+      ['majlis', 'users', 'المجلس', MJ.on ? 'مفعّل · ' + MJ.code : 'استماع مشترك', mjMenu], ['husn', 'text', 'وضع الحسينية', 'كلمات كبيرة للشاشة', () => { tp(false); hsOpen(); }], ...(isOwner() ? [['anl', 'pulse', 'تحليل الصوت', anPending().length ? anPending().length + ' قصيدة بانتظار التحليل' : 'كل القصائد محلَّلة', () => anRun(true)]] : []), ['perf', 'eq', 'وضع الأداء', st.fx ? 'معطّل (مؤثرات وتحليل حي)' : 'مفعّل: أخف وأثبت بالخلفية', () => { st.fx = !st.fx; save(); toast(st.fx ? 'سيُعاد تشغيل التطبيق لتفعيل المؤثرات' : 'سيُعاد تشغيل التطبيق لوضع الأداء'); setTimeout(() => location.reload(), 900); }], ['latm', 'pulse', 'وضع اللطم', st.latm ? 'مفعّل' : 'اهتزاز مع الإيقاع', () => { st.latm = !st.latm; save(); toolsUi(); toast(st.latm ? 'وضع اللطم: يهتز الهاتف مع إيقاع اللطم' : 'أُوقف وضع اللطم'); }]].concat(isOwner() ? [['stats', 'eq', 'الإحصائيات', 'الاستماعات والإعجابات', statsPanel]] : []).forEach(([k, icn, n, s, f]) => {
       const t = el('button', 'ptl' + ((k === 'latm' && st.latm) || (k === 'majlis' && MJ.on) ? ' on' : '')); t.type = 'button'; t.innerHTML = '<i class="pci">' + ic(icn, 18) + '</i><span></span><small></small>'; t.children[1].textContent = n; t.children[2].textContent = s; if (!seen[k]) t.appendChild(el('i', 'nb', 'جديد')); t.onclick = () => { const sn = jget('minbar.seen.tools', {}); sn[k] = 1; jset('minbar.seen.tools', sn); f(); toolsUi(); }; b.appendChild(t); }); }
 
   g('plrRecB').onclick = recognize; g('plrMj').onclick = () => mjMenu(); g('plrTitle').onclick = about; g('plrTitle').style.cursor = 'pointer';

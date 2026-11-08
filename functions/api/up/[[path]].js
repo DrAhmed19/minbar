@@ -1,6 +1,6 @@
 /* رفع وحذف ملفات القصائد (للمالك فقط) — PUT /api/up/a/<id>.mp3 ، DELETE /api/up/a/<id>.mp3 */
 import { ownerFrom, json } from '../../../srv/auth.js';
-const KEY = /^(a|c|u)\/[A-Za-z0-9_-]{3,64}\.(mp3|m4a|aac|ogg|opus|wav|jpg|jpeg|png|webp)$/;
+const KEY = /^(a|c|u|n)\/[A-Za-z0-9_-]{3,64}\.(mp3|m4a|aac|ogg|opus|wav|jpg|jpeg|png|webp|bin)$/;
 export async function onRequest({ request, env, params }) {
   if (!env.MEDIA) return json({ error: 'لم يُربط مخزن MEDIA' }, 500);
   const key = [].concat(params.path || []).join('/');
