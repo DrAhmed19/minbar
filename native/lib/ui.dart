@@ -40,7 +40,7 @@ class LogoPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
     for (final m in arch.computeMetrics()) {
-      canvas.drawPath(m.extractPath(0, m.length * draw.clamp(0, 1)), sp);
+      canvas.drawPath(m.extractPath(0, m.length * draw.clamp(0.0, 1.0)), sp);
     }
     final fp = Paint()..shader = shader;
     const xs = [32.0, 45.0, 56.0, 67.0, 80.0];

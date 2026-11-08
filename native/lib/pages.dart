@@ -60,7 +60,7 @@ class _GateState extends State<Gate> with SingleTickerProviderStateMixin {
                 animation: _c,
                 builder: (_, __) {
                   final el = DateTime.now().difference(_t0).inMilliseconds / 1000.0;
-                  return SizedBox(width: 128, height: 138, child: CustomPaint(painter: LogoPainter(_c.value, draw: (el / 1.1).clamp(0, 1))));
+                  return SizedBox(width: 128, height: 138, child: CustomPaint(painter: LogoPainter(_c.value, draw: (el / 1.1).clamp(0.0, 1.0))));
                 },
               ),
               const SizedBox(height: 6),
