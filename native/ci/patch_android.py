@@ -1,0 +1,47 @@
+import re, sys, pathlib
+root = pathlib.Path('android')
+# المانيفست: صلاحيات + خدمة الصوت
+mf = root / 'app/src/main/AndroidManifest.xml'
+s = mf.read_text(encoding='utf-8')
+perms = '''    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+'''
+if 'FOREGROUND_SERVICE_MEDIA_PLAYBACK' not in s:
+    s = s.replace('<application', perms + '    <application', 1)
+s = re.sub(r'android:label="[^"]*"', 'android:label="منبر"', s, count=1)
+s = s.replace('android:name=".MainActivity"', 'android:name="com.ryanheise.audioservice.AudioServiceActivity"')
+svc = '''        <service android:name="com.ryanheise.audioservice.AudioService"
+            android:foregroundServiceType="mediaPlayback"
+            android:exported="true" tools:ignore="Instantiatable">
+            <intent-filter>
+                <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
+        </service>
+        <receiver android:name="com.ryanheise.audioservice.MediaButtonReceiver"
+            android:exported="true" tools:ignore="Instantiatable">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </receiver>
+'''
+if 'com.ryanheise.audioservice.AudioService"' not in s:
+    s = s.replace('</application>', svc + '    </application>', 1)
+if 'xmlns:tools' not in s:
+    s = s.replace('<manifest ', '<manifest xmlns:tools="http://schemas.android.com/tools" ', 1)
+mf.write_text(s, encoding='utf-8')
+# MainActivity
+for kt in root.rglob('MainActivity.*'):
+    pkg = re.search(r'^package\s+([\w.]+)', kt.read_text(encoding='utf-8'), re.M).group(1)
+    if kt.suffix == '.kt':
+        kt.write_text(f'package {pkg}\n\nimport com.ryanheise.audioservice.AudioServiceActivity\n\nclass MainActivity : AudioServiceActivity()\n', encoding='utf-8')
+# minSdk 23
+for g in [root / 'app/build.gradle.kts', root / 'app/build.gradle']:
+    if g.exists():
+        t = g.read_text(encoding='utf-8')
+        t = re.sub(r'minSdk\s*=\s*flutter\.minSdkVersion', 'minSdk = 23', t)
+        t = re.sub(r'minSdkVersion\s+flutter\.minSdkVersion', 'minSdkVersion 23', t)
+        g.write_text(t, encoding='utf-8')
+print('patched')

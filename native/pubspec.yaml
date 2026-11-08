@@ -1,0 +1,45 @@
+name: minbar_native
+description: منبر - مشغّل القصائد واللطميات
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.4
+  just_audio: ^0.9.40
+  just_audio_background: ^0.0.1-beta.13
+  audio_session: ^0.1.21
+  shared_preferences: ^2.3.2
+  cached_network_image: ^3.4.1
+  google_fonts: ^6.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_launcher_icons: ^0.14.1
+  flutter_native_splash: ^2.4.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: assets/icon-512.png
+  adaptive_icon_background: '#0c4a39'
+  adaptive_icon_foreground: assets/icon-maskable-512.png
+
+flutter_native_splash:
+  color: '#072a20'
+  image: assets/brand-mark.png
+  android_12:
+    color: '#072a20'
+    image: assets/brand-mark.png
