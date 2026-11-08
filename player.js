@@ -224,9 +224,10 @@
   }
   async function startAudio(t) {
     const tok = ++vTok, ok = await corsOk(t.audio); if (tok !== vTok) return;
-    if (ok && !ac) { A.crossOrigin = 'anonymous'; }
+    const FX = st.fx === true; /* وضع الأداء (الافتراضي): بدون WebAudio = أخف، أبرد، ويستمر بالخلفية */
+    if (ok && FX && !ac) { A.crossOrigin = 'anonymous'; }
     A.__seekFail = false; A.src = t.audio; mediaBlob(t); A.playbackRate = st.speed; A.volume = st.uvol == null ? 1 : st.uvol; if (AU.fade && ac) { AU.fade.gain.cancelScheduledValues(0); AU.fade.gain.value = 1; }
-    if (ok && !ac) { try { const AC = window.AudioContext || window.webkitAudioContext; try { ac = new AC({ latencyHint: 'playback' }); } catch (x) { ac = new AC(); } const sn = ac.createMediaElementSource(A); an = ac.createAnalyser(); an.fftSize = 2048; an.smoothingTimeConstant = 0.15; auBuild(sn); an.connect(ac.destination); fbuf = new Uint8Array(an.frequencyBinCount); } catch (e) { ac = null; } }
+    if (ok && FX && !ac) { try { const AC = window.AudioContext || window.webkitAudioContext; try { ac = new AC({ latencyHint: 'playback' }); } catch (x) { ac = new AC(); } const sn = ac.createMediaElementSource(A); an = ac.createAnalyser(); an.fftSize = 2048; an.smoothingTimeConstant = 0.15; auBuild(sn); an.connect(ac.destination); fbuf = new Uint8Array(an.frequencyBinCount); } catch (e) { ac = null; } }
     useLive = !!(ok && ac); auNote(); if (ac && ac.state === 'suspended') ac.resume().catch(() => {});
     if (A.__noAuto) A.__noAuto = false; else A.play().catch(() => {});
   }
@@ -1687,7 +1688,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   const AQK = 'minbar.lyr.queue', LOWK = 'minbar.lyr.low'; let aqBusy = false, aqStopF = false;
   function aqAdd(id, lines) { const q = jget(AQK, []).filter((x) => x.id !== id); q.push({ id, lines, at: Date.now() }); jset(AQK, q); aqUi(); setTimeout(aqRun, 1500); }
   function aqUi() { const q = jget(AQK, []), c = g('plrAq'); if (!c) return; c.hidden = !q.length || !isOwner(); if (!q.length) return; c.querySelector('b').textContent = aqBusy ? 'ضبط الكلمات… (' + q.length + ')' : 'بانتظار ضبط الكلمات (' + q.length + ')'; c.classList.toggle('on', aqBusy); }
-  async function aqRun() { if (aqBusy || aiBusy || !isOwner() || document.hidden || !window.LYAI) return; const q = jget(AQK, []); if (!q.length) return aqUi(); const it = q[0], t = byId(it.id); if (!t) { jset(AQK, q.slice(1)); return aqRun(); }
+  async function aqRun() { if (aqBusy || aiBusy || !isOwner() || document.hidden || !A.paused || !window.LYAI) return; const q = jget(AQK, []); if (!q.length) return aqUi(); const it = q[0], t = byId(it.id); if (!t) { jset(AQK, q.slice(1)); return aqRun(); }
     aqBusy = true; aqStopF = false; aqUi(); const PK = 'minbar.asr.part.' + t.id + '.good';
     try { const part = { get: () => JSON.parse(localStorage.getItem(PK) || 'null'), put: (o) => { try { localStorage.setItem(PK, JSON.stringify(o)); } catch (e) {} } };
       const segs = await window.LYAI.transcribe(t.audio, 'good', (s, v) => { const c = g('plrAq'); if (c) c.querySelector('small').textContent = Math.round(v * 100) + '% · ' + t.title; }, () => aqStopF || document.hidden, part);
@@ -1700,6 +1701,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     aqBusy = false; try { window.LYAI.free(); } catch (e) {} aqUi(); if (!aqStopF) setTimeout(aqRun, 3000); }
   function lyrReview(t) { qFrom(t, tracks); play(tracks.indexOf(t), true); setTimeout(() => { openFull(); g('plrLyT').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x.dataset.k === 'edit')); openLys(); }, 400); }
   document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(aqRun, 2000); });
+  A.addEventListener('play', () => { if (aqBusy) { aqStopF = true; } }); /* لا نزاحم التشغيل بالتحليل الثقيل */
   setTimeout(() => { aqUi(); aqRun(); }, 6000);
   async function upDel(t) { if (!confirm('حذف «' + t.title + '» نهائياً؟')) return; const db = fdb(); try { await db.collection('tracks').doc(t.id).delete(); [keyOf(t.audio), keyOf(t.ownCover)].filter(Boolean).forEach(upDelKey); toast('حُذفت القصيدة'); fsLoad(); } catch (e) { toast('تعذّر الحذف: ' + (e.code || e.message)); } }
   g('plrAddB').onclick = () => upMenu(null);
@@ -1924,7 +1926,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && hsOn) { /* يبقى الوضع، فقط خرج من ملء الشاشة */ } });
   function toolsUi() { const b = g('plrTools'); if (!b) return; b.textContent = ''; const seen = jget('minbar.seen.tools', {});
     [['about', 'info', 'عن القصيدة', 'الرادود والتفاصيل', about], ['share', 'share', 'مشاركة اللحظة', 'من الدقيقة الحالية', shareMoment], ['peak', 'flame', 'الذروة', rxList.length ? 'أكثر لحظة إعجاباً' : 'لا إعجابات', () => { const p = peakT(); if (p == null) return toast('لا توجد تفاعلات بعد على هذه القصيدة'); A.currentTime = p; if (A.paused) fadePlay(); tp(false); }],
-      ['majlis', 'users', 'المجلس', MJ.on ? 'مفعّل · ' + MJ.code : 'استماع مشترك', mjMenu], ['husn', 'text', 'وضع الحسينية', 'كلمات كبيرة للشاشة', () => { tp(false); hsOpen(); }], ['latm', 'pulse', 'وضع اللطم', st.latm ? 'مفعّل' : 'اهتزاز مع الإيقاع', () => { st.latm = !st.latm; save(); toolsUi(); toast(st.latm ? 'وضع اللطم: يهتز الهاتف مع إيقاع اللطم' : 'أُوقف وضع اللطم'); }]].concat(isOwner() ? [['stats', 'eq', 'الإحصائيات', 'الاستماعات والإعجابات', statsPanel]] : []).forEach(([k, icn, n, s, f]) => {
+      ['majlis', 'users', 'المجلس', MJ.on ? 'مفعّل · ' + MJ.code : 'استماع مشترك', mjMenu], ['husn', 'text', 'وضع الحسينية', 'كلمات كبيرة للشاشة', () => { tp(false); hsOpen(); }], ['perf', 'eq', 'وضع الأداء', st.fx ? 'معطّل (مؤثرات وتحليل حي)' : 'مفعّل: أخف وأثبت بالخلفية', () => { st.fx = !st.fx; save(); toast(st.fx ? 'سيُعاد تشغيل التطبيق لتفعيل المؤثرات' : 'سيُعاد تشغيل التطبيق لوضع الأداء'); setTimeout(() => location.reload(), 900); }], ['latm', 'pulse', 'وضع اللطم', st.latm ? 'مفعّل' : 'اهتزاز مع الإيقاع', () => { st.latm = !st.latm; save(); toolsUi(); toast(st.latm ? 'وضع اللطم: يهتز الهاتف مع إيقاع اللطم' : 'أُوقف وضع اللطم'); }]].concat(isOwner() ? [['stats', 'eq', 'الإحصائيات', 'الاستماعات والإعجابات', statsPanel]] : []).forEach(([k, icn, n, s, f]) => {
       const t = el('button', 'ptl' + ((k === 'latm' && st.latm) || (k === 'majlis' && MJ.on) ? ' on' : '')); t.type = 'button'; t.innerHTML = '<i class="pci">' + ic(icn, 18) + '</i><span></span><small></small>'; t.children[1].textContent = n; t.children[2].textContent = s; if (!seen[k]) t.appendChild(el('i', 'nb', 'جديد')); t.onclick = () => { const sn = jget('minbar.seen.tools', {}); sn[k] = 1; jset('minbar.seen.tools', sn); f(); toolsUi(); }; b.appendChild(t); }); }
 
   g('plrRecB').onclick = recognize; g('plrMj').onclick = () => mjMenu(); g('plrTitle').onclick = about; g('plrTitle').style.cursor = 'pointer';
