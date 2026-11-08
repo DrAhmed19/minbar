@@ -118,7 +118,7 @@ class GoldButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             onTap: onTap,
             child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              if (icon != null) ...[PIcon(icon, color: outline ? kGold : const Color(0xFF3A2D08), size: 20), const SizedBox(width: 8)],
+              if (icon != null) ...[PIcon(icon!, color: outline ? kGold : const Color(0xFF3A2D08), size: 20), const SizedBox(width: 8)],
               Text(label, style: tx(15.5, w: FontWeight.w800, c: outline ? const Color(0xFFF3F6F4) : const Color(0xFF3A2D08))),
             ]),
           ),
