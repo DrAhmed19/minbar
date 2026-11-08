@@ -279,7 +279,7 @@
     if (!pfq || pfq.length !== n) pfq = new Float32Array(n); pfq.set(fqd);
   }
   /* ===== تحليل صوتي مسبق: يُحسب مرة واحدة (بالخلفية عند المالك) ويُقرأ وقت التشغيل بلا أي معالجة صوت — يحرّك الرسم واللطم بدل التحليل الحي ===== */
-  const APPV = '3.66';
+  const APPV = '3.67';
   const ANV = 'v1', ANKEY = (t) => 'n/' + t.id + '-' + ANV + '.bin', ANOK = (t) => /^[A-Za-z0-9_-]{3,64}$/.test((t && t.id) || '');
   let PRE = null; const PF = { dd: new Float32Array(22), vb: { db: 0, peak: 1 }, cb: { db: 0, flat: 0 }, hb: { db: 0 }, lb: { db: 0 }, on: 0 }; let synW = null, synT = 0;
   async function anLoad(t) { PRE = null; if (!t || t.an !== 1 || !ANOK(t)) return; try { const r = await fetch('media/u/' + ANKEY(t)); if (!r.ok) return; const b = new Uint8Array(await r.arrayBuffer()); if (b.length < 12 || b[0] !== 77 || b[1] !== 66 || b[2] !== 65) return; const nf = new DataView(b.buffer).getUint32(8, true); if (tracks[cur] && tracks[cur].id === t.id) PRE = { id: t.id, fps: b[4], nf, W: b[5] + b[6], d: b, o: 12 }; } catch (e) {} }
@@ -1952,9 +1952,10 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     try { if (window.Notification && Notification.permission === 'granted' && document.hidden) navigator.serviceWorker.ready.then((r) => r.showNotification('منبر', { body: msg, icon: 'icons/icon-192.png', tag: 'minbar-new' })); } catch (e) {} }
   /* ================= التنزيل للاستماع بدون إنترنت ================= */
   const offHas = (id) => jget(OFFK, []).includes(id);
+  const offPing = () => { try { navigator.serviceWorker.controller && navigator.serviceWorker.controller.postMessage('off'); } catch (e) {} };
   async function offSave(t) { if (offHas(t.id)) return; toast('جارٍ تنزيل «' + t.title + '»…'); try { try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {} const c = await caches.open('mbr-offline'); const au = new URL(t.audio, location.href).href, r = await fetch(au); if (!r.ok) throw 0; await c.put(au, r);
-      if (cov(t)) { try { const cu = new URL(cov(t), location.href).href, r2 = await fetch(cu); if (r2.ok) await c.put(cu, r2); } catch (e) {} } const a = jget(OFFK, []); a.push(t.id); jset(OFFK, a); toast('نُزّلت — تعمل بدون إنترنت'); render(); } catch (e) { toast('تعذّر التنزيل'); } }
-  async function offDel(t) { try { const c = await caches.open('mbr-offline'); await c.delete(new URL(t.audio, location.href).href); if (cov(t)) await c.delete(new URL(cov(t), location.href).href); } catch (e) {} jset(OFFK, jget(OFFK, []).filter((x) => x !== t.id)); toast('حُذف التنزيل'); render(); }
+      if (cov(t)) { try { const cu = new URL(cov(t), location.href).href, r2 = await fetch(cu); if (r2.ok) await c.put(cu, r2); } catch (e) {} } const a = jget(OFFK, []); a.push(t.id); jset(OFFK, a); offPing(); toast('نُزّلت — تعمل بدون إنترنت'); render(); } catch (e) { toast('تعذّر التنزيل'); } }
+  async function offDel(t) { try { const c = await caches.open('mbr-offline'); await c.delete(new URL(t.audio, location.href).href); if (cov(t)) await c.delete(new URL(cov(t), location.href).href); } catch (e) {} jset(OFFK, jget(OFFK, []).filter((x) => x !== t.id)); offPing(); toast('حُذف التنزيل'); render(); }
   /* ================= عدّاد الاستماع (بعد 30 ثانية استماع فعلي) ================= */
   let plCnt = { id: null, s: 0, done: {} };
   A.addEventListener('timeupdate', () => { const t = tracks[cur]; if (!t || A.paused || MJ.on && !MJ.host) return; if (plCnt.id !== t.id) { plCnt.id = t.id; plCnt.s = 0; plCnt.lt = A.currentTime; return; } const d = A.currentTime - (plCnt.lt || 0); plCnt.lt = A.currentTime; if (d > 0 && d < 2) plCnt.s += d;
