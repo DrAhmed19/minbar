@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'data.dart';
 
@@ -29,6 +30,41 @@ class Analysis {
     } finally {
       c.close(force: true);
     }
+  }
+
+  /// غلاف الموجة (للشريط النقطي) بعدد خانات B، مطبّع 0..1
+  List<double> envelope(int B) {
+    final e = List<double>.filled(B, 0);
+    var mx = 0.0;
+    for (var i = 0; i < B; i++) {
+      final f0 = (i * nf / B).floor(), f1 = ((i + 1) * nf / B).floor().clamp(f0 + 1, nf);
+      var s = 0.0;
+      var c = 0;
+      for (var f = f0; f < f1 && f < nf; f++) {
+        final o = 12 + f * w;
+        for (var k = 2; k < 20; k += 3) {
+          final db = d[o + k] / 1.5 - 140;
+          s += math.pow(10, db / 20).toDouble();
+          c++;
+        }
+      }
+      e[i] = c == 0 ? 0 : s / c;
+      if (e[i] > mx) mx = e[i];
+    }
+    if (mx > 0) {
+      for (var i = 0; i < B; i++) {
+        e[i] = math.pow(e[i] / mx, 0.6).toDouble();
+      }
+    }
+    return e;
+  }
+
+  /// قوة الإيقاع (باص + قفزة طاقة) 0..1 عند ثانية معيّنة — لوضع اللطم والنبض
+  double beatAt(double sec) {
+    final i = ((sec < 0 ? 0 : sec) * fps).floor().clamp(0, nf - 1);
+    final o = 12 + i * w;
+    final low = d[o + 28] / 12.0, mid = d[o + 29] / 12.0;
+    return ((low * 0.7 + mid * 0.3) / 6).clamp(0.0, 1.0);
   }
 
   /// قيم النطاقات الـ22 مطبّعة 0..1 عند ثانية معيّنة (مع استيفاء بين الإطارين)

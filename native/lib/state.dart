@@ -18,6 +18,9 @@ class PlayerCtl extends ChangeNotifier {
   LoopMode loop = LoopMode.off;
   double speed = 1.0;
   double lyOffset = 0; // تأخير الكلمات (سماعات بلوتوث)
+  int viz = 3, bg = 0, lyFont = 0, lyColor = 1;
+  double lySize = 22;
+  ConcatenatingAudioSource? _cs;
   String lastError = '';
   int _errs = 0;
   int _lastSave = 0;
@@ -57,6 +60,12 @@ class PlayerCtl extends ChangeNotifier {
     });
     SharedPreferences.getInstance().then((sp) {
       lyOffset = sp.getDouble('lyOffset') ?? 0;
+      viz = sp.getInt('viz') ?? 3;
+      bg = sp.getInt('bg') ?? 0;
+      lyFont = sp.getInt('lyFont') ?? 0;
+      lyColor = sp.getInt('lyColor') ?? 1;
+      lySize = sp.getDouble('lySize') ?? 22;
+      notifyListeners();
       speed = sp.getDouble('speed') ?? 1.0;
     });
   }
@@ -78,8 +87,9 @@ class PlayerCtl extends ChangeNotifier {
     index = start;
     notifyListeners();
     try {
+      _cs = ConcatenatingAudioSource(children: list.map(_src).toList());
       await p.setAudioSource(
-        ConcatenatingAudioSource(children: list.map(_src).toList()),
+        _cs!,
         initialIndex: start,
         initialPosition: pos ?? Duration.zero,
       );
@@ -124,6 +134,44 @@ class PlayerCtl extends ChangeNotifier {
   void cycleLoop() {
     loop = loop == LoopMode.off ? LoopMode.all : (loop == LoopMode.all ? LoopMode.one : LoopMode.off);
     p.setLoopMode(loop);
+    notifyListeners();
+  }
+
+  void setPref(String k, num v) {
+    switch (k) {
+      case 'viz':
+        viz = v.toInt();
+        break;
+      case 'bg':
+        bg = v.toInt();
+        break;
+      case 'lyFont':
+        lyFont = v.toInt();
+        break;
+      case 'lyColor':
+        lyColor = v.toInt();
+        break;
+      case 'lySize':
+        lySize = v.toDouble();
+        break;
+    }
+    SharedPreferences.getInstance().then((sp) => v is int ? sp.setInt(k, v) : sp.setDouble(k, v.toDouble()));
+    notifyListeners();
+  }
+
+  void jump(int i) {
+    if (i < 0 || i >= queue.length) return;
+    p.seek(Duration.zero, index: i);
+    p.play();
+  }
+
+  Future<void> removeAt(int i) async {
+    if (queue.length <= 1 || i < 0 || i >= queue.length) return;
+    try {
+      await _cs?.removeAt(i);
+      queue = List<Track>.from(queue)..removeAt(i);
+      index = (p.currentIndex ?? index).clamp(0, queue.length - 1);
+    } catch (_) {}
     notifyListeners();
   }
 
