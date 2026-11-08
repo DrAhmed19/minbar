@@ -1927,10 +1927,11 @@ document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: fals
     if (ind) { const k = Math.min(1, dx / 80); ind.style.setProperty('--k', k); ind.classList.toggle('go', k >= 1); } }, { passive: true, capture: true });
   document.addEventListener('touchend', (e) => { if (!on) return; const t = e.changedTouches[0], dx = Math.abs(t.clientX - sx), dy = Math.abs(t.clientY - sy); end(); if (dx >= 80 && dy < 70) { try { if (navigator.vibrate) navigator.vibrate(8); } catch (x) {} layerClose(); } }, { passive: true, capture: true });
   document.addEventListener('touchcancel', end, { passive: true, capture: true }); })();
-let guard = false;
-try { history.replaceState({ m: 'root' }, ''); } catch (e) {}
-function armGuard() { if (guard) return; try { history.pushState({ m: 'app' }, ''); guard = true; } catch (e) {} }
-['pointerdown', 'touchstart', 'keydown'].forEach((ev) => document.addEventListener(ev, armGuard, { passive: true, capture: true }));
+/* حماية الرجوع: مدخلان في السجل يُضافان عند لمسة حقيقية (pointerup/touchend) كي لا يتجاهلهما كروم، فيصير الخروج بضغطتين */
+try { history.replaceState({ m: 'root', n: 0 }, ''); } catch (e) {}
+const gdN = () => (history.state && history.state.n) || 0;
+function armGuard() { try { let n = gdN(); while (n < 2) history.pushState({ m: 'app', n: ++n }, ''); } catch (e) {} }
+['pointerup', 'touchend', 'click', 'keydown'].forEach((ev) => document.addEventListener(ev, armGuard, { passive: true, capture: true }));
 function layerClose() {
   if (!$('tplOv').hidden) { $('tplOv').hidden = true; return true; }
   const adm = $('admModal'); if (adm && !adm.hidden) { adm.hidden = true; return true; }
@@ -1945,12 +1946,11 @@ function layerClose() {
   return false;
 }
 window.addEventListener('popstate', () => {
-  guard = false;
   if (layerClose()) { armGuard(); return; }
   const now = Date.now();
   if (IOS) { armGuard(); return; } /* آيفون: لا يوجد خروج من التطبيق، فقط نبقى بالواجهة */
-  if (now - lastBack < 2200) { allowUnload = true; history.back(); return; }
-  lastBack = now; toast('اضغط مرة أخرى للخروج'); armGuard();
+  if (now - lastBack < 2200) { allowUnload = true; const n = gdN(); history.go(-(n + 1)); setTimeout(() => { try { history.back(); } catch (e) {} }, 400); return; }
+  lastBack = now; toast(window.PLR && window.PLR.playing && window.PLR.playing() ? 'اضغط مرة أخرى للخروج (يتوقف الصوت) — للتشغيل بالخلفية استخدم زر الرئيسية' : 'اضغط مرة أخرى للخروج'); armGuard();
 });
 window.addEventListener('beforeunload', (e) => { if (allowUnload) return; if (S.busy || (TRIAL && hasContent())) { e.preventDefault(); e.returnValue = ''; } });
 document.addEventListener('contextmenu', (e) => { if (!(e.target.closest && e.target.closest('input,textarea'))) e.preventDefault(); });

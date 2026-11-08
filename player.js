@@ -279,7 +279,7 @@
     if (!pfq || pfq.length !== n) pfq = new Float32Array(n); pfq.set(fqd);
   }
   /* ===== تحليل صوتي مسبق: يُحسب مرة واحدة (بالخلفية عند المالك) ويُقرأ وقت التشغيل بلا أي معالجة صوت — يحرّك الرسم واللطم بدل التحليل الحي ===== */
-  const APPV = '3.61';
+  const APPV = '3.62';
   const ANV = 'v1', ANKEY = (t) => 'n/' + t.id + '-' + ANV + '.bin', ANOK = (t) => /^[A-Za-z0-9_-]{3,64}$/.test((t && t.id) || '');
   let PRE = null; const PF = { dd: new Float32Array(22), vb: { db: 0, peak: 1 }, cb: { db: 0, flat: 0 }, hb: { db: 0 }, lb: { db: 0 }, on: 0 }; let synW = null, synT = 0;
   async function anLoad(t) { PRE = null; if (!t || t.an !== 1 || !ANOK(t)) return; try { const r = await fetch('media/u/' + ANKEY(t)); if (!r.ok) return; const b = new Uint8Array(await r.arrayBuffer()); if (b.length < 12 || b[0] !== 77 || b[1] !== 66 || b[2] !== 65) return; const nf = new DataView(b.buffer).getUint32(8, true); if (tracks[cur] && tracks[cur].id === t.id) PRE = { id: t.id, fps: b[4], nf, W: b[5] + b[6], d: b, o: 12 }; } catch (e) {} }
@@ -341,7 +341,7 @@
     const avg = (a, b) => { let s2 = 0; for (let i = a; i < b; i++) s2 += v[i]; return s2 / (b - a); };
     const bass = avg(0, 4), mid = avg(4, 13), hi = avg(13, N), vol = avg(0, N), fl = Math.max(0, bass - pBass); pBass = bass;
     beat = Math.max(beat * Math.pow(0.86, k60), fl > 0.04 ? Math.min(1, fl * 7) : 0, STM.on); cum += dt * (A.paused ? 0 : 0.6 + vol * 1.5);
-    live = { vals: v, vol, bass, mid, hi, beat, cum, f: Math.floor(A.currentTime * 30), sp: null, hist: [v], wave, stems: STM }; dlyPush();
+    live = { vals: v, vol, bass, mid, hi, beat, cum, f: Math.floor(A.currentTime * 30), sp: null, hist: [v], wave, stems: STM, pre: pf }; dlyPush();
   }
 
   /* خلفية «أجواء»: هادئة تتنفس مع الصوت بلطف */
@@ -635,7 +635,7 @@
     const fr = dlyGet(), S = (fr && fr.s) || { voc: 0, drum: 0, crowd: 0, inst: 0 }, V = fr ? fr.v : null, half = 22, step = w / 2 / half, bw = Math.max(2, step * 0.42), t = performance.now() / 1000;
     const hx = (h0) => { const n = parseInt(h0.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }; const Z = [['voc', 0, hx(THC.A2)], ['drum', 0.34, [255, 255, 255]], ['crowd', 0.62, hx(THC.A)], ['inst', 0.9, [225, 232, 228]]], ga = (f, m) => Math.exp(-((f - m) * (f - m)) / 0.03);
     for (let i = 0; i < half; i++) { const f = i / (half - 1); let ws = 0, lv = 0, cr = 0, cg = 0, cb = 0; Z.forEach(([k, m, c]) => { const w = ga(f, m); ws += w; lv += w * (S[k] || 0); cr += w * c[0]; cg += w * c[1]; cb += w * c[2]; }); lv /= ws;
-      const bd = V ? V[Math.min(21, Math.round(f * 21))] || 0 : 0, tgt = A.paused || !useLive ? 0.06 : Math.min(1, 0.06 + lv * 0.62 + bd * 0.42);
+      const bd = V ? V[Math.min(21, Math.round(f * 21))] || 0 : 0, tgt = A.paused || !(useLive || (live && live.pre)) ? 0.06 : Math.min(1, 0.06 + lv * 0.62 + bd * 0.42);
       SPC.h[i] = (SPC.h[i] || 0) + (tgt - (SPC.h[i] || 0)) * Math.min(1, dt * (tgt > (SPC.h[i] || 0) ? 40 : 12)); const v = SPC.h[i], bh = Math.max(bw * 1.6, v * (h - 4));
       x.fillStyle = `rgba(${cr / ws | 0},${cg / ws | 0},${cb / ws | 0},${(0.55 + v * 0.45).toFixed(3)})`;
       [w / 2 - (i + 0.5) * step, w / 2 + (i + 0.5) * step].forEach((cx) => { x.beginPath(); x.roundRect ? x.roundRect(cx - bw / 2, (h - bh) / 2, bw, bh, bw / 2) : x.rect(cx - bw / 2, (h - bh) / 2, bw, bh); x.fill(); }); }
@@ -1207,7 +1207,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     else { s.pitch = 0; s.fl = false; st.speed = 1; A.playbackRate = 1; pills(); ['echo', 'rev', 'wid', 'rot'].forEach((n) => { s.k[n] = 0; s.on[n] = false; }); }
     void d; s.pre = JSON.stringify(s.eq) === JSON.stringify(Z12()) && !Object.values(s.on).some(Boolean) && !s.agc && !s.bal && !s.preamp && !s.pitch && !s.fl ? 'flat' : 'custom'; save(); auApply(); auUi(); toast('أُعيد ضبط قسم «' + g('plrAuT').querySelector('.on').textContent + '»');
   };
-  function auNote() { const n = g('plrAuN'); if (n) n.hidden = !!useLive || !tracks[cur]; }
+  function auNote() { const n = g('plrAuN'); if (!n) return; if (st.fx !== true) { n.textContent = 'وضع الأداء مفعّل: الرسم يعمل لكن المؤثرات الصوتية متوقفة. لتفعيلها: الأدوات ← وضع الأداء.'; n.hidden = !tracks[cur]; return; } n.textContent = 'المعالجة متاحة للملفات المرفوعة على منبر فقط.'; n.hidden = !!useLive || !tracks[cur]; }
   function auFrom(p, k) { const d = AUD(); d.eq = p.eq.slice(); Object.keys(p.k || {}).forEach((n) => { d.k[n] = p.k[n]; d.on[n] = true; }); if (p.agc) d.agc = true; if (p.preamp) d.preamp = p.preamp; if (p.fl) d.fl = true; d.pre = k; return d; }
   function auPreset(k) { const b = AUP.find((x) => x[0] === k), c = auCustom().find((x) => x.id === k); if (b) st.au = auFrom(b[2], k); else if (c) { st.au = Object.assign(AUD(), JSON.parse(JSON.stringify(c.s))); st.au.pre = k; } else return; save(); auApply(); auUi(); }
   const auName = () => { const b = AUP.find((x) => x[0] === st.au.pre), c = auCustom().find((x) => x.id === st.au.pre); return b ? b[1] : c ? c.n : 'مخصّص'; };
@@ -1284,6 +1284,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     x.fillStyle = 'rgba(255,255,255,.45)'; x.font = '9px Cairo,sans-serif'; x.textAlign = 'right'; x.textBaseline = 'middle'; [12, 6, 0, -6, -12].forEach((d) => x.fillText((d > 0 ? '+' : '') + d, PADL - 5, dbY(d, h)));
     x.textAlign = 'center'; x.textBaseline = 'alphabetic'; EQF.forEach((f, i) => { if (i % 2 === 0 || i === EQF.length - 1) x.fillText(fmtF(f), fx2(f, w), h - 4); });
     if (an && fbuf && useLive) { an.getByteFrequencyData(fbuf); const ny = ac.sampleRate / 2; x.beginPath(); x.moveTo(PADL, h - PADB); for (let i = 0; i < FR.length; i++) { const bi = Math.min(fbuf.length - 1, Math.round(FR[i] / ny * fbuf.length)); x.lineTo(fx2(FR[i], w), (h - PADB) - fbuf[bi] / 255 * (h - PADB - TOP) * 0.9); } x.lineTo(w - 8, h - PADB); x.closePath(); const gr = x.createLinearGradient(0, TOP, 0, h); gr.addColorStop(0, 'rgba(127,224,181,.2)'); gr.addColorStop(1, 'rgba(127,224,181,0)'); x.fillStyle = gr; x.fill(); }
+    else if (live && live.pre && !A.paused) { x.beginPath(); x.moveTo(PADL, h - PADB); for (let i = 0; i < FR.length; i++) { const bn = Math.max(0, Math.min(21, Math.round(Math.log(FR[i] / 40) / Math.log(400) * 22))); x.lineTo(fx2(FR[i], w), (h - PADB) - (live.vals[bn] || 0) * (h - PADB - TOP) * 0.9); } x.lineTo(w - 8, h - PADB); x.closePath(); const gr = x.createLinearGradient(0, TOP, 0, h); gr.addColorStop(0, 'rgba(127,224,181,.2)'); gr.addColorStop(1, 'rgba(127,224,181,0)'); x.fillStyle = gr; x.fill(); }
     const gs = eqSolve(st.au.eq), fs = ac ? ac.sampleRate : FS, pa = st.au.preamp;
     x.save(); x.beginPath(); x.rect(PADL, 0, w - PADL - 8, h - PADB); x.clip(); x.beginPath();
     for (let i = 0; i < FR.length; i++) { const yy = dbY(eqResp(gs, FR[i], fs) + pa, h), xx = fx2(FR[i], w); i ? x.lineTo(xx, yy) : x.moveTo(xx, yy); }
@@ -1464,9 +1465,11 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     if (!g('plrSearch').hidden) { g('plrSearchB').onclick(); return true; }
     if (hsOn) { hsClose(); return true; }
     if (smpOn) { smpClose(); return true; }
+    if (tab === 'pls' && plSel) { plSel = null; render(); return true; }
     if (tab === 'lib' && libSel) { libSel = null; render(); return true; }
-    if (tab === 'lib' && libV !== 'all') { libV = 'all'; render(); return true; }
-    if (tab !== 'lib' || cat !== 'الكل') { tab = 'lib'; cat = 'الكل'; root.querySelectorAll('.plrnav button').forEach((x) => x.classList.toggle('on', x.dataset.t === 'lib')); render(); return true; }
+    if (tab === 'lib' && cat !== 'الكل') { cat = 'الكل'; render(); return true; }
+    if (tab === 'lib' && libV !== 'home') { libV = 'home'; render(); return true; }
+    if (tab !== 'lib') { tab = 'lib'; cat = 'الكل'; root.querySelectorAll('.plrnav button').forEach((x) => x.classList.toggle('on', x.dataset.t === 'lib')); render(); return true; }
     return false;
   }
 
@@ -1978,6 +1981,6 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
       const t = el('button', 'ptl' + ((k === 'latm' && st.latm) || (k === 'majlis' && MJ.on) ? ' on' : '')); t.type = 'button'; t.innerHTML = '<i class="pci">' + ic(icn, 18) + '</i><span></span><small></small>'; t.children[1].textContent = n; t.children[2].textContent = s; if (!seen[k]) t.appendChild(el('i', 'nb', 'جديد')); t.onclick = () => { const sn = jget('minbar.seen.tools', {}); sn[k] = 1; jset('minbar.seen.tools', sn); f(); toolsUi(); }; b.appendChild(t); }); }
 
   g('plrRecB').onclick = recognize; g('plrMj').onclick = () => mjMenu(); g('plrTitle').onclick = about; g('plrTitle').style.cursor = 'pointer';
-  window.PLR = { open, close: () => { root.hidden = true; }, audio: A, back, visible: () => !root.hidden, level: () => { if (!an) return -1; an.getByteFrequencyData(fbuf); let s = 0; for (let i = 0; i < fbuf.length; i++) s += fbuf[i]; return s / fbuf.length; } };
+  window.PLR = { open, close: () => { root.hidden = true; }, audio: A, playing: () => !A.paused, back, visible: () => !root.hidden, level: () => { if (!an) return -1; an.getByteFrequencyData(fbuf); let s = 0; for (let i = 0; i < fbuf.length; i++) s += fbuf[i]; return s / fbuf.length; } };
   lyStyle(); ui(); loadCatalog();
 })();
