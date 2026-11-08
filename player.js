@@ -279,7 +279,7 @@
     if (!pfq || pfq.length !== n) pfq = new Float32Array(n); pfq.set(fqd);
   }
   /* ===== تحليل صوتي مسبق: يُحسب مرة واحدة (بالخلفية عند المالك) ويُقرأ وقت التشغيل بلا أي معالجة صوت — يحرّك الرسم واللطم بدل التحليل الحي ===== */
-  const APPV = '3.67';
+  const APPV = '3.68';
   const ANV = 'v1', ANKEY = (t) => 'n/' + t.id + '-' + ANV + '.bin', ANOK = (t) => /^[A-Za-z0-9_-]{3,64}$/.test((t && t.id) || '');
   let PRE = null; const PF = { dd: new Float32Array(22), vb: { db: 0, peak: 1 }, cb: { db: 0, flat: 0 }, hb: { db: 0 }, lb: { db: 0 }, on: 0 }; let synW = null, synT = 0;
   async function anLoad(t) { PRE = null; if (!t || t.an !== 1 || !ANOK(t)) return; try { const r = await fetch('media/u/' + ANKEY(t)); if (!r.ok) return; const b = new Uint8Array(await r.arrayBuffer()); if (b.length < 12 || b[0] !== 77 || b[1] !== 66 || b[2] !== 65) return; const nf = new DataView(b.buffer).getUint32(8, true); if (tracks[cur] && tracks[cur].id === t.id) PRE = { id: t.id, fps: b[4], nf, W: b[5] + b[6], d: b, o: 12 }; } catch (e) {} }
@@ -592,8 +592,14 @@
   })();
   /* شريط التقدّم النقطي بشكل موجة الصوت الحقيقية */
   const ENV = new Map(); let envBusy = null;
-  async function envLoad(t) {
-    if (!t || ENV.has(t.id) || envBusy === t.id) return; try { const c = JSON.parse(localStorage.getItem('minbar.env.' + t.id) || 'null'); if (c) { ENV.set(t.id, Float32Array.from(c)); waveDraw(); return; } } catch (e) {} envBusy = t.id; await new Promise((r) => setTimeout(r, 2500)); if (tracks[cur] !== t) { envBusy = null; return; }
+  async function envLoad(t, force) {
+    if (!t || ENV.has(t.id) || envBusy === t.id) return; try { const c = JSON.parse(localStorage.getItem('minbar.env.' + t.id) || 'null'); if (c) { ENV.set(t.id, Float32Array.from(c)); waveDraw(); return; } } catch (e) {} envBusy = t.id;
+    /* الموجة من التحليل المحسوب مسبقاً (بدون تنزيل وفك الملف أثناء التشغيل = سبب انقطاع الصوت بعد ثانيتين) */
+    if (t.an === 1) { for (let i = 0; i < 20 && !(PRE && PRE.id === t.id); i++) await new Promise((r) => setTimeout(r, 300));
+      if (PRE && PRE.id === t.id) { const P = PRE, B = 400, e = new Float32Array(B); let mx = 0; for (let i = 0; i < B; i++) { const a = Math.floor(i * P.nf / B), z = Math.max(a + 1, Math.floor((i + 1) * P.nf / B)); let s = 0, c = 0; for (let f = a; f < z && f < P.nf; f++) { const o = P.o + f * P.W; for (let k = 2; k < 20; k += 3) { s += Math.pow(10, (P.d[o + k] / 1.5 - 140) / 20); c++; } } e[i] = c ? s / c : 0; mx = Math.max(mx, e[i]); }
+        for (let i = 0; i < B; i++) e[i] = mx ? Math.pow(e[i] / mx, 0.6) : 0; ENV.set(t.id, e); try { localStorage.setItem('minbar.env.' + t.id, JSON.stringify(Array.from(e, (v) => Math.round(v * 100) / 100))); } catch (x) {} if (tracks[cur] === t) waveDraw(); envBusy = null; return; } }
+    if (!force) { envBusy = null; return; }
+    await new Promise((r) => setTimeout(r, 2500)); if (tracks[cur] !== t) { envBusy = null; return; }
     try { const r = await fetch(t.audio); if (!r.ok) throw 0; const ab = await r.arrayBuffer(); const oc = new OfflineAudioContext(1, 1, 8000); const d = (await oc.decodeAudioData(ab)).getChannelData(0); const B = 400, step = Math.floor(d.length / B), e = new Float32Array(B); let mx = 0;
       for (let i = 0; i < B; i++) { let s = 0; for (let j = i * step; j < (i + 1) * step; j += 4) s += d[j] * d[j]; e[i] = Math.sqrt(s / (step / 4)); mx = Math.max(mx, e[i]); } for (let i = 0; i < B; i++) e[i] = mx ? Math.pow(e[i] / mx, 0.8) : 0; ENV.set(t.id, e); try { localStorage.setItem('minbar.env.' + t.id, JSON.stringify(Array.from(e, (v) => Math.round(v * 100) / 100))); } catch (x) {} if (tracks[cur] === t) waveDraw();
     } catch (e) { ENV.set(t.id, null); } envBusy = null;
@@ -1069,7 +1075,7 @@
   })();
   function cSugUi() { const box = g('plrClipSug'); box.textContent = ''; cSuggest().forEach(([n, a, len]) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = n; b.onclick = () => { cFit(a, len); A.currentTime = clipA; }; box.appendChild(b); }); }
   function clipReset() { const d = A.duration || 0; clipA = 0; clipB = Math.min(d || 30, 30); clipPrev = false; clipUi(); }
-  g('plrClip').onclick = () => { const b = g('plrClipBox'); b.hidden = !b.hidden; if (!b.hidden) { const d = A.duration || 0; envLoad(tracks[cur]); cSugUi(); cFit(Math.min(A.currentTime, Math.max(0, d - 5)), 30); cancelAnimationFrame(cRaf); cRaf = requestAnimationFrame(cLoop); setTimeout(cSugUi, 4000); } };
+  g('plrClip').onclick = () => { const b = g('plrClipBox'); b.hidden = !b.hidden; if (!b.hidden) { const d = A.duration || 0; envLoad(tracks[cur], true); cSugUi(); cFit(Math.min(A.currentTime, Math.max(0, d - 5)), 30); cancelAnimationFrame(cRaf); cRaf = requestAnimationFrame(cLoop); setTimeout(cSugUi, 4000); } };
   g('plrPrevClip').onclick = () => { if (clipPrev) { A.pause(); clipPrev = false; g('plrPrevClip').textContent = '▶ معاينة'; return; } A.currentTime = clipA; clipPrev = true; g('plrPrevClip').textContent = '⏸ إيقاف'; A.play().catch(() => {}); };
   g('plrDesign').onclick = async () => {
     const t = tracks[cur]; if (!t || !window.__plrDesign) return; const btn = g('plrDesign'); btn.disabled = true; btn.textContent = 'جارٍ التجهيز...'; A.pause();
