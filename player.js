@@ -306,20 +306,20 @@
     }
     return out;
   }
-  let anBusy = false; const anFail = new Set();
+  let anBusy = false; const anFail = new Set(); const toastDone = (n, bad) => { if (n || bad) toast('انتهى التحليل: نجح ' + n + (bad ? ' · فشل ' + bad : '')); };
   const anPending = () => tracks.filter((t) => t.fs && t.an !== 1 && ANOK(t) && t.audio && !anFail.has(t.id));
   async function anRun(manual) {
     if (anBusy || !isOwner() || !fdb() || document.hidden || (!manual && (!A.paused || aqBusy || aiBusy))) return; let todo = anPending(); if (!todo.length) { if (manual) toast('كل القصائد محلَّلة'); return; }
-    anBusy = true; if (manual) toast('بدأ تحليل ' + todo.length + ' قصيدة بالخلفية'); let n = 0;
+    anBusy = true; toast('بدأ تحليل الصوت: ' + todo.length + ' قصيدة (' + (manual ? 'يدوي' : 'تلقائي') + ')'); let n = 0, bad = 0;
     for (const t of todo) { if (document.hidden || (!manual && !A.paused)) break;
       try { const ab = await (await fetch(t.audio)).arrayBuffer(), buf = await new OfflineAudioContext(1, 1, 32000).decodeAudioData(ab); if (buf.duration > 1500) throw 0; let x = buf.getChannelData(0); if (buf.numberOfChannels > 1) { const y = buf.getChannelData(1), m = new Float32Array(x.length); for (let i = 0; i < m.length; i++) m[i] = (x[i] + y[i]) / 2; x = m; }
         const out = await anCompute(x, 32000, (v) => { const c = g('plrAq'); if (c && !c.hidden) c.querySelector('small').textContent = 'تحليل ' + Math.round(v * 100) + '% · ' + t.title; });
         await upPut(ANKEY(t), out, 'application/octet-stream'); await fdb().collection('tracks').doc(t.id).set({ an: 1 }, { merge: true }); t.an = 1; n++; }
-      catch (e) { anFail.add(t.id); console.warn('an', t.id, e); }
+      catch (e) { anFail.add(t.id); bad++; console.warn('an', t.id, e); if (bad === 1) toast('تعذّر تحليل «' + (t.title || t.id) + '»: ' + String((e && (e.message || e.error || e.name)) || e || 'خطأ').slice(0, 80)); }
       await new Promise((z) => setTimeout(z, 800)); }
-    anBusy = false; if (n && manual) toast('اكتمل تحليل ' + n + ' قصيدة');
+    anBusy = false; toastDone(n, bad);
   }
-  setInterval(() => { try { anRun(false); } catch (e) {} }, 60000); document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(() => anRun(false), 6000); });
+  setTimeout(() => { try { anRun(false); } catch (e) {} }, 8000); setInterval(() => { try { anRun(false); } catch (e) {} }, 60000); document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(() => anRun(false), 6000); });
   function bandUpd(i, dd, dt, k60, v) { if (agF[i] == null) { agF[i] = dd - 12; agP[i] = dd + 6; } agF[i] = dd < agF[i] ? agF[i] + (dd - agF[i]) * Math.min(1, dt * 6) : agF[i] + dt * 1.2; agP[i] = dd > agP[i] ? agP[i] + (dd - agP[i]) * Math.min(1, dt * 20) : agP[i] - dt * 2.2;
         const span = Math.max(20, agP[i] - agF[i]), xa = Math.max(0, Math.min(1, (dd - agF[i]) / span)), xf = Math.max(0, Math.min(1, (dd + 78) / 54)); const x = Math.pow(xa * 0.7 + xf * 0.3, 1.6) * (dd < -82 ? 0 : 1);
         v[i] = x > v[i] ? v[i] + (x - v[i]) * Math.min(1, 0.85 * k60 + 0.15) : v[i] + (x - v[i]) * 0.26 * k60; }
