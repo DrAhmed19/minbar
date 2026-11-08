@@ -40,9 +40,12 @@ jobs:
       - name: بناء
         working-directory: native
         run: |
-          for i in 1 2 3; do flutter build apk --release && exit 0; echo "retry $i"; sleep 45; done; exit 1
-      - name: بصمة التوقيع
-        run: keytool -list -v -keystore ~/.android/debug.keystore -storepass android | grep -E "SHA1|SHA256"
+          for i in 1 2 3; do flutter build apk --release --build-number=${{ github.run_number }} --dart-define=BUILD=${{ github.run_number }} && exit 0; echo "retry $i"; sleep 45; done; exit 1
+      - name: بصمة التوقيع (من ملف APK نفسه)
+        run: |
+          AS=$(ls $ANDROID_HOME/build-tools/*/apksigner | tail -1)
+          $AS verify --print-certs native/build/app/outputs/flutter-apk/app-release.apk | grep -iE "SHA-1|SHA-256"
+          $AS verify --print-certs native/build/app/outputs/flutter-apk/app-release.apk | grep -qi "33:e9:a1:92\|33e9a192" && echo OK-SIGNATURE || (echo "توقيع غير مطابق"; exit 1)
       - uses: actions/upload-artifact@v4
         with:
           name: minbar-apk
@@ -54,4 +57,4 @@ jobs:
         run: |
           cp native/build/app/outputs/flutter-apk/app-release.apk minbar.apk
           gh release delete apk-latest --yes --cleanup-tag || true
-          gh release create apk-latest minbar.apk --title "منبر APK" --notes "آخر نسخة من تطبيق منبر" --prerelease
+          gh release create apk-latest minbar.apk --title "منبر APK" --notes "build:${{ github.run_number }}" --prerelease

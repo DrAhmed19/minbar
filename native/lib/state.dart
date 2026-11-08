@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -15,6 +17,9 @@ class PlayerCtl extends ChangeNotifier {
   bool shuffle = false;
   LoopMode loop = LoopMode.off;
   double speed = 1.0;
+  double lyOffset = 0; // تأخير الكلمات (سماعات بلوتوث)
+  String lastError = '';
+  int _errs = 0;
   int _lastSave = 0;
   Timer? sleepTimer;
   DateTime? sleepAt;
@@ -39,6 +44,21 @@ class PlayerCtl extends ChangeNotifier {
       }
     });
     p.playingStream.listen((_) => notifyListeners());
+    /* أخطاء التشغيل (ملف تالف/انقطاع شبكة): ننتقل للتالي بدل التوقف، مع حد لتفادي حلقة لا نهائية */
+    p.playbackEventStream.listen((_) {}, onError: (Object e, StackTrace st) {
+      lastError = 'تعذّر تشغيل المقطع';
+      notifyListeners();
+      if (++_errs <= 3 && p.hasNext) {
+        p.seekToNext().then((_) => p.play());
+      }
+    });
+    p.processingStateStream.listen((s) {
+      if (s == ProcessingState.ready) _errs = 0;
+    });
+    SharedPreferences.getInstance().then((sp) {
+      lyOffset = sp.getDouble('lyOffset') ?? 0;
+      speed = sp.getDouble('speed') ?? 1.0;
+    });
   }
 
   AudioSource _src(Track t) => AudioSource.uri(
@@ -107,8 +127,15 @@ class PlayerCtl extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setLyOffset(double v) {
+    lyOffset = v;
+    SharedPreferences.getInstance().then((sp) => sp.setDouble('lyOffset', v));
+    notifyListeners();
+  }
+
   void setSpeed(double s) {
     speed = s;
+    SharedPreferences.getInstance().then((sp) => sp.setDouble('speed', s));
     p.setSpeed(s);
     notifyListeners();
   }
@@ -250,6 +277,27 @@ class AuthCtl extends ChangeNotifier {
   void dispose() {
     _sub?.cancel();
     super.dispose();
+  }
+}
+
+/// فحص التحديثات: يقارن رقم البناء المدمج بآخر إصدار منشور على GitHub
+const kBuild = int.fromEnvironment('BUILD', defaultValue: 0);
+const kApkUrl = 'https://github.com/DrAhmed19/minbar/releases/download/apk-latest/minbar.apk';
+
+Future<int> latestBuild() async {
+  final c = HttpClient();
+  try {
+    final rq = await c.getUrl(Uri.parse('https://api.github.com/repos/DrAhmed19/minbar/releases/tags/apk-latest'));
+    rq.headers.set('User-Agent', 'minbar-app');
+    final r = await rq.close();
+    if (r.statusCode != 200) return 0;
+    final body = await r.transform(utf8.decoder).join();
+    final m = RegExp(r'build:(\d+)').firstMatch(body);
+    return m == null ? 0 : int.parse(m.group(1)!);
+  } catch (_) {
+    return 0;
+  } finally {
+    c.close(force: true);
   }
 }
 

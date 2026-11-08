@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'analysis.dart';
 import 'data.dart';
 import 'state.dart';
@@ -171,6 +172,32 @@ class _HomeShellState extends State<HomeShell> {
     app.repo.addListener(_r);
     app.player.addListener(_r);
     app.repo.loaded ? app.player.restore() : null;
+    Future.delayed(const Duration(seconds: 4), _checkUpdate);
+  }
+
+  Future<void> _checkUpdate() async {
+    final n = await latestBuild();
+    if (!mounted || kBuild == 0 || n <= kBuild) return;
+    showDialog(
+      context: context,
+      builder: (d) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: Text('تحديث جديد', style: tx(17, w: FontWeight.w800)),
+          content: Text('نزلت نسخة أحدث من منبر. تحمّلها وثبّتها فوق النسخة الحالية (بياناتك تبقى).', style: tx(13.5, w: FontWeight.w500, h: 1.7)),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(d), child: Text('لاحقاً', style: tx(13, c: kMuted))),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(d);
+                launchUrl(Uri.parse(kApkUrl), mode: LaunchMode.externalApplication);
+              },
+              child: Text('تحديث', style: tx(13.5, c: kGreen, w: FontWeight.w800)),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _r() {
@@ -541,7 +568,7 @@ class _HomeShellState extends State<HomeShell> {
         onTap: a.signOut,
       ),
       const SizedBox(height: 20),
-      Center(child: Text('منبر · نسخة التطبيق 1.0', style: tx(11.5, c: kMuted, w: FontWeight.w500))),
+      Center(child: Text('منبر · نسخة التطبيق 1.0 · بناء $kBuild', style: tx(11.5, c: kMuted, w: FontWeight.w500))),
     ]);
   }
 
@@ -788,7 +815,7 @@ class _PlayerPageState extends State<PlayerPage> {
   int _idx(double pos) {
     var k = -1;
     for (var i = 0; i < ly.length; i++) {
-      if (ly[i].t <= pos + 0.15) {
+      if (ly[i].t <= pos + 0.15 - app.player.lyOffset) {
         k = i;
       } else {
         break;
@@ -1015,6 +1042,23 @@ class _PlayerPageState extends State<PlayerPage> {
                     showCheckmark: false,
                     onSelected: (_) {
                       pc.setSpeed(s);
+                      Navigator.pop(context);
+                    },
+                  ),
+              ]),
+              const SizedBox(height: 16),
+              Text('تأخير الكلمات (للسماعات اللاسلكية)', style: tx(14, c: Colors.white70)),
+              const SizedBox(height: 8),
+              Wrap(spacing: 8, children: [
+                for (final o in [0.0, 0.2, 0.4, 0.6])
+                  ChoiceChip(
+                    label: Text(o == 0 ? 'بدون' : '${o.toStringAsFixed(1)} ث', style: tx(12.5, c: pc.lyOffset == o ? const Color(0xFF3A2D08) : Colors.white)),
+                    selected: pc.lyOffset == o,
+                    selectedColor: kGold,
+                    backgroundColor: Colors.white12,
+                    showCheckmark: false,
+                    onSelected: (_) {
+                      pc.setLyOffset(o);
                       Navigator.pop(context);
                     },
                   ),

@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:audio_session/audio_session.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,7 +9,12 @@ import 'state.dart';
 import 'ui.dart';
 
 Future<void> main() async {
+  runZonedGuarded(_start, (e, s) => debugPrint('خطأ غير متوقع: $e'));
+}
+
+Future<void> _start() async {
   WidgetsFlutterBinding.ensureInitialized();
+  FlutterError.onError = (d) => debugPrint('UI: ${d.exception}');
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(statusBarColor: Colors.transparent, systemNavigationBarColor: kCream));
   await JustAudioBackground.init(
     androidNotificationChannelId: 'com.minbar.app.audio',
@@ -24,6 +31,11 @@ Future<void> main() async {
       authDomain: 'minbar-8f037.firebaseapp.com',
     ),
   );
+  /* جلسة صوت موسيقى: إيقاف عند المكالمات/فصل السماعة وتخفيض الصوت مع الإشعارات */
+  try {
+    final ses = await AudioSession.instance;
+    await ses.configure(const AudioSessionConfiguration.music());
+  } catch (_) {}
   app.player.init();
   app.repo.init();
   app.auth.init();

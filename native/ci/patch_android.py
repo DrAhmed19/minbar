@@ -29,6 +29,8 @@ svc = '''        <service android:name="com.ryanheise.audioservice.AudioService"
 '''
 if 'com.ryanheise.audioservice.AudioService"' not in s:
     s = s.replace('</application>', svc + '    </application>', 1)
+if '<queries>' not in s:
+    s = s.replace('<application', '<queries><intent><action android:name="android.intent.action.VIEW"/><data android:scheme="https"/></intent></queries>\n    <application', 1)
 if 'xmlns:tools' not in s:
     s = s.replace('<manifest ', '<manifest xmlns:tools="http://schemas.android.com/tools" ', 1)
 mf.write_text(s, encoding='utf-8')
@@ -45,3 +47,20 @@ for g in [root / 'app/build.gradle.kts', root / 'app/build.gradle']:
         t = re.sub(r'minSdkVersion\s+flutter\.minSdkVersion', 'minSdkVersion 23', t)
         g.write_text(t, encoding='utf-8')
 print('patched')
+# توقيع ثابت صريح (حتى لا يولّد Gradle مفتاحاً عشوائياً فيفشل دخول Google: invalid-cert-hash)
+g = root / 'app/build.gradle.kts'
+if g.exists():
+    t = g.read_text(encoding='utf-8')
+    if 'create("minbar")' not in t:
+        t = t.replace('    buildTypes {', '''    signingConfigs {
+        create("minbar") {
+            storeFile = file("../../ci/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+    buildTypes {''', 1)
+        t = t.replace('signingConfig = signingConfigs.getByName("debug")', 'signingConfig = signingConfigs.getByName("minbar")')
+        g.write_text(t, encoding='utf-8')
+        print('signing patched', 'getByName("minbar")' in t)
