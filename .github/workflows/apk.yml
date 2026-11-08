@@ -32,9 +32,15 @@ jobs:
         run: |
           dart run flutter_launcher_icons
           dart run flutter_native_splash:create
+      - name: تجهيز Gradle (إعادة محاولة عند أعطال التحميل)
+        working-directory: native
+        run: |
+          flutter build apk --config-only || true
+          cd android && for i in 1 2 3 4 5 6; do ./gradlew --version && exit 0; echo "retry $i"; sleep 60; done; exit 1
       - name: بناء
         working-directory: native
-        run: flutter build apk --release
+        run: |
+          for i in 1 2 3; do flutter build apk --release && exit 0; echo "retry $i"; sleep 45; done; exit 1
       - name: بصمة التوقيع
         run: keytool -list -v -keystore ~/.android/debug.keystore -storepass android | grep -E "SHA1|SHA256"
       - uses: actions/upload-artifact@v4
