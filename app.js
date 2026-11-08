@@ -2605,3 +2605,4 @@ window.__plrViz = {
   }
 };
 })();
+try { requestAnimationFrame(() => setTimeout(() => window.__splashOut && window.__splashOut(), 300)); } catch (e) {}

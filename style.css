@@ -1265,3 +1265,22 @@ textarea.mdin{resize:none}
 /* v3.52 شريط الرئيسية/القصائد ثابت داخل رأس منبر */
 .plrlt{flex:none;padding:0 16px 8px;position:relative}.plrlt[hidden]{display:none}
 .plrlt .libtabs{margin:0}
+
+/* شاشة الافتتاح */
+#splash{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:radial-gradient(120% 90% at 50% 38%,#0f4a38 0%,#072a20 48%,#03140f 100%);transition:opacity .55s ease,transform .55s ease}
+#splash.out{opacity:0;transform:scale(1.06);pointer-events:none}
+.sp-in{display:flex;flex-direction:column;align-items:center;gap:6px}
+.sp-svg{width:128px;height:138px;filter:drop-shadow(0 0 22px rgba(232,196,106,.35));animation:spGlow 2.4s ease-in-out infinite}
+.sp-arch{stroke-dasharray:330;stroke-dashoffset:330;animation:spDraw 1.1s .1s cubic-bezier(.4,0,.2,1) forwards}
+.sp-bars rect{transform-box:fill-box;transform-origin:50% 100%;transform:scaleY(.08);opacity:0;animation:spBar 1.6s ease-in-out infinite,spShow .3s forwards}
+.sp-bars rect:nth-child(1){animation-delay:.9s,.9s}.sp-bars rect:nth-child(2){animation-delay:1s,1s}.sp-bars rect:nth-child(3){animation-delay:1.1s,1.1s}.sp-bars rect:nth-child(4){animation-delay:1.2s,1.2s}.sp-bars rect:nth-child(5){animation-delay:1.3s,1.3s}
+.sp-t{font:700 54px/1.1 F0,Cairo,sans-serif;color:#f3ead0;opacity:0;transform:translateY(14px);letter-spacing:.02em;animation:spUp .7s 1.2s ease forwards}
+.sp-l{height:2px;width:0;border-radius:2px;background:linear-gradient(90deg,transparent,#e8c46a,transparent);animation:spLine .8s 1.5s ease forwards}
+.sp-s{font:700 15px F0,Cairo,sans-serif;color:#9fbdb0;letter-spacing:.35em;opacity:0;animation:spUp .7s 1.7s ease forwards}
+@keyframes spDraw{to{stroke-dashoffset:0}}
+@keyframes spShow{to{opacity:1}}
+@keyframes spBar{0%,100%{transform:scaleY(.25)}50%{transform:scaleY(1)}}
+@keyframes spUp{to{opacity:1;transform:none}}
+@keyframes spLine{to{width:150px}}
+@keyframes spGlow{50%{filter:drop-shadow(0 0 34px rgba(232,196,106,.6))}}
+.bkout{display:flex;flex-direction:column;gap:6px;max-height:34vh;overflow-y:auto}.bkrow{font-size:13px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.06)}.bkrow.bad{color:#e8a0a0}

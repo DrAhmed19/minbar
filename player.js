@@ -1604,8 +1604,26 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     x.putImageData(im, 0, 0); }
   function coverJpg(file) { return new Promise((ok, no) => { const i = new Image(); i.onload = () => { const s = Math.min(i.naturalWidth, i.naturalHeight), out = s >= 1000 ? 1100 : Math.min(1000, Math.max(720, Math.round(s * 1.35))), c = document.createElement('canvas'); c.width = c.height = out; const x = c.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.drawImage(i, (i.naturalWidth - s) / 2, (i.naturalHeight - s) / 2, s, s, 0, 0, out, out); URL.revokeObjectURL(i.src); try { enhance(c); } catch (e) {} c.toBlob((b) => b ? ok(b) : no(new Error('تعذّر تجهيز الغلاف')), 'image/jpeg', 0.9); }; i.onerror = () => no(new Error('صورة الغلاف غير صالحة')); i.src = URL.createObjectURL(file); }); }
   const durOf = (file) => new Promise((ok) => { const a = new Audio(); a.preload = 'metadata'; a.onloadedmetadata = () => { ok(isFinite(a.duration) ? Math.round(a.duration) : 0); URL.revokeObjectURL(a.src); }; a.onerror = () => ok(0); a.src = URL.createObjectURL(file); });
+  /* كلمات جماعية: نص واحد لعدة قصائد (كل قصيدة تبدأ بسطر # العنوان) ← مطابقة بالعنوان ← ضبط تلقائي بالخلفية */
+  function bulkLyrics() {
+    modal('كلمات جماعية', (bx, close) => {
+      bx.appendChild(el('p', 'hint', 'الصق عدة قصائد في مربع واحد. ابدأ كل قصيدة بسطر فيه # ثم العنوان، وتحته الأبيات (سطر لكل بيت). يُطابَق العنوان مع قصائدك ثم تُضبط الكلمات تلقائياً بالخلفية.'));
+      const ta = el('textarea', 'mdin'); ta.rows = 9; ta.placeholder = '# يا سبع الدجيل\nبيت\nبيت\n\n# خط الشعائر\nبيت\nبيت'; bx.appendChild(ta);
+      const out = el('div', 'bkout'); bx.appendChild(out); let found = [];
+      const bg = (s) => { s = window.LYAI ? window.LYAI.norm(s).replace(/\s/g, '') : String(s).replace(/\s/g, ''); const m = new Map(); for (let i = 0; i < s.length - 1; i++) { const k = s.slice(i, i + 2); m.set(k, (m.get(k) || 0) + 1); } return [m, Math.max(1, s.length - 1)]; };
+      const dice = (a, b) => { const [A, na] = bg(a), [B, nb] = bg(b); let x = 0; A.forEach((v, k) => { x += Math.min(v, B.get(k) || 0); }); return 2 * x / (na + nb); };
+      const parse = () => { const blocks = []; let cu = null; ta.value.split(/\r?\n/).forEach((ln) => { const s = ln.trim(); if (/^#/.test(s)) { cu = { title: s.replace(/^#+\s*/, ''), lines: [] }; blocks.push(cu); } else if (s && cu) cu.lines.push(s); }); return blocks.filter((b) => b.title && b.lines.length); };
+      const scan = () => { out.textContent = ''; found = []; const bl = parse(); if (!bl.length) return;
+        bl.forEach((b) => { let best = null, bs = 0; tracks.forEach((t) => { const d = dice(b.title, t.title || ''); if (d > bs) { bs = d; best = t; } }); const ok = best && bs >= 0.72, has = ok && linesOf(best).length;
+          const r = el('div', 'bkrow' + (ok ? '' : ' bad'), (ok ? (has ? '↻ ' : '✓ ') : '✕ ') + b.title + (ok ? ' ← ' + best.title + (has ? ' (له كلمات، ستُستبدل)' : '') : ' — ما لقيت قصيدة بهذا الاسم') + ' · ' + b.lines.length + ' بيت'); out.appendChild(r); if (ok) found.push({ t: best, lines: b.lines }); }); };
+      ta.addEventListener('input', () => { clearTimeout(ta._t); ta._t = setTimeout(scan, 400); });
+      const go = btn('primary', 'ضبط تلقائي بالخلفية', () => { if (!found.length) return toast('ما اكو قصائد مطابقة'); found.forEach((f) => aqAdd(f.t.id, f.lines)); toast('أُضيف ' + found.length + ' قصيدة لطابور الضبط'); close(); }); go.classList.add('wide'); bx.appendChild(go);
+      bx.appendChild(btn('wide', 'إلغاء', close));
+    });
+  }
   function upMenu(t) { if (!isOwner()) return toast('الإضافة متاحة للمالك فقط'); const ed = !!t;
     modal(ed ? 'تعديل القصيدة' : 'إضافة قصيدة', (bx, close) => {
+      if (!ed) { const bk = btn('wide', 'كلمات جماعية لعدة قصائد', () => { close(); bulkLyrics(); }); bx.appendChild(bk); }
       const inp = (ph, v) => { const i = el('input', 'mdin'); i.placeholder = ph; i.value = v || ''; bx.appendChild(i); return i; };
       /* اختيار من القائمة (الرواديد/الشعراء السابقين) مع إمكانية كتابة اسم جديد */
       const pick = (ph, v, k) => { const w = el('div', 'pkw'), i = el('input', 'mdin'); i.placeholder = ph + ' — اختر أو اكتب اسماً جديداً'; i.value = v || ''; const ch = el('div', 'pkc'); w.append(i, ch); bx.appendChild(w);
