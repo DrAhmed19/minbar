@@ -1530,7 +1530,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     if (tracks[cur] !== t) { resumeOk = false; A.__noAuto = !d.playing; if (!Q.ids.includes(t.id)) qFrom(t, tracks, 'المجلس ' + MJ.code); play(tracks.indexOf(t), true); }
     if (d.ly && tracks[cur] === t) lyrBuild(); mjTick(); }
   async function mjStart(host, code) { const db = fdb(); if (!db) return toast('وضع المجلس يحتاج اتصالاً بالإنترنت'); const keep = MJ.saved; mjStop({ quiet: true }); if (!host) { MB.want = null; MJ.dq = []; MJ.bias = 0; MJ.sk = 0; MJ.saved = keep || mjSnap(); try { localStorage.setItem(MJSK, JSON.stringify(MJ.saved)); } catch (e) {} } MJ.on = true; MJ.host = host; MJ.code = code; MJ.lastTrack = null; mjUi(); toast('جارٍ ضبط التوقيت…'); await clockSync();
-    if (host) { mjPush(true); toast('بدأ المجلس — رمزك ' + code); }
+    if (host) { mjPush(true); toast('بدأ المجلس — رمزك ' + code); MJ.sug = []; let first = true; try { MJ.sunsub = db.collection('majlis/' + code + '/sug').onSnapshot((s) => { MJ.sug = s.docs.map((d) => Object.assign({ id: d.id }, d.data())); if (!first && s.docChanges().some((c) => c.type === 'added')) toast('اقتراح جديد من الحضور (' + MJ.sug.length + ')'); first = false; }, () => {}); } catch (e) {} }
     else { MJ.un = db.doc('majlis/' + code).onSnapshot((s) => { if (!s.exists) { toast('لا يوجد مجلس بهذا الرمز'); mjStop(); return; } const d = s.data(); if (d.ended) { toast(MJ.d ? 'انتهى المجلس — رجعناك لقائمتك' : 'هذا المجلس غير نشط حالياً'); mjStop(); return; } if (typeof d.ref !== 'number') return; mjFollow(d); }, () => toast('تعذّر الاتصال بالمجلس')); MJ.iv = setInterval(mjTick, 400); toast('انضممت إلى المجلس ' + code); } }
   const MJSK = 'minbar.mj.saved';
   function mjSnap() { const t = tracks[cur]; let L = null; try { L = JSON.parse(localStorage.getItem(LASTK) || 'null'); } catch (e) {} return { q: JSON.parse(JSON.stringify(Q)), id: t ? t.id : (L && L.id) || '', t: t ? A.currentTime || 0 : (L && L.t) || 0 }; }
@@ -1538,7 +1538,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     const t = byId(s.id); if (!t) return; resumeOk = false; A.__noAuto = true; A.__keepPaused = true; play(tracks.indexOf(t), false); seekTo(s.t || 0); setTimeout(() => { A.__keepPaused = false; }, 15000); }
   /* لو انسدّ التطبيق أثناء المجلس: نرجّع قائمة الضيف وآخر قصيدة قبل الاستعادة */
   (function () { if (window.__mjCode) return; let s = null; try { s = JSON.parse(localStorage.getItem(MJSK) || 'null'); localStorage.removeItem(MJSK); } catch (e) {} if (!s) return; if (s.q && Array.isArray(s.q.ids)) { Object.assign(Q, s.q); qSave(); } if (s.id) try { localStorage.setItem(LASTK, JSON.stringify({ id: s.id, t: Math.floor(s.t || 0), at: Date.now() })); } catch (e) {} })();
-  function mjStop(o) { o = o || {}; const wasHost = MJ.on && MJ.host, wasGuest = MJ.on && !MJ.host, code = MJ.code; if (MJ.un) { try { MJ.un(); } catch (e) {} } clearInterval(MJ.iv); MJ.un = null; MJ.d = null; MJ.on = false; A.playbackRate = st.speed || 1; mjUi();
+  function mjStop(o) { o = o || {}; if (MJ.sunsub) { try { MJ.sunsub(); } catch (e) {} MJ.sunsub = null; } MJ.sug = []; const wasHost = MJ.on && MJ.host, wasGuest = MJ.on && !MJ.host, code = MJ.code; if (MJ.un) { try { MJ.un(); } catch (e) {} } clearInterval(MJ.iv); MJ.un = null; MJ.d = null; MJ.on = false; A.playbackRate = st.speed || 1; mjUi();
     if (o.quiet) return; if (wasHost) { const db = fdb(); if (db && fuid()) db.doc('majlis/' + code).set({ ended: true, playing: false }, { merge: true }).catch(() => {}); } if (wasGuest) mjRestore(); }
   /* رمز المجلس ثابت لكل مضيف (6 أرقام) + باركود QR للانضمام بالكاميرا */
   const MJK = 'minbar.mj.code'; const myCode = () => { let c = localStorage.getItem(MJK); if (!/^\d{6}$/.test(c || '')) { c = String(Math.floor(100000 + Math.random() * 900000)); try { localStorage.setItem(MJK, c); } catch (e) {} } return c; };
@@ -1549,11 +1549,18 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     const det = new BarcodeDetector({ formats: ['qr_code'] }); let stop = false; const w = modal('مسح باركود المجلس', (bx, close) => { const v = document.createElement('video'); v.className = 'mjv'; v.playsInline = true; v.muted = true; v.srcObject = stream; v.play(); bx.appendChild(v); bx.appendChild(el('small', 'mdh', 'وجّه الكاميرا إلى الباركود الظاهر على جهاز المضيف')); const c = el('button', 'cn', 'إلغاء'); c.onclick = () => { stop = true; close(); }; bx.appendChild(c);
       const loop = async () => { if (stop) return; try { const r = await det.detect(v); const raw = r && r[0] && r[0].rawValue; const m = raw && /(?:mj=)?(\d{6})/.exec(raw); if (m) { stop = true; close(); done(m[1]); return; } } catch (e) {} setTimeout(loop, 250); }; setTimeout(loop, 400); });
     const obs = new MutationObserver(() => { if (!document.body.contains(w)) { stop = true; stream.getTracks().forEach((t) => t.stop()); obs.disconnect(); } }); obs.observe(root, { childList: true }); }
+  /* اقتراحات الحضور */
+  function mjSuggest(t) { const db = fdb(), u0 = fuid(); if (!db || !u0 || !MJ.on) return toast('سجّل الدخول وانضم لمجلس أولاً'); db.doc('majlis/' + MJ.code + '/sug/' + u0 + '_' + t.id).set({ track: t.id, by: u0, at: firebase.firestore.FieldValue.serverTimestamp() }).then(() => toast('أُرسل اقتراحك للمضيف')).catch(() => toast('تعذّر إرسال الاقتراح — تأكد أن قواعد Firebase محدَّثة')); }
+  function mjSugList(bx, rebuild) { const L = (MJ.sug || []).filter((x) => byId(x.track)); if (!L.length) return; bx.appendChild(el('h4', 'qsec', 'اقتراحات الحضور (' + L.length + ')'));
+    L.forEach((x) => { const t = byId(x.track), r = el('div', 'bkrow'); r.appendChild(el('span', '', t.title + (t.reciter ? ' — ' + t.reciter : '')));
+      const add = btn('primary', 'التالي', () => { const c0 = tracks[cur]; if (c0) qEnsure(c0); Q.ids = Q.ids.filter((id) => id !== t.id); Q.ids.splice(c0 ? Q.ids.indexOf(c0.id) + 1 : Q.ids.length, 0, t.id); qSave(); mjPush(true); const db = fdb(); if (db) db.doc('majlis/' + MJ.code + '/sug/' + x.id).delete().catch(() => {}); MJ.sug = MJ.sug.filter((y) => y.id !== x.id); toast('أُضيفت كقصيدة تالية'); rebuild(); });
+      const no = btn('', 'تجاهل', () => { const db = fdb(); if (db) db.doc('majlis/' + MJ.code + '/sug/' + x.id).delete().catch(() => {}); MJ.sug = MJ.sug.filter((y) => y.id !== x.id); rebuild(); }); r.append(add, no); bx.appendChild(r); }); }
   function mjMenu() {
     if (MJ.on) return modal('وضع المجلس', (bx, close) => {
       if (MJ.host) { const cv = document.createElement('canvas'); cv.className = 'mjqr'; bx.appendChild(cv); qrDraw(cv, mjUrl(MJ.code)); const cd = el('div', 'mjcode'); MJ.code.split('').forEach((d) => cd.appendChild(el('span', '', d))); bx.appendChild(cd); bx.appendChild(el('small', 'mdh', 'يمسح الحاضرون الباركود بكاميرا الهاتف، أو يُدخلون الرمز من «وضع المجلس»'));
         const sh = el('button', '', 'مشاركة رابط المجلس'); sh.onclick = async () => { const u = mjUrl(MJ.code); try { if (navigator.share) await navigator.share({ title: 'مجلس منبر', text: 'انضم إلى المجلس برمز ' + MJ.code, url: u }); else { await navigator.clipboard.writeText(u); toast('نُسخ الرابط'); } } catch (e) {} }; bx.appendChild(sh); }
       else bx.appendChild(el('p', 'abp', 'متصل بالمجلس ' + MJ.code + ' — يتبع جهازك المضيف تلقائياً.'));
+      if (MJ.host) mjSugList(bx, () => { close(); mjMenu(); });
       const b = el('button', 'pri', MJ.host ? 'إنهاء المجلس' : 'مغادرة المجلس'); b.onclick = () => { mjStop(); close(); }; bx.appendChild(b); const c = el('button', 'cn', 'إغلاق'); c.onclick = close; bx.appendChild(c); });
     modal('وضع المجلس', (bx, close) => { bx.appendChild(el('p', 'abp', 'شغّل القصيدة نفسها على عدة أجهزة في اللحظة نفسها، لتصدح من أكثر من سماعة في المجلس.'));
       const h = el('button', 'pri', 'استضافة مجلس (رمزك ' + myCode() + ')'); h.onclick = () => { if (cur < 0) return toast('شغّل قصيدة أولاً'); close(); mjStart(true, myCode()); setTimeout(mjMenu, 300); }; bx.appendChild(h);
@@ -1756,6 +1763,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
       act('heart', st.fav.includes(t.id) ? 'إزالة من المفضلة' : 'إضافة للمفضلة', () => { tog(t.id); render(); });
       act('plist', 'إضافة إلى قائمة', () => plPick(t));
       act('share', 'مشاركة', () => shareSheet(t, 0));
+      if (MJ.on && !MJ.host) act('users', 'اقتراح للمجلس', () => mjSuggest(t));
       if (offHas(t.id)) act('down', 'حذف التنزيل', () => offDel(t)); else act('down', 'تنزيل للاستماع بدون إنترنت', () => offSave(t));
       if (t.album && ALB[t.album]) act('lib', 'الذهاب للإصدار', () => { goLib('alb', t.album); });
       if (t.reciter) act('users', 'الذهاب للرادود', () => { goLib('rec', t.reciter.trim()); });
