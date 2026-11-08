@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'data.dart';
 
 class PlayerCtl extends ChangeNotifier {
@@ -21,9 +22,11 @@ class PlayerCtl extends ChangeNotifier {
   int viz = 3, bg = 0, lyFont = 0, lyColor = 1;
   double lySize = 22;
   ConcatenatingAudioSource? _cs;
+  bool quiet = false; // أثناء العينات: لا نحفظ الموضع ولا نحسب الاستماع
   String lastError = '';
   int _errs = 0;
   int _lastSave = 0;
+  String _counted = '';
   Timer? sleepTimer;
   DateTime? sleepAt;
 
@@ -40,10 +43,14 @@ class PlayerCtl extends ChangeNotifier {
     });
     p.positionStream.listen((pos) {
       final now = DateTime.now().millisecondsSinceEpoch;
-      final t = cur;
+      final t = quiet ? null : cur;
       if (t != null && now - _lastSave > 4000 && pos.inSeconds > 0) {
         _lastSave = now;
-        repo.savePos(t.id, pos.inMilliseconds);
+        repo.savePos(t.id, pos.inMilliseconds, dur: p.duration?.inMilliseconds ?? 0);
+      }
+      if (t != null && pos.inSeconds >= 30 && _counted != t.id) {
+        _counted = t.id;
+        repo.countPlay(t.id);
       }
     });
     p.playingStream.listen((_) => notifyListeners());
@@ -70,16 +77,18 @@ class PlayerCtl extends ChangeNotifier {
     });
   }
 
-  AudioSource _src(Track t) => AudioSource.uri(
-        Uri.parse(t.audioUrl),
-        tag: MediaItem(
+  AudioSource _src(Track t) {
+    final off = repo.offPath(t.id);
+    final tag = MediaItem(
           id: t.id,
           title: t.title,
           artist: t.reciter,
           album: t.albumName.isEmpty ? null : t.albumName,
           artUri: t.coverUrl.isEmpty ? null : Uri.parse(t.coverUrl),
-        ),
-      );
+    );
+    if (off != null && File(off).existsSync()) return AudioSource.file(off, tag: tag);
+    return AudioSource.uri(Uri.parse(t.audioUrl), tag: tag);
+  }
 
   Future<void> playList(List<Track> list, int start, {Duration? pos, bool play = true}) async {
     if (list.isEmpty || start < 0 || start >= list.length) return;
@@ -103,14 +112,35 @@ class PlayerCtl extends ChangeNotifier {
   }
 
   /// استعادة آخر أثر (متوقفاً) عند فتح التطبيق
+  bool _restoring = false;
   Future<void> restore() async {
-    if (cur != null || repo.tracks.isEmpty) return;
+    if (cur != null || repo.tracks.isEmpty || _restoring) return;
+    _restoring = true;
     final id = repo.lastId;
     if (id == null) return;
     final i = repo.tracks.indexWhere((t) => t.id == id);
     if (i < 0) return;
     final ms = repo.posOf(id);
     await playList(repo.tracks, i, pos: Duration(milliseconds: ms > 2000 ? ms - 1500 : 0), play: false);
+  }
+
+  Future<void> playNext(Track t) async {
+    if (_cs == null || cur == null) return playList([t], 0);
+    final at = (p.currentIndex ?? index) + 1;
+    try {
+      await _cs!.insert(at, _src(t));
+      queue = List<Track>.from(queue)..insert(at, t);
+    } catch (_) {}
+    notifyListeners();
+  }
+
+  Future<void> addToEnd(Track t) async {
+    if (_cs == null || cur == null) return playList([t], 0);
+    try {
+      await _cs!.add(_src(t));
+      queue = List<Track>.from(queue)..add(t);
+    } catch (_) {}
+    notifyListeners();
   }
 
   void toggle() => p.playing ? p.pause() : p.play();
@@ -330,6 +360,8 @@ class AuthCtl extends ChangeNotifier {
 
 /// فحص التحديثات: يقارن رقم البناء المدمج بآخر إصدار منشور على GitHub
 const kBuild = int.fromEnvironment('BUILD', defaultValue: 0);
+const kBase = 'https://minbar-95z.pages.dev/';
+void launchApk() => launchUrl(Uri.parse(kApkUrl), mode: LaunchMode.externalApplication);
 const kApkUrl = 'https://github.com/DrAhmed19/minbar/releases/download/apk-latest/minbar.apk';
 
 Future<int> latestBuild() async {

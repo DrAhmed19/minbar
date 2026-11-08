@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const kBase = 'https://minbar-95z.pages.dev/';
@@ -48,7 +50,8 @@ class Lyric {
 
 class Album {
   final String id, name, reciter, cover;
-  Album(this.id, this.name, this.reciter, this.cover);
+  final int at;
+  Album(this.id, this.name, this.reciter, this.cover, [this.at = 0]);
 }
 
 class Track {
@@ -110,16 +113,35 @@ class Pl {
 
 class Repo extends ChangeNotifier {
   List<Pl> pls = [];
+  Set<String> follows = {}, offline = {};
+  List<String> recent = [];
+  Map<String, int> durs = {};
+  String offDir = '';
+  List<MapEntry<String, int>> hotPlays = [], hotLikes = [];
+  DateTime _hotAt = DateTime(2000);
+  final Map<String, String> allLy = {};
+  bool _allLyLoading = false;
   List<Track> tracks = [];
   Map<String, Album> albums = {};
   Set<String> favs = {};
-  bool loaded = false, offline = false;
+  bool loaded = false, netOff = false;
   final Map<String, List<Lyric>> _ly = {};
   SharedPreferences? _p;
 
   Future<void> init() async {
     _p = await SharedPreferences.getInstance();
     favs = (_p!.getStringList('fav') ?? []).toSet();
+    follows = (_p!.getStringList('fol') ?? []).toSet();
+    offline = (_p!.getStringList('off') ?? []).toSet();
+    recent = _p!.getStringList('recent') ?? [];
+    try {
+      (jsonDecode(_p!.getString('durs') ?? '{}') as Map).forEach((k, v) => durs['$k'] = (v as num).toInt());
+    } catch (_) {}
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      offDir = '${dir.path}/off';
+      await Directory(offDir).create(recursive: true);
+    } catch (_) {}
     try {
       final j = jsonDecode(_p!.getString('pls') ?? '[]') as List;
       pls = j.whereType<Map>().map((m) => Pl('${m['id']}', '${m['name']}', ((m['ids'] ?? []) as List).map((e) => '$e').toList())).toList();
@@ -129,7 +151,7 @@ class Repo extends ChangeNotifier {
       tracks = j.whereType<Map>().map(Track.fromJson).toList();
       final a = jsonDecode(_p!.getString('albums') ?? '[]') as List;
       for (final m in a.whereType<Map>()) {
-        albums['${m['id']}'] = Album('${m['id']}', '${m['name']}', '${m['reciter']}', '${m['cover']}');
+        albums['${m['id']}'] = Album('${m['id']}', '${m['name']}', '${m['reciter']}', '${m['cover']}', (m['at'] is num) ? (m['at'] as num).toInt() : 0);
       }
     } catch (_) {}
     if (tracks.isNotEmpty) {
@@ -147,7 +169,7 @@ class Repo extends ChangeNotifier {
       final albs = <String, Album>{};
       for (final d in as.docs) {
         final x = d.data();
-        albs[d.id] = Album(d.id, '${x['name'] ?? ''}', '${x['reciter'] ?? ''}', '${x['cover'] ?? ''}');
+        albs[d.id] = Album(d.id, '${x['name'] ?? ''}', '${x['reciter'] ?? ''}', '${x['cover'] ?? ''}', (x['at'] is num) ? (x['at'] as num).toInt() : 0);
       }
       final out = <Track>[];
       for (final d in ts.docs) {
@@ -173,12 +195,12 @@ class Repo extends ChangeNotifier {
       out.sort((a, b) => b.at.compareTo(a.at));
       tracks = out;
       albums = albs;
-      offline = false;
+      netOff = false;
       await _p?.setString('tracks', jsonEncode(out.map((e) => e.toJson()).toList()));
       await _p?.setString(
-          'albums', jsonEncode(albs.values.map((a) => {'id': a.id, 'name': a.name, 'reciter': a.reciter, 'cover': a.cover}).toList()));
+          'albums', jsonEncode(albs.values.map((a) => {'id': a.id, 'name': a.name, 'reciter': a.reciter, 'cover': a.cover, 'at': a.at}).toList()));
     } catch (_) {
-      offline = true;
+      netOff = true;
     }
     loaded = true;
     notifyListeners();
@@ -251,8 +273,114 @@ class Repo extends ChangeNotifier {
 
   String? get lastId => _p?.getString('last.id');
   int posOf(String id) => _p?.getInt('pos.$id') ?? 0;
-  void savePos(String id, int ms) {
+  void savePos(String id, int ms, {int dur = 0}) {
     _p?.setInt('pos.$id', ms);
     _p?.setString('last.id', id);
+    if (dur > 0 && durs[id] != dur) {
+      durs[id] = dur;
+      _p?.setString('durs', jsonEncode(durs));
+    }
+    if (recent.isEmpty || recent.last != id) {
+      recent.remove(id);
+      recent.add(id);
+      if (recent.length > 40) recent.removeAt(0);
+      _p?.setStringList('recent', recent);
+    }
+  }
+
+  void toggleFollow(String r) {
+    follows.contains(r) ? follows.remove(r) : follows.add(r);
+    _p?.setStringList('fol', follows.toList());
+    notifyListeners();
+  }
+
+  // ---- التنزيل للاستماع بدون إنترنت ----
+  String? offPath(String id) => offline.contains(id) && offDir.isNotEmpty ? '$offDir/$id.audio' : null;
+
+  Future<bool> offSave(Track t, void Function(double) prog) async {
+    if (offDir.isEmpty) return false;
+    final c = HttpClient();
+    try {
+      final r = await (await c.getUrl(Uri.parse(t.audioUrl))).close();
+      if (r.statusCode != 200) return false;
+      final f = File('$offDir/${t.id}.audio.tmp');
+      final sink = f.openWrite();
+      var got = 0;
+      final total = r.contentLength;
+      await for (final ch in r) {
+        sink.add(ch);
+        got += ch.length;
+        if (total > 0) prog(got / total);
+      }
+      await sink.close();
+      await f.rename('$offDir/${t.id}.audio');
+      offline.add(t.id);
+      await _p?.setStringList('off', offline.toList());
+      notifyListeners();
+      return true;
+    } catch (_) {
+      return false;
+    } finally {
+      c.close(force: true);
+    }
+  }
+
+  Future<void> offDel(Track t) async {
+    try {
+      final f = File('$offDir/${t.id}.audio');
+      if (await f.exists()) await f.delete();
+    } catch (_) {}
+    offline.remove(t.id);
+    await _p?.setStringList('off', offline.toList());
+    notifyListeners();
+  }
+
+  // ---- الأكثر استماعاً/إعجاباً ----
+  Future<void> loadHot() async {
+    if (DateTime.now().difference(_hotAt).inMinutes < 10) return;
+    _hotAt = DateTime.now();
+    final db = FirebaseFirestore.instance;
+    try {
+      final s = await db.collection('stats').orderBy('plays', descending: true).limit(12).get();
+      hotPlays = s.docs.map((d) => MapEntry(d.id, ((d.data()['plays'] ?? 0) as num).toInt())).toList();
+    } catch (_) {}
+    try {
+      final wk = Timestamp.fromDate(DateTime.now().subtract(const Duration(days: 7)));
+      final s = await db.collection('rx').where('at', isGreaterThanOrEqualTo: wk).limit(800).get();
+      final c = <String, int>{};
+      for (final d in s.docs) {
+        final k = '${d.data()['track']}';
+        c[k] = (c[k] ?? 0) + 1;
+      }
+      final l = c.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+      hotLikes = l.take(12).toList();
+    } catch (_) {}
+    notifyListeners();
+  }
+
+  void countPlay(String id) {
+    FirebaseFirestore.instance.doc('stats/$id').set({'plays': FieldValue.increment(1)}, SetOptions(merge: true)).catchError((_) {});
+  }
+
+  // ---- بحث بنص الكلمات (يُحمَّل مرة ويُخزَّن) ----
+  Future<void> loadAllLyrics() async {
+    if (_allLyLoading || allLy.isNotEmpty) return;
+    _allLyLoading = true;
+    try {
+      final at = _p?.getInt('allLy.at') ?? 0;
+      final cached = _p?.getString('allLy');
+      if (cached != null && DateTime.now().millisecondsSinceEpoch - at < 7 * 86400000) {
+        (jsonDecode(cached) as Map).forEach((k, v) => allLy['$k'] = '$v');
+      } else {
+        final s = await FirebaseFirestore.instance.collection('lyrApproved').get();
+        for (final d in s.docs) {
+          allLy[d.id] = Lyric.parse(d.data()['json'] ?? '[]').map((e) => e.l).join(' ');
+        }
+        await _p?.setString('allLy', jsonEncode(allLy));
+        await _p?.setInt('allLy.at', DateTime.now().millisecondsSinceEpoch);
+      }
+      notifyListeners();
+    } catch (_) {}
+    _allLyLoading = false;
   }
 }
