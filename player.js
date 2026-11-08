@@ -173,9 +173,13 @@
   async function fsLoad() { const db = fdb(); if (!db) return; try { const [s, sa] = await Promise.all([db.collection('tracks').get(), db.collection('albums').get()]); ALB = {}; sa.forEach((d) => { ALB[d.id] = Object.assign({ id: d.id }, d.data()); }); try { localStorage.setItem(FSK + '.alb', JSON.stringify(ALB)); } catch (e) {}
       const arr = []; s.forEach((d) => { const x = d.data(); if (!x || !x.audio || x.hidden) return; const al = x.album && ALB[x.album]; arr.push(Object.assign({ lyrics: [], cat: 'أخرى' }, x, { id: d.id, fs: 1, ownCover: x.cover || '', cover: x.cover || (al && al.cover) || '', albumName: al ? al.name : '' })); }); arr.sort((a, b) => (b.at || 0) - (a.at || 0));
       const js = JSON.stringify(arr); if (js !== localStorage.getItem(FSK)) { try { localStorage.setItem(FSK, js); } catch (e) {} fsSet(arr); } } catch (e) {} }
+  /* بحث متسامح (همزات/تشكيل/ة-ه) ويشمل نص الكلمات */
+  const NZ = (s) => (window.LYAI ? window.LYAI.norm(s) : String(s || '').toLowerCase());
+  const hay = (t) => { const ly = GLY[t.id] || (t.lyrics && t.lyrics.length ? t.lyrics : []); const key = (ly.length || 0) + ':' + (t.title || '') + (t.reciter || '') + (t.poet || ''); if (t._hk !== key) { t._hk = key; t._h = NZ([t.title, t.reciter, t.poet].join(' ')); t._hl = NZ(ly.map((x) => x.l).join(' ')); } return t; };
+  const hit = (t, k) => { if (!k) return true; const nk = NZ(k); if (!nk) return true; hay(t); return t._h.includes(nk) || t._hl.includes(nk); };
   function filtered() {
-    const k = q.trim().toLowerCase(); if (tab === 'pls') { const pl = pls().find((x) => x.id === plSel); return pl ? pl.ids.map(byId).filter(Boolean).filter((t) => !k || [t.title, t.reciter, t.poet].some((v) => (v || '').toLowerCase().includes(k))) : []; }
-    return tracks.filter((t) => (tab !== 'fav' || st.fav.includes(t.id)) && (cat === 'الكل' || t.cat === cat) && (!k || [t.title, t.reciter, t.poet].some((v) => (v || '').toLowerCase().includes(k))));
+    const k = q.trim().toLowerCase(); if (tab === 'pls') { const pl = pls().find((x) => x.id === plSel); return pl ? pl.ids.map(byId).filter(Boolean).filter((t) => hit(t, k)) : []; }
+    return tracks.filter((t) => (tab !== 'fav' || st.fav.includes(t.id)) && (cat === 'الكل' || t.cat === cat) && hit(t, k));
   }
   function render() {
     const cs = ['الكل'].concat([...new Set(tracks.map((t) => t.cat).filter(Boolean))]); const bar = g('plrCats'); bar.textContent = '';
