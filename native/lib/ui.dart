@@ -124,3 +124,28 @@ class GoldButton extends StatelessWidget {
     );
   }
 }
+
+class GoldPill extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  const GoldPill(this.label, this.icon, this.onTap, {super.key});
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: kGreen,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(icon, color: kGold, size: 20),
+              const SizedBox(width: 6),
+              Text(label, style: tx(13.5, w: FontWeight.w800, c: Colors.white)),
+            ]),
+          ),
+        ),
+      );
+}

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
+import 'analysis.dart';
 import 'data.dart';
 import 'state.dart';
 import 'ui.dart';
@@ -314,7 +315,8 @@ class _HomeShellState extends State<HomeShell> {
       final l = _all.where((t) => r.isFav(t.id)).toList();
       return l.isEmpty ? _empty('ما عندك مفضلة بعد') : _list(l);
     }
-    if (nav == 2) return _account();
+    if (nav == 2) return _playlists();
+    if (nav == 3) return _account();
     if (q.isNotEmpty) return _list(_all);
     switch (sub) {
       case 1:
@@ -471,6 +473,37 @@ class _HomeShellState extends State<HomeShell> {
     ]);
   }
 
+  Widget _playlists() {
+    final r = app.repo;
+    return Column(children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
+        child: GoldPill('قائمة جديدة', Icons.add, () async {
+          final n = await askName(context);
+          if (n != null) r.newPl(n);
+        }),
+      ),
+      Expanded(
+        child: r.pls.isEmpty
+            ? _empty('ما عندك قوائم. اضغط مطوّلاً على أي قصيدة لإضافتها.')
+            : ListView.builder(
+                itemCount: r.pls.length,
+                itemBuilder: (_, i) {
+                  final p = r.pls[i];
+                  final tl = r.plTracks(p);
+                  return ListTile(
+                    leading: Cover(tl.isEmpty ? '' : tl.first.coverUrl, size: 50, radius: 12),
+                    title: Text(p.name, style: tx(14.5, w: FontWeight.w800)),
+                    subtitle: Text('${tl.length} قصيدة', style: tx(12, c: kMuted, w: FontWeight.w500)),
+                    trailing: IconButton(icon: const Icon(Icons.delete_outline, color: kMuted), onPressed: () => r.delPl(p)),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ListPage(p.name, tl))),
+                  );
+                },
+              ),
+      ),
+    ]);
+  }
+
   Widget _account() {
     final a = app.auth;
     return ListView(padding: const EdgeInsets.all(16), children: [
@@ -574,11 +607,81 @@ class _HomeShellState extends State<HomeShell> {
         top: false,
         child: Directionality(
           textDirection: TextDirection.rtl,
-          child: Row(children: [item(0, Icons.library_music_outlined, 'المكتبة'), item(1, Icons.favorite_border, 'المفضلة'), item(2, Icons.person_outline, 'حسابي')]),
+          child: Row(children: [item(0, Icons.library_music_outlined, 'المكتبة'), item(1, Icons.favorite_border, 'المفضلة'), item(2, Icons.queue_music_rounded, 'القوائم'), item(3, Icons.person_outline, 'حسابي')]),
         ),
       ),
     );
   }
+}
+
+Future<String?> askName(BuildContext context) {
+  final c = TextEditingController();
+  return showDialog<String>(
+    context: context,
+    builder: (_) => Directionality(
+      textDirection: TextDirection.rtl,
+      child: AlertDialog(
+        title: Text('اسم القائمة', style: tx(16, w: FontWeight.w800)),
+        content: TextField(controller: c, autofocus: true, style: tx(14)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('إلغاء', style: tx(13, c: kMuted))),
+          TextButton(onPressed: () => Navigator.pop(context, c.text), child: Text('إنشاء', style: tx(13, c: kGreen, w: FontWeight.w800))),
+        ],
+      ),
+    ),
+  );
+}
+
+void trackSheet(BuildContext context, Track t) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.white,
+    builder: (sheet) => Directionality(
+      textDirection: TextDirection.rtl,
+      child: SafeArea(
+        child: ListView(shrinkWrap: true, children: [
+          ListTile(title: Text(t.title, style: tx(15, w: FontWeight.w800)), subtitle: Text(t.reciter, style: tx(12, c: kMuted, w: FontWeight.w500))),
+          ListTile(
+            leading: Icon(app.repo.isFav(t.id) ? Icons.favorite : Icons.favorite_border, color: kGreen),
+            title: Text(app.repo.isFav(t.id) ? 'إزالة من المفضلة' : 'إضافة للمفضلة', style: tx(14)),
+            onTap: () {
+              app.repo.toggleFav(t.id);
+              Navigator.pop(sheet);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.playlist_add, color: kGreen),
+            title: Text('إضافة إلى قائمة', style: tx(14)),
+            onTap: () async {
+              Navigator.pop(sheet);
+              final r = app.repo;
+              final pick = await showModalBottomSheet<Pl>(
+                context: context,
+                backgroundColor: Colors.white,
+                builder: (s2) => Directionality(
+                  textDirection: TextDirection.rtl,
+                  child: SafeArea(
+                    child: ListView(shrinkWrap: true, children: [
+                      for (final p in r.pls) ListTile(title: Text(p.name, style: tx(14.5)), subtitle: Text('${p.ids.length} قصيدة', style: tx(11.5, c: kMuted)), onTap: () => Navigator.pop(s2, p)),
+                      ListTile(
+                        leading: const Icon(Icons.add, color: kGreen),
+                        title: Text('قائمة جديدة', style: tx(14.5, c: kGreen, w: FontWeight.w800)),
+                        onTap: () async {
+                          final n = await askName(s2);
+                          if (n != null) Navigator.pop(s2, r.newPl(n));
+                        },
+                      ),
+                    ]),
+                  ),
+                ),
+              );
+              if (pick != null) r.addToPl(pick, t.id);
+            },
+          ),
+        ]),
+      ),
+    ),
+  );
 }
 
 class TrackTile extends StatelessWidget {
@@ -591,6 +694,7 @@ class TrackTile extends StatelessWidget {
     final cur = app.player.cur?.id == t.id;
     return ListTile(
       onTap: onTap,
+      onLongPress: () => trackSheet(context, t),
       leading: Cover(t.coverUrl, size: 50, radius: 12),
       title: Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(14.5, w: FontWeight.w800, c: cur ? kGreen : kInk)),
       subtitle: Text([t.reciter, t.poet].where((e) => e.isNotEmpty).join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(12, c: kMuted, w: FontWeight.w500)),
@@ -642,6 +746,8 @@ class PlayerPage extends StatefulWidget {
 class _PlayerPageState extends State<PlayerPage> {
   List<Lyric> ly = [];
   String lyFor = '';
+  Analysis? an;
+  String anFor = '';
   bool showAll = false;
   final _sc = ScrollController();
   int _lastIdx = -1;
@@ -664,6 +770,10 @@ class _PlayerPageState extends State<PlayerPage> {
     if (t == null || lyFor == t.id) return;
     lyFor = t.id;
     ly = [];
+    an = null;
+    Analysis.load(t.id).then((a) {
+      if (mounted && app.player.cur?.id == t.id) setState(() => an = a);
+    });
     final r = await app.repo.lyricsFor(t);
     if (mounted && app.player.cur?.id == t.id) setState(() => ly = r);
   }
@@ -748,6 +858,7 @@ class _PlayerPageState extends State<PlayerPage> {
             }),
           ),
         ),
+        SizedBox(height: 46, child: an == null ? null : Padding(padding: const EdgeInsets.symmetric(horizontal: 38), child: Visualizer(an!))),
         Expanded(
           flex: 3,
           child: StreamBuilder<Duration>(
@@ -929,4 +1040,66 @@ class _PlayerPageState extends State<PlayerPage> {
       ),
     );
   }
+}
+
+/// مرئيات تتفاعل مع الصوت من التحليل المحسوب مسبقاً (بدون أي معالجة صوت حيّة)
+class Visualizer extends StatefulWidget {
+  final Analysis an;
+  const Visualizer(this.an, {super.key});
+  @override
+  State<Visualizer> createState() => _VisualizerState();
+}
+
+class _VisualizerState extends State<Visualizer> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat();
+  final List<double> _raw = List.filled(22, 0.0), _sm = List.filled(22, 0.0);
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (_, __) {
+        final pl = app.player.p;
+        if (pl.playing) {
+          widget.an.bandsAt(pl.position.inMilliseconds / 1000.0, _raw);
+        } else {
+          for (var k = 0; k < 22; k++) {
+            _raw[k] = 0.0;
+          }
+        }
+        for (var k = 0; k < 22; k++) {
+          final t = _raw[k];
+          _sm[k] += (t - _sm[k]) * (t > _sm[k] ? 0.55 : 0.14);
+        }
+        return CustomPaint(painter: _VizPainter(List<double>.from(_sm)), size: Size.infinite);
+      },
+    );
+  }
+}
+
+class _VizPainter extends CustomPainter {
+  final List<double> v;
+  _VizPainter(this.v);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final n = v.length;
+    final gap = 3.0;
+    final bw = (size.width - gap * (n - 1)) / n;
+    final p = Paint()
+      ..shader = const LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [Color(0xFFC8963A), kGold2]).createShader(Offset.zero & size);
+    for (var i = 0; i < n; i++) {
+      final h = 3 + v[i] * (size.height - 3);
+      canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(i * (bw + gap), size.height - h, bw, h), Radius.circular(bw / 2)), p);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _VizPainter o) => true;
 }

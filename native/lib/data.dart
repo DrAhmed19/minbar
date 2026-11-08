@@ -100,7 +100,16 @@ class Track {
       );
 }
 
+class Pl {
+  final String id;
+  String name;
+  List<String> ids;
+  Pl(this.id, this.name, this.ids);
+  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'ids': ids};
+}
+
 class Repo extends ChangeNotifier {
+  List<Pl> pls = [];
   List<Track> tracks = [];
   Map<String, Album> albums = {};
   Set<String> favs = {};
@@ -111,6 +120,10 @@ class Repo extends ChangeNotifier {
   Future<void> init() async {
     _p = await SharedPreferences.getInstance();
     favs = (_p!.getStringList('fav') ?? []).toSet();
+    try {
+      final j = jsonDecode(_p!.getString('pls') ?? '[]') as List;
+      pls = j.whereType<Map>().map((m) => Pl('${m['id']}', '${m['name']}', ((m['ids'] ?? []) as List).map((e) => '$e').toList())).toList();
+    } catch (_) {}
     try {
       final j = jsonDecode(_p!.getString('tracks') ?? '[]') as List;
       tracks = j.whereType<Map>().map(Track.fromJson).toList();
@@ -177,6 +190,35 @@ class Repo extends ChangeNotifier {
     }
     return null;
   }
+
+  void _savePls() {
+    _p?.setString('pls', jsonEncode(pls.map((e) => e.toJson()).toList()));
+    notifyListeners();
+  }
+
+  Pl newPl(String name) {
+    final p = Pl(DateTime.now().millisecondsSinceEpoch.toString(), name.trim().isEmpty ? 'قائمة جديدة' : name.trim(), []);
+    pls.add(p);
+    _savePls();
+    return p;
+  }
+
+  void addToPl(Pl p, String id) {
+    if (!p.ids.contains(id)) p.ids.add(id);
+    _savePls();
+  }
+
+  void removeFromPl(Pl p, String id) {
+    p.ids.remove(id);
+    _savePls();
+  }
+
+  void delPl(Pl p) {
+    pls.remove(p);
+    _savePls();
+  }
+
+  List<Track> plTracks(Pl p) => p.ids.map(byId).whereType<Track>().toList();
 
   bool isFav(String id) => favs.contains(id);
   void toggleFav(String id) {
