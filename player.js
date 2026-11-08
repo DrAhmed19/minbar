@@ -238,7 +238,7 @@
   function seekTo(t) { MB.tryAt = 0; MB.want = Math.max(0, t); MB.wantAt = Date.now(); MB.lw = MB.want; MB.lwAt = Date.now(); if (A.readyState >= 1) { try { A.currentTime = MB.want; } catch (e) {} } }
   const wantCov = (w) => { try { for (let i = 0; i < A.seekable.length; i++) if (A.seekable.start(i) <= w && A.seekable.end(i) >= w + 1) return true; } catch (e) {} return false; };
   const wantChk = () => { if (MB.want == null) return; if (Date.now() - MB.wantAt > 30000) { MB.want = null; return; } if (A.readyState < 1 || A.seeking) return; const cov = wantCov(MB.want) && !(A.__seekFail && !MB.ready);
-    if (Math.abs(A.currentTime - MB.want) > 1.5) { if (cov && Date.now() - (MB.tryAt || 0) > 1200) { MB.tryAt = Date.now(); const w = MB.want; try { A.currentTime = w; } catch (e) {} setTimeout(() => { if (MB.want === w && Math.abs(A.currentTime - w) > 1.5 && !MB.ready) A.__seekFail = true; }, 900); } }
+    if (Math.abs(A.currentTime - MB.want) > 1.5) { if (cov && Date.now() - (MB.tryAt || 0) > 1200) { MB.tryAt = Date.now(); const w = MB.want; try { A.currentTime = w; } catch (e) {} setTimeout(() => { if (MB.want === w && Math.abs(A.currentTime - w) > 1.5) { A.__seekFail = true; if (MB.ready) swapToBlob(true); } }, 900); } }
     else if (A.readyState >= 2 && cov && (A.paused || A.currentTime > MB.want + 0.4)) MB.want = null; };
   ['loadedmetadata', 'loadeddata', 'canplay', 'playing', 'timeupdate'].forEach((ev) => A.addEventListener(ev, wantChk));
   function mediaBlob(t) {
@@ -250,7 +250,7 @@
       const b = await r.blob(); if (MB.id !== id) return; MB.url = URL.createObjectURL(b); MB.ready = true; swapToBlob(); })().catch(() => { if (MB.id === id) MB.busy = null; });
     return MB.busy;
   }
-  function swapToBlob(force) { const t = tracks[cur]; if (!t || MB.id !== t.id || !MB.url || A.src === MB.url) return; /* لا نقطع الصوت أثناء التشغيل إلا عند الحاجة (تقديم فاشل) */ if (!force && !A.paused && MB.want == null && MB.pend == null && !A.__seekFail) return; const lwOk = MB.lw != null && Date.now() - (MB.lwAt || 0) < 60000 && A.currentTime < MB.lw - 1.5, pos = MB.want != null ? MB.want : MB.pend != null ? MB.pend : lwOk ? MB.lw : A.currentTime, was = !A.paused || (MB.pend != null && !A.__keepPaused); MB.pend = null; MB.lw = null;
+  function swapToBlob(force) { const t = tracks[cur]; if (!t || MB.id !== t.id || !MB.url || A.src === MB.url) return; /* لا نقطع الصوت أثناء التشغيل إلا عند الحاجة (تقديم فاشل) */ if (!force && !A.paused && !A.__seekFail) return; const lwOk = MB.lw != null && Date.now() - (MB.lwAt || 0) < 60000 && A.currentTime < MB.lw - 1.5, pos = MB.want != null ? MB.want : MB.pend != null ? MB.pend : lwOk ? MB.lw : A.currentTime, was = !A.paused || (MB.pend != null && !A.__keepPaused); MB.pend = null; MB.lw = null;
     const go = () => { A.removeEventListener('loadedmetadata', go); try { A.currentTime = pos; } catch (e) {} A.playbackRate = st.speed || 1; if (was) A.play().catch(() => {}); }; A.addEventListener('loadedmetadata', go); A.src = MB.url; }
   A.addEventListener('seeking', () => { MB.seekT = A.currentTime; });
   A.addEventListener('seeked', () => { const want = MB.seekT; MB.seekT = null; if (want == null) return; if (MB.ready) { if (A.currentTime < want - 1.5 && MB.url && A.src !== MB.url) { MB.pend = want; swapToBlob(true); } return; } if (A.currentTime < want - 1.5) { MB.pend = want; const t = tracks[cur]; if (t) { mediaBlob(t); toast('جارٍ تجهيز المقطع للانتقال…'); } } });
@@ -279,7 +279,7 @@
     if (!pfq || pfq.length !== n) pfq = new Float32Array(n); pfq.set(fqd);
   }
   /* ===== تحليل صوتي مسبق: يُحسب مرة واحدة (بالخلفية عند المالك) ويُقرأ وقت التشغيل بلا أي معالجة صوت — يحرّك الرسم واللطم بدل التحليل الحي ===== */
-  const APPV = '3.63';
+  const APPV = '3.64';
   const ANV = 'v1', ANKEY = (t) => 'n/' + t.id + '-' + ANV + '.bin', ANOK = (t) => /^[A-Za-z0-9_-]{3,64}$/.test((t && t.id) || '');
   let PRE = null; const PF = { dd: new Float32Array(22), vb: { db: 0, peak: 1 }, cb: { db: 0, flat: 0 }, hb: { db: 0 }, lb: { db: 0 }, on: 0 }; let synW = null, synT = 0;
   async function anLoad(t) { PRE = null; if (!t || t.an !== 1 || !ANOK(t)) return; try { const r = await fetch('media/u/' + ANKEY(t)); if (!r.ok) return; const b = new Uint8Array(await r.arrayBuffer()); if (b.length < 12 || b[0] !== 77 || b[1] !== 66 || b[2] !== 65) return; const nf = new DataView(b.buffer).getUint32(8, true); if (tracks[cur] && tracks[cur].id === t.id) PRE = { id: t.id, fps: b[4], nf, W: b[5] + b[6], d: b, o: 12 }; } catch (e) {} }

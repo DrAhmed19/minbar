@@ -17,7 +17,7 @@ const BGMODES = [['grad','تدرج'],['solid','سادة'],['image','صورة']];
 const PATS = [['stars','نجوم'],['dots','نقاط'],['lines','خطوط'],['none','بدون']];
 const VLAYS = [['classic','كلاسيك'],['card','بطاقة'],['blur','خلفية ضبابية']];
 const ALAYS = [['vinyl','أسطوانة'],['pulse','نبض'],['starpulse','نجمة نابضة'],['mirror','طيف مرآة'],['particles','جسيمات'],['ring','حلقة'],['sphere','كرة'],['neon','نيون'],['ridges','تلال'],['vu','عدادات'],['card','مشغل'],['poster','ملصق'],['cassette','كاسيت']];
-const BRAND = { name: 'منبر', tag: 'ستوديو القصائد والمراثي' };
+const BRAND = { name: 'منبر', tag: 'قصائد ومراثي' };
 const LFRAMES = [['none','بدون'],['circle','دائرة'],['seal','ختم'],['octa','نجمة 8'],['octagon','مثمن'],['arch','محراب'],['square','مربع']];
 const LEMBS = [['none','بدون'],['dome','قبة'],['dome_line','قبة خطية'],['crescent','هلال'],['crescent_star','هلال ونجمة']];
 const FILTERS = {
@@ -2605,4 +2605,4 @@ window.__plrViz = {
   }
 };
 })();
-try { requestAnimationFrame(() => setTimeout(() => window.__splashOut && window.__splashOut(), 300)); } catch (e) {}
+try { const t0 = Date.now(), chk = () => { const lg = $('login'), ld = $('gLoad'); const wait = lg.classList.contains('show') && ld && !ld.hidden; if (!wait || Date.now() - t0 > 5000) window.__splashOut && window.__splashOut(); else setTimeout(chk, 120); }; setTimeout(chk, 300); } catch (e) {}
