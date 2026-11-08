@@ -39,6 +39,7 @@ Future<void> _start() async {
   app.player.init();
   app.repo.init();
   app.auth.init();
+  await loadIcons();
   runApp(const MinbarApp());
 }
 

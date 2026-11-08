@@ -108,14 +108,14 @@ class _PlayerPageState extends State<PlayerPage> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 6),
                 child: Row(children: [
-                  IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70, size: 32)),
+                  IconButton(onPressed: () => Navigator.pop(context), icon: const PIcon(Ic.down, color: Colors.white70, size: 32)),
                   Expanded(child: Center(child: Text('${pc.index + 1} من ${pc.queue.length}', style: tx(12.5, c: Colors.white60, w: FontWeight.w600)))),
                   IconButton(
                     onPressed: () {
                       app.repo.toggleFav(t.id);
                       setState(() {});
                     },
-                    icon: Icon(fav ? Icons.favorite : Icons.favorite_border, color: fav ? const Color(0xFFE8776F) : Colors.white70),
+                    icon: PIcon(fav ? Ic.heartF : Ic.heart, color: fav ? const Color(0xFFE8776F) : Colors.white70),
                   ),
                 ]),
               ),
@@ -221,7 +221,7 @@ class _PlayerPageState extends State<PlayerPage> {
           left: 0,
           right: 0,
           child: Center(
-            child: GoldPill('مظهر الكلمات', Icons.text_fields_rounded, _lyStyleSheet),
+            child: GoldPill('مظهر الكلمات', Ic.text, _lyStyleSheet),
           ),
         ),
       ]);
@@ -234,7 +234,7 @@ class _PlayerPageState extends State<PlayerPage> {
         Row(children: [
           IconButton(
             onPressed: _sleepSheet,
-            icon: Icon(Icons.nightlight_round, color: pc.sleepAt != null ? kGold : Colors.white54, size: 22),
+            icon: PIcon(Ic.moon, color: pc.sleepAt != null ? kGold : Colors.white54, size: 22),
           ),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -242,7 +242,7 @@ class _PlayerPageState extends State<PlayerPage> {
               Text([t.reciter, t.poet].where((e) => e.isNotEmpty).join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(12.5, c: Colors.white60, w: FontWeight.w500)),
             ]),
           ),
-          IconButton(onPressed: _settingsSheet, icon: const Icon(Icons.more_vert, color: Colors.white70)),
+          IconButton(onPressed: _settingsSheet, icon: const PIcon(Ic.more, color: Colors.white70)),
         ]),
         StreamBuilder<Duration>(
           stream: pc.p.positionStream,
@@ -272,8 +272,8 @@ class _PlayerPageState extends State<PlayerPage> {
         Directionality(
           textDirection: TextDirection.ltr,
           child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-            IconButton(onPressed: () => pc.seek((pc.p.position.inMilliseconds / 1000.0 - 10).clamp(0.0, 1e9)), icon: const Icon(Icons.replay_10_rounded, color: Colors.white60, size: 26)),
-            IconButton(onPressed: pc.prev, icon: const Icon(Icons.skip_previous_rounded, color: Colors.white, size: 38)),
+            IconButton(onPressed: () => pc.seek((pc.p.position.inMilliseconds / 1000.0 - 10).clamp(0.0, 1e9)), icon: const PIcon(Ic.rw, color: Colors.white60, size: 26)),
+            IconButton(onPressed: pc.prev, icon: const PIcon(Ic.prev, color: Colors.white, size: 38)),
             StreamBuilder<PlayerState>(
               stream: pc.p.playerStateStream,
               builder: (_, s) {
@@ -287,13 +287,13 @@ class _PlayerPageState extends State<PlayerPage> {
                     decoration: const BoxDecoration(shape: BoxShape.circle, gradient: LinearGradient(colors: [kGold2, kGold], begin: Alignment.topLeft, end: Alignment.bottomRight)),
                     child: busy
                         ? const Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator(strokeWidth: 3, color: Color(0xFF3A2D08)))
-                        : Icon((st?.playing ?? false) ? Icons.pause_rounded : Icons.play_arrow_rounded, size: 40, color: const Color(0xFF3A2D08)),
+                        : PIcon((st?.playing ?? false) ? Ic.pause : Ic.play, size: 40, color: const Color(0xFF3A2D08)),
                   ),
                 );
               },
             ),
-            IconButton(onPressed: pc.next, icon: const Icon(Icons.skip_next_rounded, color: Colors.white, size: 38)),
-            IconButton(onPressed: () => pc.seek(pc.p.position.inMilliseconds / 1000.0 + 10), icon: const Icon(Icons.forward_10_rounded, color: Colors.white60, size: 26)),
+            IconButton(onPressed: pc.next, icon: const PIcon(Ic.next, color: Colors.white, size: 38)),
+            IconButton(onPressed: () => pc.seek(pc.p.position.inMilliseconds / 1000.0 + 10), icon: const PIcon(Ic.fw, color: Colors.white60, size: 26)),
           ]),
         ),
       ]),
@@ -302,13 +302,13 @@ class _PlayerPageState extends State<PlayerPage> {
 
   Widget _dock() {
     final pc = app.player;
-    Widget b(IconData ic, String s, bool on, VoidCallback f) => Expanded(
+    Widget b(String ic, String s, bool on, VoidCallback f) => Expanded(
           child: InkWell(
             onTap: f,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Icon(ic, color: on ? kGold : Colors.white60, size: 23),
+                PIcon(ic, color: on ? kGold : Colors.white60, size: 23),
                 const SizedBox(height: 2),
                 Text(s, style: tx(10.5, c: on ? kGold : Colors.white54, w: FontWeight.w600)),
               ]),
@@ -318,11 +318,11 @@ class _PlayerPageState extends State<PlayerPage> {
     return Container(
       decoration: const BoxDecoration(border: Border(top: BorderSide(color: Color(0x14FFFFFF)))),
       child: Row(children: [
-        b(pc.loop == LoopMode.one ? Icons.repeat_one_rounded : Icons.repeat_rounded, 'تكرار', pc.loop != LoopMode.off, pc.cycleLoop),
-        b(Icons.text_fields_rounded, 'الكلمات', lyView, () => setState(() => lyView = true)),
-        b(Icons.graphic_eq_rounded, 'الصوت', !lyView, () => setState(() => lyView = false)),
-        b(Icons.queue_music_rounded, 'القائمة', false, _queueSheet),
-        b(Icons.shuffle_rounded, 'عشوائي', pc.shuffle, pc.toggleShuffle),
+        b(pc.loop == LoopMode.one ? Ic.rep : Ic.rep, 'تكرار', pc.loop != LoopMode.off, pc.cycleLoop),
+        b(Ic.text, 'الكلمات', lyView, () => setState(() => lyView = true)),
+        b(Ic.eq, 'الصوت', !lyView, () => setState(() => lyView = false)),
+        b(Ic.plist, 'القائمة', false, _queueSheet),
+        b(Ic.shuf, 'عشوائي', pc.shuffle, pc.toggleShuffle),
       ]),
     );
   }
@@ -457,7 +457,7 @@ class _PlayerPageState extends State<PlayerPage> {
                 padding: const EdgeInsets.fromLTRB(18, 14, 18, 6),
                 child: Row(children: [
                   Expanded(child: Text('قائمة التشغيل · ${pc.queue.length}', style: tx(15.5, w: FontWeight.w800, c: Colors.white))),
-                  IconButton(onPressed: pc.toggleShuffle, icon: Icon(Icons.shuffle_rounded, color: pc.shuffle ? kGold : Colors.white54)),
+                  IconButton(onPressed: pc.toggleShuffle, icon: PIcon(Ic.shuf, color: pc.shuffle ? kGold : Colors.white54)),
                 ]),
               ),
               Expanded(
@@ -472,7 +472,7 @@ class _PlayerPageState extends State<PlayerPage> {
                       leading: Cover(q.coverUrl, size: 44, radius: 10),
                       title: Text(q.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(14, w: FontWeight.w800, c: on ? kGold : Colors.white)),
                       subtitle: Text(q.reciter, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(11.5, c: Colors.white54, w: FontWeight.w500)),
-                      trailing: on ? const Icon(Icons.graphic_eq, color: kGold) : IconButton(icon: const Icon(Icons.close, color: Colors.white38, size: 20), onPressed: () => pc.removeAt(i)),
+                      trailing: on ? const PIcon(Ic.eq, color: kGold) : IconButton(icon: const PIcon(Ic.x, color: Colors.white38, size: 20), onPressed: () => pc.removeAt(i)),
                     );
                   },
                 ),

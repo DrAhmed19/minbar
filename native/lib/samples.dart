@@ -150,7 +150,7 @@ class _SamplesPageState extends State<SamplesPage> {
                   child: Padding(
                     padding: const EdgeInsets.all(8),
                     child: Row(children: [
-                      IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.arrow_forward_rounded, color: Colors.white)),
+                      IconButton(onPressed: () => Navigator.pop(context), icon: const PIcon(Ic.back, color: Colors.white)),
                       Text('عينات', style: tx(18, c: Colors.white, w: FontWeight.w800)),
                     ]),
                   ),
@@ -208,16 +208,16 @@ class _SamplesPageState extends State<SamplesPage> {
             Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
               IconButton(
                 onPressed: () => setState(() => r.toggleFav(t.id)),
-                icon: Icon(r.isFav(t.id) ? Icons.favorite : Icons.favorite_border, color: r.isFav(t.id) ? const Color(0xFFFF6B6B) : Colors.white, size: 28),
+                icon: PIcon(r.isFav(t.id) ? Ic.heartF : Ic.heart, color: r.isFav(t.id) ? const Color(0xFFFF6B6B) : Colors.white, size: 28),
               ),
               IconButton(
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: '${kBase}?p=${t.id}'));
                   snack(context, 'نُسخ رابط المشاركة');
                 },
-                icon: const Icon(Icons.share_outlined, color: Colors.white, size: 26),
+                icon: const PIcon(Ic.share, color: Colors.white, size: 26),
               ),
-              IconButton(onPressed: () => trackSheet(context, t), icon: const Icon(Icons.more_horiz, color: Colors.white, size: 28)),
+              IconButton(onPressed: () => trackSheet(context, t), icon: const PIcon(Ic.more, color: Colors.white, size: 28)),
             ]),
             const SizedBox(height: 8),
             GoldButton('استمع كاملة', () {
@@ -226,7 +226,7 @@ class _SamplesPageState extends State<SamplesPage> {
               pl.quiet = false;
               pl.playList(r.tracks, r.tracks.indexWhere((x) => x.id == t.id));
               Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const PlayerPage()));
-            }, icon: Icons.play_arrow_rounded),
+            }, icon: Ic.play),
           ]),
         ),
       ),

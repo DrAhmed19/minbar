@@ -100,7 +100,7 @@ class LoginPage extends StatelessWidget {
       case AuthState.wait:
       case AuthState.rejected:
         body = Column(children: [
-          Icon(a.state == AuthState.wait ? Icons.hourglass_top_rounded : Icons.favorite_border, color: kGold, size: 36),
+          PIcon(a.state == AuthState.wait ? Ic.timer : Ic.heart, color: kGold, size: 36),
           const SizedBox(height: 10),
           Text(
               a.state == AuthState.rejected
@@ -116,7 +116,7 @@ class LoginPage extends StatelessWidget {
         break;
       default:
         body = Column(children: [
-          GoldButton('الدخول بحساب Google', a.google, icon: Icons.account_circle_outlined),
+          GoldButton('الدخول بحساب Google', a.google, icon: Ic.users),
           const SizedBox(height: 10),
           GoldButton('الدخول كضيف', a.enterGuest, outline: true),
           if (a.error.isNotEmpty) ...[

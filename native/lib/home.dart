@@ -169,9 +169,9 @@ class _HomeShellState extends State<HomeShell> {
                 _sc.clear();
               }
             }),
-            icon: Icon(searching ? Icons.close : Icons.search, color: kGreen),
+            icon: PIcon(searching ? Ic.x : Ic.search, color: kGreen),
           ),
-          if (!searching) IconButton(onPressed: _accountSheet, icon: const Icon(Icons.person_outline, color: kGreen)),
+          if (!searching) IconButton(onPressed: _accountSheet, icon: const PIcon(Ic.users, color: kGreen)),
         ]),
       );
 
@@ -288,7 +288,7 @@ class _HomeShellState extends State<HomeShell> {
           leading: Cover(l.first.coverUrl, size: 48, radius: 24),
           title: Text(ks[i], style: tx(14.5, w: FontWeight.w800)),
           subtitle: Text('${l.length} قصيدة${na > 0 ? ' · $na إصدار' : ''}', style: tx(12, c: kMuted, w: FontWeight.w500)),
-          trailing: const Icon(Icons.chevron_left, color: kMuted),
+          trailing: const PIcon(Ic.back, color: kMuted),
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GroupPage(ks[i], l, reciter: ks[i]))),
         );
       },
@@ -302,7 +302,7 @@ class _HomeShellState extends State<HomeShell> {
         padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
         child: Align(
           alignment: Alignment.centerRight,
-          child: GoldPill('قائمة جديدة', Icons.add, () async {
+          child: GoldPill('قائمة جديدة', Ic.plus, () async {
             final n = await askName(context);
             if (n != null) r.newPl(n);
           }),
@@ -320,7 +320,7 @@ class _HomeShellState extends State<HomeShell> {
                     leading: Cover(tl.isEmpty ? '' : tl.first.coverUrl, size: 50, radius: 12),
                     title: Text(p.name, style: tx(14.5, w: FontWeight.w800)),
                     subtitle: Text('${tl.length} قصيدة', style: tx(12, c: kMuted, w: FontWeight.w500)),
-                    trailing: IconButton(icon: const Icon(Icons.delete_outline, color: kMuted), onPressed: () => r.delPl(p)),
+                    trailing: IconButton(icon: const PIcon(Ic.x, color: kMuted), onPressed: () => r.delPl(p)),
                     onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GroupPage(p.name, tl))),
                   );
                 },
@@ -341,7 +341,7 @@ class _HomeShellState extends State<HomeShell> {
             padding: const EdgeInsets.all(16),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               Row(children: [
-                CircleAvatar(radius: 26, backgroundColor: kGreen, child: const Icon(Icons.person, color: kGold)),
+                CircleAvatar(radius: 26, backgroundColor: kGreen, child: const PIcon(Ic.users, color: kGold)),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -352,7 +352,7 @@ class _HomeShellState extends State<HomeShell> {
               ]),
               const SizedBox(height: 10),
               ListTile(
-                leading: const Icon(Icons.refresh, color: kGreen),
+                leading: const PIcon(Ic.reset, color: kGreen),
                 title: Text('تحديث المكتبة', style: tx(14)),
                 onTap: () {
                   Navigator.pop(s);
@@ -361,7 +361,7 @@ class _HomeShellState extends State<HomeShell> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.system_update_alt, color: kGreen),
+                leading: const PIcon(Ic.down, color: kGreen),
                 title: Text('التحقق من تحديث التطبيق', style: tx(14)),
                 subtitle: Text('نسخة 1.0 · بناء $kBuild', style: tx(11.5, c: kMuted)),
                 onTap: () async {
@@ -376,7 +376,7 @@ class _HomeShellState extends State<HomeShell> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.logout, color: kGreen),
+                leading: const PIcon(Ic.power, color: kGreen),
                 title: Text(a.guest ? 'تسجيل الدخول بحساب' : 'تسجيل الخروج', style: tx(14)),
                 onTap: () {
                   Navigator.pop(s);
@@ -411,9 +411,9 @@ class _HomeShellState extends State<HomeShell> {
             ),
             StreamBuilder<bool>(
               stream: app.player.p.playingStream,
-              builder: (_, s) => IconButton(onPressed: app.player.toggle, icon: Icon((s.data ?? false) ? Icons.pause_rounded : Icons.play_arrow_rounded, size: 32, color: kGreen)),
+              builder: (_, s) => IconButton(onPressed: app.player.toggle, icon: PIcon((s.data ?? false) ? Ic.pause : Ic.play, size: 32, color: kGreen)),
             ),
-            IconButton(onPressed: app.player.next, icon: const Icon(Icons.skip_previous_rounded, size: 28, color: kGreen)),
+            IconButton(onPressed: app.player.next, icon: const PIcon(Ic.prev, size: 28, color: kGreen)),
           ]),
           StreamBuilder<Duration>(
             stream: app.player.p.positionStream,
@@ -429,7 +429,7 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   Widget _nav() {
-    Widget item(int i, IconData ic, String s, {VoidCallback? f}) {
+    Widget item(int i, String ic, String s, {VoidCallback? f}) {
       final on = nav == i;
       return Expanded(
         child: InkWell(
@@ -437,7 +437,7 @@ class _HomeShellState extends State<HomeShell> {
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 9),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Icon(ic, color: on ? kGreen : kMuted, size: 23),
+              PIcon(ic, color: on ? kGreen : kMuted, size: 23),
               const SizedBox(height: 2),
               Text(s, style: tx(11, c: on ? kGreen : kMuted, w: on ? FontWeight.w800 : FontWeight.w600)),
             ]),
@@ -453,10 +453,10 @@ class _HomeShellState extends State<HomeShell> {
         child: Directionality(
           textDirection: TextDirection.rtl,
           child: Row(children: [
-            item(0, Icons.library_music_outlined, 'المكتبة'),
-            item(1, Icons.favorite_border, 'المفضلة'),
-            item(2, Icons.slow_motion_video_rounded, 'عينات', f: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SamplesPage()))),
-            item(3, Icons.queue_music_rounded, 'القوائم'),
+            item(0, Ic.lib, 'المكتبة'),
+            item(1, Ic.heart, 'المفضلة'),
+            item(2, Ic.pulse, 'عينات', f: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SamplesPage()))),
+            item(3, Ic.plist, 'القوائم'),
           ]),
         ),
       ),
@@ -495,7 +495,7 @@ class HomeTab extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Stack(children: [
               Cover(t.coverUrl, size: 128, radius: 16),
-              if (app.repo.offline.contains(t.id)) const Positioned(top: 6, left: 6, child: Icon(Icons.download_done_rounded, color: kGold, size: 18)),
+              if (app.repo.offline.contains(t.id)) const Positioned(top: 6, left: 6, child: PIcon(Ic.check, color: kGold, size: 18)),
               if (prog != null)
                 Positioned(
                   left: 8,
@@ -675,7 +675,7 @@ class _GroupPageState extends State<GroupPage> {
                   Text([widget.sub, '${tl.length} قصيدة'].where((e) => e.isNotEmpty).join(' · '), style: tx(12.5, c: kMuted, w: FontWeight.w500)),
                   const SizedBox(height: 10),
                   Row(children: [
-                    GoldPill('تشغيل', Icons.play_arrow_rounded, tl.isEmpty ? () {} : () => app.player.playList(tl, 0)),
+                    GoldPill('تشغيل', Ic.play, tl.isEmpty ? () {} : () => app.player.playList(tl, 0)),
                     if (widget.reciter != null) ...[
                       const SizedBox(width: 8),
                       OutlinedButton(
@@ -732,28 +732,28 @@ void trackSheet(BuildContext context, Track t) {
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             ListTile(leading: Cover(t.coverUrl, size: 48, radius: 10), title: Text(t.title, style: tx(15, w: FontWeight.w800)), subtitle: Text([t.reciter, t.poet].where((e) => e.isNotEmpty).join(' · '), style: tx(12, c: kMuted, w: FontWeight.w500))),
             Row(children: [
-              _q(Icons.play_arrow_rounded, 'تشغيل الآن', () {
+              _q(Ic.play, 'تشغيل الآن', () {
                 Navigator.pop(sheet);
                 pc.playList([t], 0);
               }),
               if (pc.cur != null && pc.cur!.id != t.id) ...[
-                _q(Icons.queue_play_next_rounded, 'التالي', () {
+                _q(Ic.queue, 'التالي', () {
                   Navigator.pop(sheet);
                   pc.playNext(t);
                   snack(context, 'ستُشغَّل بعد الحالية');
                 }),
-                _q(Icons.playlist_add_rounded, 'آخر القائمة', () {
+                _q(Ic.plist, 'آخر القائمة', () {
                   Navigator.pop(sheet);
                   pc.addToEnd(t);
                   snack(context, 'أُضيفت إلى قائمة التشغيل');
                 }),
               ],
             ]),
-            _a(r.isFav(t.id) ? Icons.favorite : Icons.favorite_border, r.isFav(t.id) ? 'إزالة من المفضلة' : 'إضافة للمفضلة', () {
+            _a(r.isFav(t.id) ? Ic.heartF : Ic.heart, r.isFav(t.id) ? 'إزالة من المفضلة' : 'إضافة للمفضلة', () {
               Navigator.pop(sheet);
               r.toggleFav(t.id);
             }),
-            _a(Icons.playlist_add, 'إضافة إلى قائمة', () async {
+            _a(Ic.plist, 'إضافة إلى قائمة', () async {
               Navigator.pop(sheet);
               final pick = await showModalBottomSheet<Pl>(
                 context: context,
@@ -764,7 +764,7 @@ void trackSheet(BuildContext context, Track t) {
                     child: ListView(shrinkWrap: true, children: [
                       for (final p in r.pls) ListTile(title: Text(p.name, style: tx(14.5)), subtitle: Text('${p.ids.length} قصيدة', style: tx(11.5, c: kMuted)), onTap: () => Navigator.pop(s2, p)),
                       ListTile(
-                        leading: const Icon(Icons.add, color: kGreen),
+                        leading: const PIcon(Ic.plus, color: kGreen),
                         title: Text('قائمة جديدة', style: tx(14.5, c: kGreen, w: FontWeight.w800)),
                         onTap: () async {
                           final n = await askName(s2);
@@ -780,32 +780,32 @@ void trackSheet(BuildContext context, Track t) {
                 if (context.mounted) snack(context, 'أُضيفت إلى «${pick.name}»');
               }
             }),
-            _a(Icons.share_outlined, 'نسخ رابط المشاركة', () {
+            _a(Ic.share, 'نسخ رابط المشاركة', () {
               Navigator.pop(sheet);
               Clipboard.setData(ClipboardData(text: '${kBase}?p=${t.id}'));
               snack(context, 'نُسخ الرابط');
             }),
             if (r.offline.contains(t.id))
-              _a(Icons.delete_outline, 'حذف التنزيل', () {
+              _a(Ic.x, 'حذف التنزيل', () {
                 Navigator.pop(sheet);
                 r.offDel(t);
                 snack(context, 'حُذف التنزيل');
               })
             else
-              _a(Icons.download_rounded, 'تنزيل للاستماع بدون إنترنت', () async {
+              _a(Ic.down, 'تنزيل للاستماع بدون إنترنت', () async {
                 Navigator.pop(sheet);
                 snack(context, 'جارٍ تنزيل «${t.title}»…');
                 final ok = await r.offSave(t, (_) {});
                 if (context.mounted) snack(context, ok ? 'نُزّلت — تعمل بدون إنترنت' : 'تعذّر التنزيل');
               }),
             if (t.album.isNotEmpty && r.albums.containsKey(t.album))
-              _a(Icons.album_outlined, 'الذهاب للإصدار', () {
+              _a(Ic.lib, 'الذهاب للإصدار', () {
                 Navigator.pop(sheet);
                 final a = r.albums[t.album]!;
                 Navigator.push(context, MaterialPageRoute(builder: (_) => GroupPage(a.name, r.tracks.where((x) => x.album == a.id).toList(), sub: a.reciter, cover: absUrl(a.cover))));
               }),
             if (t.reciter.trim().isNotEmpty)
-              _a(Icons.person_outline, 'الذهاب للرادود', () {
+              _a(Ic.users, 'الذهاب للرادود', () {
                 Navigator.pop(sheet);
                 final k = t.reciter.trim();
                 Navigator.push(context, MaterialPageRoute(builder: (_) => GroupPage(k, r.tracks.where((x) => x.reciter.trim() == k).toList(), reciter: k)));
@@ -818,17 +818,17 @@ void trackSheet(BuildContext context, Track t) {
   );
 }
 
-Widget _q(IconData i, String s, VoidCallback f) => Expanded(
+Widget _q(String i, String s, VoidCallback f) => Expanded(
       child: InkWell(
         onTap: f,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Column(children: [Icon(i, color: kGreen, size: 26), const SizedBox(height: 3), Text(s, style: tx(11.5, w: FontWeight.w700))]),
+          child: Column(children: [PIcon(i, color: kGreen, size: 26), const SizedBox(height: 3), Text(s, style: tx(11.5, w: FontWeight.w700))]),
         ),
       ),
     );
 
-Widget _a(IconData i, String s, VoidCallback f) => ListTile(leading: Icon(i, color: kGreen), title: Text(s, style: tx(14)), onTap: f);
+Widget _a(String i, String s, VoidCallback f) => ListTile(leading: PIcon(i, color: kGreen), title: Text(s, style: tx(14)), onTap: f);
 
 class TrackTile extends StatelessWidget {
   final Track t;
@@ -845,15 +845,15 @@ class TrackTile extends StatelessWidget {
       leading: Cover(t.coverUrl, size: 50, radius: 12),
       title: Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(14.5, w: FontWeight.w800, c: cur ? kGreen : kInk)),
       subtitle: Row(children: [
-        if (app.repo.offline.contains(t.id)) const Padding(padding: EdgeInsetsDirectional.only(end: 4), child: Icon(Icons.download_done_rounded, size: 14, color: kGreen)),
+        if (app.repo.offline.contains(t.id)) const Padding(padding: EdgeInsetsDirectional.only(end: 4), child: PIcon(Ic.check, size: 14, color: kGreen)),
         Expanded(child: Text([t.reciter, t.poet].where((e) => e.isNotEmpty).join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(12, c: kMuted, w: FontWeight.w500))),
       ]),
       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-        if (cur) const Icon(Icons.graphic_eq, color: kGold),
+        if (cur) const PIcon(Ic.eq, color: kGold),
         IconButton(
           visualDensity: VisualDensity.compact,
           onPressed: () => app.repo.toggleFav(t.id),
-          icon: Icon(fav ? Icons.favorite : Icons.favorite_border, size: 20, color: fav ? const Color(0xFFD9534F) : kMuted),
+          icon: PIcon(fav ? Ic.heartF : Ic.heart, size: 20, color: fav ? const Color(0xFFD9534F) : kMuted),
         ),
       ]),
     );

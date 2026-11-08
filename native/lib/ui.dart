@@ -1,6 +1,9 @@
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 const kGold = Color(0xFFE8C468);
@@ -74,7 +77,7 @@ class Cover extends StatelessWidget {
         borderRadius: BorderRadius.circular(radius),
         gradient: const LinearGradient(colors: [kGreen, kDeep], begin: Alignment.topLeft, end: Alignment.bottomRight),
       ),
-      child: Icon(Icons.graphic_eq, color: kGold, size: size * 0.4),
+      child: PIcon(Ic.eq, color: kGold, size: size * 0.4),
     );
     if (url.isEmpty) return ph;
     return ClipRRect(
@@ -94,7 +97,7 @@ class Cover extends StatelessWidget {
 class GoldButton extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
-  final IconData? icon;
+  final String? icon;
   final bool outline;
   const GoldButton(this.label, this.onTap, {super.key, this.icon, this.outline = false});
 
@@ -115,7 +118,7 @@ class GoldButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             onTap: onTap,
             child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              if (icon != null) ...[Icon(icon, color: outline ? kGold : const Color(0xFF3A2D08), size: 20), const SizedBox(width: 8)],
+              if (icon != null) ...[PIcon(icon, color: outline ? kGold : const Color(0xFF3A2D08), size: 20), const SizedBox(width: 8)],
               Text(label, style: tx(15.5, w: FontWeight.w800, c: outline ? const Color(0xFFF3F6F4) : const Color(0xFF3A2D08))),
             ]),
           ),
@@ -127,7 +130,7 @@ class GoldButton extends StatelessWidget {
 
 class GoldPill extends StatelessWidget {
   final String label;
-  final IconData icon;
+  final String icon;
   final VoidCallback onTap;
   const GoldPill(this.label, this.icon, this.onTap, {super.key});
 
@@ -141,11 +144,43 @@ class GoldPill extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(icon, color: kGold, size: 20),
+              PIcon(icon, color: kGold, size: 20),
               const SizedBox(width: 6),
               Text(label, style: tx(13.5, w: FontWeight.w800, c: Colors.white)),
             ]),
           ),
         ),
       );
+}
+
+/// أيقونات الويب نفسها (مسارات SVG من player.js) — تُحمَّل مرة واحدة عند الإقلاع
+class Ic {
+  static const play = 'play', pause = 'pause', prev = 'prev', next = 'next', heart = 'heart', heartF = 'heartF', lib = 'lib', pulse = 'pulse', plist = 'plist',
+      search = 'search', x = 'x', users = 'users', back = 'back', plus = 'plus', reset = 'reset', down = 'down', power = 'power', check = 'check',
+      queue = 'queue', share = 'share', eq = 'eq', more = 'more', text = 'text', moon = 'moon', rw = 'rw', fw = 'fw', rep = 'rep', shuf = 'shuf', timer = 'timer';
+}
+
+Map<String, String> _icons = {};
+Future<void> loadIcons() async {
+  try {
+    final m = jsonDecode(await rootBundle.loadString('assets/icons.json')) as Map;
+    _icons = m.map((k, v) => MapEntry('$k', '$v'));
+  } catch (_) {}
+}
+
+class PIcon extends StatelessWidget {
+  final String n;
+  final Color? color;
+  final double? size;
+  const PIcon(this.n, {super.key, this.color, this.size});
+  @override
+  Widget build(BuildContext context) {
+    final c = color ?? IconTheme.of(context).color ?? kInk;
+    final sz = size ?? IconTheme.of(context).size ?? 24;
+    final filled = n.endsWith('F');
+    final body = _icons[filled ? n.substring(0, n.length - 1) : n] ?? '';
+    final hex = '#${(c.value & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
+    final svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${filled ? hex : 'none'}" stroke="$hex" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${body.replaceAll('currentColor', hex)}</svg>';
+    return SizedBox(width: sz, height: sz, child: Opacity(opacity: c.alpha / 255, child: SvgPicture.string(svg)));
+  }
 }
