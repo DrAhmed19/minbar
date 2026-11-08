@@ -360,7 +360,6 @@ class AuthCtl extends ChangeNotifier {
 
 /// فحص التحديثات: يقارن رقم البناء المدمج بآخر إصدار منشور على GitHub
 const kBuild = int.fromEnvironment('BUILD', defaultValue: 0);
-const kBase = 'https://minbar-95z.pages.dev/';
 void launchApk() => launchUrl(Uri.parse(kApkUrl), mode: LaunchMode.externalApplication);
 const kApkUrl = 'https://github.com/DrAhmed19/minbar/releases/download/apk-latest/minbar.apk';
 
