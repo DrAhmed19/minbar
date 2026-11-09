@@ -15,7 +15,7 @@ const kInk = Color(0xFF13201A);
 const kMuted = Color(0xFF5A6F64);
 
 TextStyle tx(double size, {FontWeight w = FontWeight.w600, Color c = kInk, double? h}) =>
-    GoogleFonts.cairo(fontSize: size, fontWeight: w, color: c, height: h);
+    TextStyle(fontFamily: 'Cairo', fontFamilyFallback: const ['CairoLatin'], fontSize: size, fontWeight: FontWeight.w700, color: c, height: h);
 
 /// شعار منبر: قوس ذهبي وأعمدة صوت (نفس شعار الويب)
 class LogoPainter extends CustomPainter {

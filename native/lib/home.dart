@@ -122,8 +122,10 @@ class _HomeShellState extends State<HomeShell> {
           body: SafeArea(
             bottom: false,
             child: Column(children: [
-              _header(),
-              if (nav == 0 && !searching) _subTabs(),
+              Container(
+                decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x330E5C46), Color(0x000E5C46)])),
+                child: Column(children: [_header(), if (nav == 0 && !searching) _subTabs()]),
+              ),
               Expanded(child: _body()),
               _mini(),
             ]),
@@ -134,12 +136,24 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
+  Widget _ib(String ic, VoidCallback f) => GestureDetector(
+        onTap: f,
+        child: Container(
+          width: 40,
+          height: 40,
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(13), border: Border.all(color: const Color(0x210E5C46)), color: const Color(0x0DFFFFFF)),
+          child: Center(child: PIcon(ic, color: const Color(0xFF083B2D), size: 21)),
+        ),
+      );
+
   Widget _header() => Container(
-        padding: const EdgeInsets.fromLTRB(14, 8, 8, 6),
+        height: 56,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         child: Row(children: [
-          SizedBox(width: 28, height: 30, child: CustomPaint(painter: LogoPainter(0.2))),
-          const SizedBox(width: 8),
-          if (!searching) Text('منبر', style: tx(24, w: FontWeight.w800, c: kGreen)),
+          Image.asset('assets/brand-mark.png', width: 34, height: 34),
+          const SizedBox(width: 9),
+          if (!searching) Text('منبر', style: tx(21, w: FontWeight.w800, c: const Color(0xFF083B2D))),
           if (searching)
             Expanded(
               child: TextField(
@@ -147,8 +161,8 @@ class _HomeShellState extends State<HomeShell> {
                 autofocus: true,
                 style: tx(14),
                 decoration: InputDecoration(
-                  hintText: 'ابحث بالاسم أو الرادود أو الكلمات…',
-                  hintStyle: tx(13, c: kMuted),
+                  hintText: 'ابحث باسم القصيدة أو الرادود أو الشاعر',
+                  hintStyle: tx(12.5, c: kMuted),
                   isDense: true,
                   filled: true,
                   fillColor: Colors.white,
@@ -161,17 +175,14 @@ class _HomeShellState extends State<HomeShell> {
               ),
             ),
           if (!searching) const Spacer(),
-          IconButton(
-            onPressed: () => setState(() {
-              searching = !searching;
-              if (!searching) {
-                q = '';
-                _sc.clear();
-              }
-            }),
-            icon: PIcon(searching ? Ic.x : Ic.search, color: kGreen),
-          ),
-          if (!searching) IconButton(onPressed: _accountSheet, icon: const PIcon(Ic.users, color: kGreen)),
+          if (!searching) _ib(Ic.users, _accountSheet),
+          _ib(searching ? Ic.x : Ic.search, () => setState(() {
+                searching = !searching;
+                if (!searching) {
+                  q = '';
+                  _sc.clear();
+                }
+              })),
         ]),
       );
 
@@ -396,32 +407,35 @@ class _HomeShellState extends State<HomeShell> {
     return GestureDetector(
       onTap: () => openPlayer(context),
       child: Container(
-        margin: const EdgeInsets.fromLTRB(10, 4, 10, 6),
-        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), boxShadow: const [BoxShadow(color: Color(0x1A000000), blurRadius: 14, offset: Offset(0, 4))]),
+        margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: const [BoxShadow(color: Color(0x2E0E5C46), blurRadius: 24, offset: Offset(0, 8))]),
+        clipBehavior: Clip.antiAlias,
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Row(children: [
-            Cover(t.coverUrl, size: 42, radius: 10),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(14, w: FontWeight.w800)),
-                Text(t.reciter, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(11.5, c: kMuted, w: FontWeight.w500)),
-              ]),
-            ),
-            StreamBuilder<bool>(
-              stream: app.player.p.playingStream,
-              builder: (_, s) => IconButton(onPressed: app.player.toggle, icon: PIcon((s.data ?? false) ? Ic.pause : Ic.play, size: 32, color: kGreen)),
-            ),
-            IconButton(onPressed: app.player.next, icon: const PIcon(Ic.prev, size: 28, color: kGreen)),
-          ]),
           StreamBuilder<Duration>(
             stream: app.player.p.positionStream,
             builder: (_, s) {
               final d = app.player.p.duration?.inMilliseconds ?? 0;
               final v = d > 0 ? ((s.data?.inMilliseconds ?? 0) / d).clamp(0.0, 1.0) : 0.0;
-              return LinearProgressIndicator(value: v, minHeight: 2.5, backgroundColor: const Color(0x14000000), color: kGold);
+              return LinearProgressIndicator(value: v, minHeight: 3, backgroundColor: const Color(0x1A0E5C46), color: const Color(0xFFC8A24B));
             },
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+            child: Row(children: [
+              Cover(t.coverUrl, size: 44, radius: 10),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(14.5)),
+                  Text(t.reciter, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(12, c: kMuted)),
+                ]),
+              ),
+              StreamBuilder<bool>(
+                stream: app.player.p.playingStream,
+                builder: (_, s) => IconButton(onPressed: app.player.toggle, icon: PIcon((s.data ?? false) ? Ic.pause : Ic.play, size: 24, color: kGreen)),
+              ),
+              IconButton(onPressed: app.player.next, icon: const PIcon(Ic.next, size: 22, color: kGreen)),
+            ]),
           ),
         ]),
       ),
@@ -479,7 +493,7 @@ class HomeTab extends StatelessWidget {
   final void Function(List<Track>, Track) onPlay;
   const HomeTab({super.key, required this.onPlay});
 
-  Widget _sec(String s) => Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 8), child: Text(s, style: tx(17, w: FontWeight.w800)));
+  Widget _sec(String s) => Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 8), child: Text(s, style: tx(18, c: const Color(0xFF17231E))));
 
   Widget _row(List<Widget> c, {double h = 196}) => SizedBox(
         height: h,
@@ -490,11 +504,11 @@ class HomeTab extends StatelessWidget {
         onTap: () => onPlay(ctx, t),
         onLongPress: () => trackSheet(_ctx!, t),
         child: Container(
-          width: 128,
+          width: 136,
           margin: const EdgeInsets.symmetric(horizontal: 4),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Stack(children: [
-              Cover(t.coverUrl, size: 128, radius: 16),
+              Cover(t.coverUrl, size: 136, radius: 18),
               if (app.repo.offline.contains(t.id)) const Positioned(top: 6, left: 6, child: PIcon(Ic.check, color: kGold, size: 18)),
               if (prog != null)
                 Positioned(
@@ -505,8 +519,8 @@ class HomeTab extends StatelessWidget {
                 ),
             ]),
             const SizedBox(height: 6),
-            Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(13, w: FontWeight.w800)),
-            Text(sub ?? t.reciter, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(11.5, c: kMuted, w: FontWeight.w500)),
+            Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(14)),
+            Text(sub ?? t.reciter, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(12, c: kMuted)),
           ]),
         ),
       );
@@ -571,7 +585,7 @@ class HomeTab extends StatelessWidget {
         final likes = r.hotLikes.map((e) => (r.byId(e.key), e.value)).where((e) => e.$1 != null).toList();
         if (likes.isNotEmpty) {
           body.add(_sec('الأكثر إعجاباً هذا الأسبوع'));
-          body.add(_row([for (final e in likes) _card(e.$1!, all, sub: '❤ ${e.$2}')]));
+          body.add(_row([for (final e in likes) _card(e.$1!, all, sub: '${e.$2} ♥')]));
         }
         final plays = r.hotPlays.map((e) => (r.byId(e.key), e.value)).where((e) => e.$1 != null).toList();
         if (plays.isNotEmpty) {
@@ -606,7 +620,7 @@ class HomeTab extends StatelessWidget {
         child: Container(
           margin: const EdgeInsets.fromLTRB(12, 4, 12, 4),
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), gradient: const LinearGradient(colors: [Color(0xFF1F6A52), Color(0xFF0C4A39)])),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0x59E8C468)), gradient: const LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF0C4A39), Color(0xFF123A2F)])),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(k, style: tx(11.5, c: kGold, w: FontWeight.w700)),
             const SizedBox(height: 2),
