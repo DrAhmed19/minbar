@@ -272,7 +272,8 @@ class AuthCtl extends ChangeNotifier {
     }
     guest = false;
     await _p?.setBool('guest', false);
-    state = AuthState.loading;
+    final cachedOk = _p?.getString('okUid') == u.uid;
+    state = cachedOk ? AuthState.ok : AuthState.loading;
     notifyListeners();
     try {
       final db = FirebaseFirestore.instance;
@@ -299,8 +300,15 @@ class AuthCtl extends ChangeNotifier {
         }
       }
     } catch (e) {
-      error = 'مشكلة بالاتصال';
-      state = AuthState.out;
+      if (!cachedOk) {
+        error = 'مشكلة بالاتصال';
+        state = AuthState.out;
+      }
+    }
+    if (state == AuthState.ok) {
+      await _p?.setString('okUid', u.uid);
+    } else {
+      await _p?.remove('okUid');
     }
     notifyListeners();
   }

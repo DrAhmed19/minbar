@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'data.dart';
+import 'state.dart';
 
 /// التحليل المحسوب مسبقاً لكل قصيدة (نفس ملفات الويب: media/u/n/<id>-v1.bin)
 /// 22 نطاقاً ترددياً (dB) + مدخلات الأعمدة لكل إطار، بدون أي معالجة صوت لحظية
@@ -13,13 +14,19 @@ class Analysis {
   static Future<Analysis?> load(String id) async {
     final c = HttpClient();
     try {
-      final r = await (await c.getUrl(Uri.parse(absUrl('media/u/n/$id-v1.bin')))).close();
-      if (r.statusCode != 200) return null;
-      final b = BytesBuilder();
-      await for (final ch in r) {
-        b.add(ch);
+      Uint8List d;
+      final lf = File('${app.repo.offDir}/$id.mba');
+      if (app.repo.offDir.isNotEmpty && await lf.exists()) {
+        d = await lf.readAsBytes();
+      } else {
+        final r = await (await c.getUrl(Uri.parse(absUrl('media/u/n/$id-v1.bin')))).close();
+        if (r.statusCode != 200) return null;
+        final b = BytesBuilder();
+        await for (final ch in r) {
+          b.add(ch);
+        }
+        d = b.takeBytes();
       }
-      final d = b.takeBytes();
       if (d.length < 12 || d[0] != 77 || d[1] != 66 || d[2] != 65) return null;
       final nf = ByteData.sublistView(d).getUint32(8, Endian.little);
       final w = d[5] + d[6];

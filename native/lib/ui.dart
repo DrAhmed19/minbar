@@ -1,10 +1,12 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'state.dart';
 
 const kGold = Color(0xFFE8C468);
 const kGold2 = Color(0xFFF6DE8E);
@@ -88,7 +90,10 @@ class Cover extends StatelessWidget {
         height: size,
         fit: BoxFit.cover,
         placeholder: (_, __) => ph,
-        errorWidget: (_, __, ___) => ph,
+        errorWidget: (_, __, ___) {
+          final f = app.repo.coverFile(url);
+          return f == null ? ph : Image.file(File(f), width: size, height: size, fit: BoxFit.cover);
+        },
       ),
     );
   }

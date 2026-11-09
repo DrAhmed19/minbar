@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
@@ -255,6 +256,10 @@ class Repo extends ChangeNotifier {
     List<Lyric> r = [];
     final cached = _p?.getString('ly.${t.id}');
     if (cached != null) r = Lyric.parse(cached);
+    if (r.isNotEmpty && offline.contains(t.id)) {
+      _ly[t.id] = r;
+      return r;
+    }
     try {
       final d = await FirebaseFirestore.instance.doc('lyrApproved/${t.id}').get();
       if (d.exists) {
@@ -314,6 +319,8 @@ class Repo extends ChangeNotifier {
       }
       await sink.close();
       await f.rename('$offDir/${t.id}.audio');
+      await lyricsFor(t); // الكلمات تُحفظ محلياً
+      await _saveAux(t);
       offline.add(t.id);
       await _p?.setStringList('off', offline.toList());
       notifyListeners();
@@ -325,7 +332,52 @@ class Repo extends ChangeNotifier {
     }
   }
 
+  /// ملف التحليل (للمرئيات والموجة) + الغلاف يُحفظان مع التنزيل
+  String? coverFile(String url) {
+    if (offDir.isEmpty) return null;
+    for (final t in tracks) {
+      if (t.coverUrl == url && offline.contains(t.id)) {
+        final f = '$offDir/${t.id}.cover';
+        if (File(f).existsSync()) return f;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _saveAux(Track t) async {
+    final c = HttpClient();
+    try {
+      final r = await (await c.getUrl(Uri.parse(absUrl('media/u/n/${t.id}-v1.bin')))).close();
+      if (r.statusCode == 200) {
+        final b = BytesBuilder();
+        await for (final ch in r) {
+          b.add(ch);
+        }
+        await File('$offDir/${t.id}.mba').writeAsBytes(b.takeBytes());
+      }
+    } catch (_) {}
+    try {
+      if (t.coverUrl.isNotEmpty) {
+        final r = await (await c.getUrl(Uri.parse(t.coverUrl))).close();
+        if (r.statusCode == 200) {
+          final b = BytesBuilder();
+          await for (final ch in r) {
+            b.add(ch);
+          }
+          await File('$offDir/${t.id}.cover').writeAsBytes(b.takeBytes());
+        }
+      }
+    } catch (_) {}
+    c.close(force: true);
+  }
+
   Future<void> offDel(Track t) async {
+    try {
+      for (final e in ['audio', 'mba', 'cover']) {
+        final x = File('$offDir/${t.id}.$e');
+        if (await x.exists()) await x.delete();
+      }
+    } catch (_) {}
     try {
       final f = File('$offDir/${t.id}.audio');
       if (await f.exists()) await f.delete();
