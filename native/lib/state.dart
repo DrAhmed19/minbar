@@ -19,8 +19,8 @@ class PlayerCtl extends ChangeNotifier {
   LoopMode loop = LoopMode.off;
   double speed = 1.0;
   double lyOffset = 0; // تأخير الكلمات (سماعات بلوتوث)
-  int viz = 0, bg = 0, lyFont = 0, lyColor = 1, layout = 0;
-  double lySize = 22;
+  int viz = 0, bg = 0, lyFont = 2, lyColor = 0, layout = 0, lyTr = 0, lySplit = 1;
+  double lySize = 1;
   ConcatenatingAudioSource? _cs;
   bool quiet = false; // أثناء العينات: لا نحفظ الموضع ولا نحسب الاستماع
   String lastError = '';
@@ -70,9 +70,11 @@ class PlayerCtl extends ChangeNotifier {
       viz = sp.getInt('viz4') ?? 0;
       layout = sp.getInt('layout') ?? 0;
       bg = sp.getInt('bg3') ?? 0;
-      lyFont = sp.getInt('lyFont') ?? 0;
-      lyColor = sp.getInt('lyColor') ?? 1;
-      lySize = sp.getDouble('lySize') ?? 22;
+      lyFont = sp.getInt('lyF') ?? 2;
+      lyColor = sp.getInt('lyC') ?? 0;
+      lySize = sp.getDouble('lyS') ?? 1;
+      lyTr = sp.getInt('lyTr') ?? 0;
+      lySplit = sp.getInt('lySp') ?? 1;
       notifyListeners();
       speed = sp.getDouble('speed') ?? 1.0;
     });
@@ -188,8 +190,14 @@ class PlayerCtl extends ChangeNotifier {
       case 'lySize':
         lySize = v.toDouble();
         break;
+      case 'lyTr':
+        lyTr = v.toInt();
+        break;
+      case 'lySp':
+        lySplit = v.toInt();
+        break;
     }
-    SharedPreferences.getInstance().then((sp) => v is int ? sp.setInt(k == 'viz' ? 'viz4' : (k == 'bg' ? 'bg3' : k), v) : sp.setDouble(k, v.toDouble()));
+    SharedPreferences.getInstance().then((sp) => v is int ? sp.setInt(const {'viz': 'viz4', 'bg': 'bg3', 'lyFont': 'lyF', 'lyColor': 'lyC'}[k] ?? k, v) : sp.setDouble(k == 'lySize' ? 'lyS' : k, v.toDouble()));
     notifyListeners();
   }
 

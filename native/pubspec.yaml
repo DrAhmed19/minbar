@@ -37,6 +37,60 @@ flutter:
       fonts:
         - asset: assets/fonts/Cairo.ttf
           weight: 700
+    - family: F0
+      fonts:
+        - asset: assets/fonts/F0.ttf
+    - family: F1
+      fonts:
+        - asset: assets/fonts/F1.ttf
+    - family: F2
+      fonts:
+        - asset: assets/fonts/F2.ttf
+    - family: F3
+      fonts:
+        - asset: assets/fonts/F3.ttf
+    - family: F4
+      fonts:
+        - asset: assets/fonts/F4.ttf
+    - family: F5
+      fonts:
+        - asset: assets/fonts/F5.ttf
+    - family: F6
+      fonts:
+        - asset: assets/fonts/F6.ttf
+    - family: F7
+      fonts:
+        - asset: assets/fonts/F7.ttf
+    - family: F8
+      fonts:
+        - asset: assets/fonts/F8.ttf
+    - family: F9
+      fonts:
+        - asset: assets/fonts/F9.ttf
+    - family: F10
+      fonts:
+        - asset: assets/fonts/F10.ttf
+    - family: F11
+      fonts:
+        - asset: assets/fonts/F11.ttf
+    - family: F12
+      fonts:
+        - asset: assets/fonts/F12.ttf
+    - family: F13
+      fonts:
+        - asset: assets/fonts/F13.ttf
+    - family: F14
+      fonts:
+        - asset: assets/fonts/F14.ttf
+    - family: F15
+      fonts:
+        - asset: assets/fonts/F15.ttf
+    - family: F16
+      fonts:
+        - asset: assets/fonts/F16.ttf
+    - family: F17
+      fonts:
+        - asset: assets/fonts/F17.ttf
     - family: CairoLatin
       fonts:
         - asset: assets/fonts/CairoLatin.ttf

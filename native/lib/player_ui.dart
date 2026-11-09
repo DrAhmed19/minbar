@@ -10,6 +10,7 @@ import 'data.dart';
 import 'state.dart';
 import 'ui.dart';
 import 'viz.dart';
+import 'lyrics.dart';
 
 Color kA = const Color(0xFFE8C468), kA2 = const Color(0xFFF3D88A);
 
@@ -17,15 +18,7 @@ const kLyFonts = ['Amiri', 'Cairo', 'Tajawal', 'Aref Ruqaa', 'Reem Kufi', 'Latee
 const kLyFontNames = ['أميري', 'كايرو', 'تجوال', 'عارف رقعة', 'ريم كوفي', 'لطيف', 'المسيري', 'نسخ', 'شهرزاد', 'كتيبة', 'ميرزا', 'رقاص', 'لالزار', 'كوفي'];
 const kLyColors = [Color(0xFFF3EAD0), Color(0xFFF6DE8E), Color(0xFFFFFFFF), Color(0xFF7FE0B5), Color(0xFFF4B6B6), Color(0xFFBFD8FF)];
 
-TextStyle lyricStyle({double? size, Color? color, FontWeight w = FontWeight.w700}) {
-  final c = app.player;
-  final base = TextStyle(fontSize: size ?? c.lySize, color: color ?? kLyColors[c.lyColor % kLyColors.length], fontWeight: w, height: 1.7);
-  try {
-    return GoogleFonts.getFont(kLyFonts[c.lyFont % kLyFonts.length], textStyle: base);
-  } catch (_) {
-    return GoogleFonts.cairo(textStyle: base);
-  }
-}
+TextStyle lyricStyle({double? size, Color? color, FontWeight w = FontWeight.w700}) => TextStyle(fontFamily: 'F2', fontFamilyFallback: const ['F0'], fontSize: size ?? 22, color: color ?? const Color(0xFFF3D88A), fontWeight: w, height: 1.5);
 
 /// ========== المشغّل الكامل ==========
 class PlayerPage extends StatefulWidget {
@@ -170,31 +163,7 @@ class _PlayerPageState extends State<PlayerPage> {
       ),
       Expanded(
         flex: 3,
-        child: StreamBuilder<Duration>(
-          stream: pc.p.positionStream,
-          builder: (_, s) {
-            final pos = (s.data?.inMilliseconds ?? 0) / 1000.0;
-            final i = _idx(pos);
-            String line(int k) => k >= 0 && k < ly.length ? ly[k].l : '';
-            return GestureDetector(
-              onTap: ly.isEmpty ? null : () => setState(() => lyView = true),
-              behavior: HitTestBehavior.opaque,
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 22),
-                child: ly.isEmpty
-                    ? Center(child: Text('لا تتوفر كلمات لهذه القصيدة', style: tx(13, c: Colors.white38)))
-                    : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Text(line(i - 1), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: lyricStyle(size: 15, color: Color(0x80C8B08A), w: FontWeight.w500)),
-                        AnimatedSwitcher(
-                          duration: Duration(milliseconds: 260),
-                          child: Padding(padding: EdgeInsets.symmetric(vertical: 4), child: Text(i < 0 ? '♪' : line(i), key: ValueKey(i), textAlign: TextAlign.center, maxLines: 3, style: lyricStyle())),
-                        ),
-                        Text(line(i + 1), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: lyricStyle(size: 18, color: Color(0x80C8B08A), w: FontWeight.w500)),
-                      ]),
-              ),
-            );
-          },
-        ),
+        child: LyricStrip(lines: ly, base: 22, onLong: () => showLyricsSheet(context, ly)),
       ),
     ]);
     if (pc.layout == 1) {
@@ -210,49 +179,7 @@ class _PlayerPageState extends State<PlayerPage> {
   final _sc = ScrollController();
   int _lastIdx = -2;
 
-  Widget _lyricsView() => Stack(children: [
-        StreamBuilder<Duration>(
-          stream: app.player.p.positionStream,
-          builder: (_, s) {
-            final pos = (s.data?.inMilliseconds ?? 0) / 1000.0;
-            final i = _idx(pos);
-            final h = app.player.lySize * 3.4;
-            if (i != _lastIdx && _sc.hasClients) {
-              _lastIdx = i;
-              final target = (i * h - 140).clamp(0.0, _sc.position.maxScrollExtent);
-              _sc.animateTo(target, duration: Duration(milliseconds: 380), curve: Curves.easeOut);
-            }
-            return ListView.builder(
-              controller: _sc,
-              padding: EdgeInsets.fromLTRB(22, 14, 22, 80),
-              itemCount: ly.length,
-              itemExtent: h,
-              itemBuilder: (_, k) {
-                final on = k == i;
-                return InkWell(
-                  onTap: () => app.player.seek(ly[k].t + app.player.lyOffset),
-                  child: Center(
-                    child: AnimatedDefaultTextStyle(
-                      duration: Duration(milliseconds: 250),
-                      style: lyricStyle(size: on ? app.player.lySize : app.player.lySize * 0.78, color: on ? null : Colors.white38),
-                      textAlign: TextAlign.center,
-                      child: Text(ly[k].l, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
-                    ),
-                  ),
-                );
-              },
-            );
-          },
-        ),
-        Positioned(
-          bottom: 6,
-          left: 0,
-          right: 0,
-          child: Center(
-            child: GoldPill('مظهر الكلمات', Ic.text, _lyStyleSheet),
-          ),
-        ),
-      ]);
+  Widget _lyricsView() => LyricStrip(lines: ly, base: 27, onLong: () => showLyricsSheet(context, ly));
 
   Widget _bottom(Track t) {
     final pc = app.player;
@@ -352,8 +279,8 @@ class _PlayerPageState extends State<PlayerPage> {
       decoration: BoxDecoration(color: Color(0xF2171210), borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
       child: Row(children: [
         b(Ic.rep, 'تكرار', pc.loop != LoopMode.off, pc.cycleLoop),
-        b(Ic.text, 'الكلمات', lyView, () => setState(() => lyView = true), act: lyView),
-        b(Ic.eq, 'الصوت', !lyView, () => setState(() => lyView = false), act: !lyView),
+        b(Ic.text, 'الكلمات', false, () => showLyricsSheet(context, ly)),
+        b(Ic.eq, 'الصوت', false, () => snack2('قسم الصوت (المعادل والمؤثرات) في الدفعة القادمة')),
         b(Ic.plist, 'القائمة', false, _queueSheet),
         b(Ic.shuf, 'عشوائي', pc.shuffle, pc.toggleShuffle),
       ]),
