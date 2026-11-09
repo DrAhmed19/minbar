@@ -6,6 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'analysis.dart';
 import 'state.dart';
+import 'viz_dev.dart';
 
 /// منبر — مرئيات المشغّل (منقولة من plrviz.js بنفس الرسم والقيم)
 const double tau = math.pi * 2;
@@ -19,6 +20,8 @@ class Th {
 const kThemes = <String, Th>{
   'mihrab': Th(Color(0xFFE8C468), Color(0xFFF3D88A), Color(0xFF2A2106), [Color(0xFF0C4A39), Color(0xFF07281E), Color(0xFF04140F)], Color(0xFF0F2A22)),
   'retro': Th(Color(0xFFF2A541), Color(0xFFFFD39A), Color(0xFF1B1206), [Color(0xFF2A2724), Color(0xFF171513), Color(0xFF0B0A09)], Color(0xFF1E1B18)),
+  'scope': Th(Color(0xFF6CFF9E), Color(0xFFC9FFD9), Color(0xFF02140A), [Color(0xFF06170F), Color(0xFF030C07), Color(0xFF010503)], Color(0xFF05120B)),
+  'metal': Th(Color(0xFFD9DEE2), Color(0xFFFFFFFF), Color(0xFF15181A), [Color(0xFF2E3236), Color(0xFF1A1D20), Color(0xFF0C0E0F)], Color(0xFF1D2023)),
   'water': Th(Color(0xFF7FD3E8), Color(0xFFCFF3FB), Color(0xFF032029), [Color(0xFF0B4552), Color(0xFF05252D), Color(0xFF021217)], Color(0xFF062A33)),
   'glass': Th(Color(0xFFFFFFFF), Color(0xFFF3D88A), Color(0xFF0F2A22), [Color(0xFF1F3D35), Color(0xFF122722), Color(0xFF081512)], Color(0xEB142822)),
   'silk': Th(Color(0xFFE9C7FF), Color(0xFFF3D88A), Color(0xFF2A1530), [Color(0xFF3A2244), Color(0xFF1F1226), Color(0xFF0F0913)], Color(0xFF24142B)),
@@ -26,9 +29,9 @@ const kThemes = <String, Th>{
   'neon': Th(Color(0xFF36F1CD), Color(0xFFFF4FD8), Color(0xFF03110E), [Color(0xFF120F22), Color(0xFF0A0814), Color(0xFF040309)], Color(0xFF0D0B18)),
   'night': Th(Color(0xFFF3D88A), Color(0xFFBFD1FF), Color(0xFF1C1A10), [Color(0xFF16244A), Color(0xFF0B142C), Color(0xFF050914)], Color(0xFF0E1833)),
 };
-const kVizIds = ['mihrab', 'vinyl', 'strings', 'candles', 'halo', 'bars', 'blob', 'wave', 'spectrum', 'orbit', 'pulse', 'star', 'dust', 'neon'];
-const kVizTitles = ['المحراب', 'أسطوانة', 'الأوتار', 'الشموع', 'هالة', 'حلقة الأعمدة', 'موجة دائرية', 'خط الصوت', 'أعمدة الطيف', 'مدارات', 'نبض', 'النجمة الثمانية', 'غبار ذهبي', 'إطار مضيء'];
-const _vth = {'mihrab': 'mihrab', 'vinyl': 'retro', 'silk': 'silk', 'strings': 'wood', 'candles': 'wood', 'neon': 'neon', 'pulse': 'neon', 'spectrum': 'neon', 'bars': 'neon', 'halo': 'night', 'star': 'night', 'orbit': 'night', 'dust': 'night', 'blob': 'night', 'wave': 'night'};
+const kVizIds = ['mihrab', 'ambient', 'wring', 'cover', 'vinyl', 'cassette', 'jog', 'reels', 'knob', 'speaker', 'scope', 'pond', 'dots', 'card', 'silk', 'strings', 'candles', 'halo', 'bars', 'blob', 'wave', 'spectrum', 'orbit', 'pulse', 'star', 'dust', 'neon'];
+const kVizTitles = ['المحراب', 'أجواء', 'حلقة الموجة', 'غلاف', 'أسطوانة', 'الكاسيت', 'عجلة الدوران', 'جهاز البكرات', 'مقبض الصوت', 'السمّاعة', 'جهاز الذبذبات', 'البركة', 'ذرّات الغلاف', 'البطاقة الزجاجية', 'الحرير المضيء', 'الأوتار', 'الشموع', 'هالة', 'حلقة الأعمدة', 'موجة دائرية', 'خط الصوت', 'أعمدة الطيف', 'مدارات', 'نبض', 'النجمة الثمانية', 'غبار ذهبي', 'إطار مضيء'];
+const _vth = {'mihrab': 'mihrab', 'ambient': 'mihrab', 'cover': 'mihrab', 'wring': 'silk', 'cassette': 'retro', 'jog': 'retro', 'reels': 'retro', 'knob': 'metal', 'speaker': 'metal', 'scope': 'scope', 'pond': 'water', 'dots': 'glass', 'card': 'glass', 'vinyl': 'retro', 'silk': 'silk', 'strings': 'wood', 'candles': 'wood', 'neon': 'neon', 'pulse': 'neon', 'spectrum': 'neon', 'bars': 'neon', 'halo': 'night', 'star': 'night', 'orbit': 'night', 'dust': 'night', 'blob': 'night', 'wave': 'night'};
 Th themeOf(int viz) => kThemes[_vth[kVizIds[viz % kVizIds.length]] ?? 'mihrab']!;
 
 /// ألوان الخلفية: من الغلاف / لون القالب / ألوان ثابتة
@@ -161,7 +164,8 @@ class VizStage extends StatefulWidget {
   final int viz;
   final double scale;
   final bool still;
-  const VizStage({super.key, required this.an, required this.img, required this.viz, this.scale = 1, this.still = false});
+  final List<double> env;
+  const VizStage({super.key, required this.an, required this.img, required this.viz, this.scale = 1, this.still = false, this.env = const []});
   @override
   State<VizStage> createState() => _VizStageState();
 }
@@ -241,8 +245,24 @@ class _VizStageState extends State<VizStage> with SingleTickerProviderStateMixin
           final dt = (now - _last).clamp(0.0, 0.1);
           _last = now;
           _tick(now);
+          final id = kVizIds[widget.viz % kVizIds.length];
+          if (kDevIds.contains(id)) {
+            if (!widget.still) kcUpdate(widget.env);
+            final ds = devState(id, widget.still);
+            ds.m['dt'] = dt == 0 ? 0.016 : dt;
+            final cp = CustomPaint(painter: DevPainter(id, f, ds, widget.img, widget.still), size: Size.infinite);
+            if (widget.still) return cp;
+            return GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onPanDown: (d) => DevTouch.down(id, ds, d.localPosition),
+              onPanUpdate: (d) => DevTouch.move(id, ds, d.localPosition),
+              onPanEnd: (_) => DevTouch.up(id, ds),
+              onPanCancel: () => DevTouch.up(id, ds),
+              child: cp,
+            );
+          }
           return CustomPaint(
-            painter: VizPainter(kVizIds[widget.viz % kVizIds.length], f, vs, widget.img, now, dt == 0 ? 0.016 : dt, !app.player.p.playing, widget.scale),
+            painter: VizPainter(id, f, vs, widget.img, now, dt == 0 ? 0.016 : dt, !app.player.p.playing, widget.scale),
             size: Size.infinite,
           );
         },
@@ -385,6 +405,13 @@ class VizPainter extends CustomPainter {
         }
         x.drawRRect(rr(cx - e, cy - e, 2 * e, 2 * e, rad), stroke(Color.fromRGBO(255, 240, 200, math.min(1.0, 0.7 * f + 0.2)), u * 1.6));
         cover(cx, cy, r, 'r', ring: false);
+        }
+      case 'cover':
+        cover(cx, cy, R * 1.05, 'r');
+      case 'ambient':
+        {
+          glow(cx, cy, R * 0.3, R * (1.6 + F.bass * 0.4), 0.08 + F.vol * 0.25);
+          cover(cx, cy, R * 0.5, 'c');
         }
       default:
         _mihrab();

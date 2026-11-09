@@ -166,7 +166,7 @@ class _PlayerPageState extends State<PlayerPage> {
     Widget st = Column(children: [
       Expanded(
         flex: 5,
-        child: VizStage(an: an, img: img, viz: pc.viz),
+        child: VizStage(an: an, img: img, viz: pc.viz, env: env),
       ),
       Expanded(
         flex: 3,
