@@ -157,6 +157,7 @@ class GoldPill extends StatelessWidget {
 class Ic {
   static const play = 'play', pause = 'pause', prev = 'prev', next = 'next', heart = 'heart', heartF = 'heartF', lib = 'lib', pulse = 'pulse', plist = 'plist',
       search = 'search', x = 'x', users = 'users', back = 'back', plus = 'plus', reset = 'reset', down = 'down', power = 'power', check = 'check',
+      chat = 'chat', info = 'info', flame = 'flame', spark = 'spark', color = 'color', lay = 'lay', speed = 'speed', wave = 'wave',
       queue = 'queue', share = 'share', eq = 'eq', more = 'more', text = 'text', moon = 'moon', rw = 'rw', fw = 'fw', rep = 'rep', shuf = 'shuf', timer = 'timer';
 }
 

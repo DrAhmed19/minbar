@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:just_audio/just_audio.dart';
 import 'analysis.dart';
@@ -9,9 +10,9 @@ import 'data.dart';
 import 'state.dart';
 import 'ui.dart';
 
-const kVizNames = ['حلقة الأعمدة', 'هالة', 'نبض', 'أعمدة الطيف', 'موجة دائرية', 'خط الصوت'];
-const kBgNames = ['من الغلاف', 'أسود فاخر', 'كحلي', 'أخضر', 'عنابي', 'بنفسجي', 'بني', 'فيروزي'];
-const kBgColors = [null, Color(0xFF000000), Color(0xFF0D1B2A), Color(0xFF0C4A39), Color(0xFF4A0F1A), Color(0xFF2B1640), Color(0xFF3A2414), Color(0xFF0F3B44)];
+const kVizNames = ['المحراب', 'حلقة الأعمدة', 'هالة', 'نبض', 'أعمدة الطيف', 'موجة دائرية', 'خط الصوت'];
+const kBgNames = ['من الغلاف', 'أسود فاخر', 'كحلي', 'أخضر', 'عنابي', 'بنفسجي', 'بني', 'فيروزي', 'فحمي'];
+const kBgColors = [null, Color(0xFF000000), Color(0xFF0D1B2A), Color(0xFF0C4A39), Color(0xFF4A0F1A), Color(0xFF2B1640), Color(0xFF3A2414), Color(0xFF0F3B44), Color(0xFF1E2329)];
 const kLyFonts = ['Amiri', 'Cairo', 'Tajawal', 'Aref Ruqaa', 'Reem Kufi', 'Lateef', 'El Messiri', 'Noto Naskh Arabic', 'Scheherazade New', 'Katibeh', 'Mirza', 'Rakkas', 'Lalezar', 'Noto Kufi Arabic'];
 const kLyFontNames = ['أميري', 'كايرو', 'تجوال', 'عارف رقعة', 'ريم كوفي', 'لطيف', 'المسيري', 'نسخ', 'شهرزاد', 'كتيبة', 'ميرزا', 'رقاص', 'لالزار', 'كوفي'];
 const kLyColors = [Color(0xFFF3EAD0), Color(0xFFF6DE8E), Color(0xFFFFFFFF), Color(0xFF7FE0B5), Color(0xFFF4B6B6), Color(0xFFBFD8FF)];
@@ -106,17 +107,16 @@ class _PlayerPageState extends State<PlayerPage> {
           SafeArea(
             child: Column(children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
+                padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
                 child: Row(children: [
-                  IconButton(onPressed: () => Navigator.pop(context), icon: const PIcon(Ic.down, color: Colors.white70, size: 32)),
-                  Expanded(child: Center(child: Text('${pc.index + 1} من ${pc.queue.length}', style: tx(12.5, c: Colors.white60, w: FontWeight.w600)))),
-                  IconButton(
-                    onPressed: () {
-                      app.repo.toggleFav(t.id);
-                      setState(() {});
-                    },
-                    icon: PIcon(fav ? Ic.heartF : Ic.heart, color: fav ? const Color(0xFFE8776F) : Colors.white70),
-                  ),
+                  _box(Ic.down, () => Navigator.pop(context)),
+                  Expanded(child: Center(child: Text('${pc.index + 1} من ${pc.queue.length}', style: tx(15, c: Colors.white60)))),
+                  _box(fav ? Ic.heartF : Ic.heart, () {
+                    app.repo.toggleFav(t.id);
+                    setState(() {});
+                  }),
+                  const SizedBox(width: 8),
+                  _box(Ic.chat, () => snack2('التعليقات في التحديث القادم')),
                 ]),
               ),
               Expanded(child: lyView ? _lyricsView() : _stage(t)),
@@ -129,16 +129,55 @@ class _PlayerPageState extends State<PlayerPage> {
     );
   }
 
+  void snack2(String m) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m, style: tx(13, c: Colors.white)), duration: const Duration(seconds: 2)));
+  }
+
+  Widget _box(String ic, VoidCallback f, {double size = 52, Color? color}) => GestureDetector(
+        onTap: f,
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(15), color: const Color(0x14FFFFFF), border: Border.all(color: const Color(0x73E8C468), width: 1.3)),
+          child: Center(child: PIcon(ic, color: color ?? kGold, size: 24)),
+        ),
+      );
+
   Widget _stage(Track t) {
     final pc = app.player;
-    return Column(children: [
+    Widget st = Column(children: [
       Expanded(
         flex: 5,
         child: LayoutBuilder(builder: (_, c) {
+          if (pc.viz == 0) {
+            var ah = c.maxHeight * 0.92;
+            var aw = math.min(ah / 1.42, c.maxWidth * 0.62);
+            ah = math.min(ah, aw * 1.42);
+            final cs = aw * 0.68;
+            return Center(
+              child: SizedBox(
+                width: aw + 24,
+                height: ah + 24,
+                child: Stack(alignment: Alignment.topCenter, children: [
+                  Positioned.fill(child: CustomPaint(painter: MihrabPainter())),
+                  Positioned(
+                    top: ah * 0.28,
+                    child: Container(
+                      width: cs,
+                      height: cs,
+                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(cs * 0.1), border: Border.all(color: kGold.withOpacity(0.75), width: 1.6), boxShadow: [BoxShadow(color: kGold.withOpacity(0.18), blurRadius: 26), BoxShadow(color: Colors.black.withOpacity(0.45), blurRadius: 24, offset: const Offset(0, 10))]),
+                      child: ClipRRect(borderRadius: BorderRadius.circular(cs * 0.1 - 1), child: Cover(t.coverUrl, size: cs - 3, radius: 0)),
+                    ),
+                  ),
+                ]),
+              ),
+            );
+          }
           final box = math.min(c.maxWidth, c.maxHeight);
           final r = (box * 0.27).clamp(60.0, 150.0);
           return Stack(alignment: Alignment.center, children: [
-            Positioned.fill(child: VizLayer(an: an, mode: pc.viz, coverR: r)),
+            Positioned.fill(child: VizLayer(an: an, mode: pc.viz - 1, coverR: r)),
             Container(
               width: r * 2,
               height: r * 2,
@@ -162,14 +201,14 @@ class _PlayerPageState extends State<PlayerPage> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 22),
                 child: ly.isEmpty
-                    ? Center(child: Text('لا تتوفر كلمات لهذه القصيدة', style: tx(13, c: Colors.white38, w: FontWeight.w500)))
+                    ? Center(child: Text('لا تتوفر كلمات لهذه القصيدة', style: tx(13, c: Colors.white38)))
                     : Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Text(line(i - 1), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: lyricStyle(size: 14, color: Colors.white38, w: FontWeight.w500)),
+                        Text(line(i - 1), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: lyricStyle(size: 15, color: const Color(0x80C8B08A), w: FontWeight.w500)),
                         AnimatedSwitcher(
                           duration: const Duration(milliseconds: 260),
-                          child: Text(i < 0 ? '♪' : line(i), key: ValueKey(i), textAlign: TextAlign.center, maxLines: 3, style: lyricStyle()),
+                          child: Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Text(i < 0 ? '♪' : line(i), key: ValueKey(i), textAlign: TextAlign.center, maxLines: 3, style: lyricStyle())),
                         ),
-                        Text(line(i + 1), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: lyricStyle(size: 14, color: Colors.white38, w: FontWeight.w500)),
+                        Text(line(i + 1), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: lyricStyle(size: 18, color: const Color(0x80C8B08A), w: FontWeight.w500)),
                       ]),
               ),
             );
@@ -177,6 +216,14 @@ class _PlayerPageState extends State<PlayerPage> {
         ),
       ),
     ]);
+    if (pc.layout == 1) {
+      st = Container(
+        margin: const EdgeInsets.fromLTRB(14, 6, 14, 0),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(30), color: const Color(0x0DFFFFFF), border: Border.all(color: const Color(0x1FFFFFFF))),
+        child: st,
+      );
+    }
+    return st;
   }
 
   final _sc = ScrollController();
@@ -229,21 +276,19 @@ class _PlayerPageState extends State<PlayerPage> {
   Widget _bottom(Track t) {
     final pc = app.player;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 4, 18, 4),
+      padding: const EdgeInsets.fromLTRB(18, 6, 18, 4),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Row(children: [
-          IconButton(
-            onPressed: _sleepSheet,
-            icon: PIcon(Ic.moon, color: pc.sleepAt != null ? kGold : Colors.white54, size: 22),
-          ),
+          _box(Ic.moon, _sleepSheet, size: 54, color: pc.sleepAt != null ? kGold2 : kGold),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(19, w: FontWeight.w800, c: Colors.white)),
-              Text([t.reciter, t.poet].where((e) => e.isNotEmpty).join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(12.5, c: Colors.white60, w: FontWeight.w500)),
+            child: Column(children: [
+              Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: lyricStyle(size: 24, color: Colors.white)),
+              Text([t.reciter, t.poet].where((e) => e.isNotEmpty).join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: tx(17, c: const Color(0xFFE8C468))),
             ]),
           ),
-          IconButton(onPressed: _settingsSheet, icon: const PIcon(Ic.more, color: Colors.white70)),
+          _box(Ic.more, _settingsSheet, size: 54),
         ]),
+        const SizedBox(height: 6),
         StreamBuilder<Duration>(
           stream: pc.p.positionStream,
           builder: (_, s) => StreamBuilder<Duration?>(
@@ -253,27 +298,27 @@ class _PlayerPageState extends State<PlayerPage> {
               final pos = ((s.data?.inMilliseconds ?? 0) / 1000.0).clamp(0.0, dur > 0 ? dur : 1.0);
               return Column(children: [
                 SizedBox(
-                  height: 38,
+                  height: 44,
                   child: WaveBar(env: env, progress: dur > 0 ? pos / dur : 0, onSeek: (f) {
                     if (dur > 0) pc.seek(f * dur);
                   }),
                 ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
                   child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                    Text(fmt(pos), style: tx(11.5, c: Colors.white60, w: FontWeight.w500)),
-                    Text(fmt(dur), style: tx(11.5, c: Colors.white60, w: FontWeight.w500)),
+                    Text(fmt(pos), style: tx(14, c: Colors.white60)),
+                    Text(fmt(dur), style: tx(14, c: Colors.white60)),
                   ]),
                 ),
               ]);
             },
           ),
         ),
+        const SizedBox(height: 4),
         Directionality(
           textDirection: TextDirection.ltr,
           child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-            IconButton(onPressed: () => pc.seek((pc.p.position.inMilliseconds / 1000.0 - 10).clamp(0.0, 1e9)), icon: const PIcon(Ic.rw, color: Colors.white60, size: 26)),
-            IconButton(onPressed: pc.prev, icon: const PIcon(Ic.prev, color: Colors.white, size: 38)),
+            IconButton(onPressed: pc.prev, icon: const PIcon(Ic.prev, color: kGold, size: 40)),
             StreamBuilder<PlayerState>(
               stream: pc.p.playerStateStream,
               builder: (_, s) {
@@ -282,18 +327,21 @@ class _PlayerPageState extends State<PlayerPage> {
                 return GestureDetector(
                   onTap: pc.toggle,
                   child: Container(
-                    width: 66,
-                    height: 66,
-                    decoration: const BoxDecoration(shape: BoxShape.circle, gradient: LinearGradient(colors: [kGold2, kGold], begin: Alignment.topLeft, end: Alignment.bottomRight)),
+                    width: 94,
+                    height: 94,
+                    decoration: BoxDecoration(
+                      borderRadius: const BorderRadius.only(topLeft: Radius.circular(46), topRight: Radius.circular(46), bottomLeft: Radius.circular(34), bottomRight: Radius.circular(34)),
+                      gradient: const LinearGradient(colors: [kGold2, kGold], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                      boxShadow: [BoxShadow(color: kGold.withOpacity(0.35), blurRadius: 26)],
+                    ),
                     child: busy
-                        ? const Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator(strokeWidth: 3, color: Color(0xFF3A2D08)))
-                        : PIcon((st?.playing ?? false) ? Ic.pause : Ic.play, size: 40, color: const Color(0xFF3A2D08)),
+                        ? const Padding(padding: EdgeInsets.all(30), child: CircularProgressIndicator(strokeWidth: 3.5, color: Color(0xFF3A2D08)))
+                        : Center(child: PIcon((st?.playing ?? false) ? Ic.pause : Ic.play, size: 44, color: const Color(0xFF2A2106))),
                   ),
                 );
               },
             ),
-            IconButton(onPressed: pc.next, icon: const PIcon(Ic.next, color: Colors.white, size: 38)),
-            IconButton(onPressed: () => pc.seek(pc.p.position.inMilliseconds / 1000.0 + 10), icon: const PIcon(Ic.fw, color: Colors.white60, size: 26)),
+            IconButton(onPressed: pc.next, icon: const PIcon(Ic.next, color: kGold, size: 40)),
           ]),
         ),
       ]),
@@ -302,25 +350,29 @@ class _PlayerPageState extends State<PlayerPage> {
 
   Widget _dock() {
     final pc = app.player;
-    Widget b(String ic, String s, bool on, VoidCallback f) => Expanded(
-          child: InkWell(
+    Widget b(String ic, String s, bool on, VoidCallback f, {bool act = false}) => Expanded(
+          child: GestureDetector(
             onTap: f,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              padding: const EdgeInsets.symmetric(vertical: 9),
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(22), color: act ? const Color(0x14FFFFFF) : Colors.transparent),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                PIcon(ic, color: on ? kGold : Colors.white60, size: 23),
-                const SizedBox(height: 2),
-                Text(s, style: tx(10.5, c: on ? kGold : Colors.white54, w: FontWeight.w600)),
+                PIcon(ic, color: on ? kGold : const Color(0xB3E8C468), size: 26),
+                const SizedBox(height: 3),
+                Text(s, style: tx(13, c: on ? kGold : const Color(0xB3E8C468))),
               ]),
             ),
           ),
         );
     return Container(
-      decoration: const BoxDecoration(border: Border(top: BorderSide(color: Color(0x14FFFFFF)))),
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
+      decoration: const BoxDecoration(color: Color(0xF2171210), borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
       child: Row(children: [
-        b(pc.loop == LoopMode.one ? Ic.rep : Ic.rep, 'تكرار', pc.loop != LoopMode.off, pc.cycleLoop),
-        b(Ic.text, 'الكلمات', lyView, () => setState(() => lyView = true)),
-        b(Ic.eq, 'الصوت', !lyView, () => setState(() => lyView = false)),
+        b(Ic.rep, 'تكرار', pc.loop != LoopMode.off, pc.cycleLoop),
+        b(Ic.text, 'الكلمات', lyView, () => setState(() => lyView = true), act: lyView),
+        b(Ic.eq, 'الصوت', !lyView, () => setState(() => lyView = false), act: !lyView),
         b(Ic.plist, 'القائمة', false, _queueSheet),
         b(Ic.shuf, 'عشوائي', pc.shuffle, pc.toggleShuffle),
       ]),
@@ -356,8 +408,45 @@ class _PlayerPageState extends State<PlayerPage> {
           ),
       ]);
 
+  Widget _sc2(String ic, String title, Widget child, {String? chip}) => Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(22), color: const Color(0x0FFFFFFF), border: Border.all(color: const Color(0x2EE8C468))),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Container(width: 38, height: 38, decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: const Color(0x1FE8C468)), child: Center(child: PIcon(ic, color: kGold, size: 21))),
+            const SizedBox(width: 10),
+            Text(title, style: tx(16, c: Colors.white)),
+            const Spacer(),
+            if (chip != null) Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7), decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: const Color(0x14FFFFFF)), child: Text(chip, style: tx(13, c: kGold))),
+          ]),
+          const SizedBox(height: 12),
+          child,
+        ]),
+      );
+
+  Widget _tile(String ic, String t, String sub, VoidCallback f, {bool neu = false}) => GestureDetector(
+        onTap: f,
+        child: Stack(clipBehavior: Clip.none, children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), color: const Color(0x0FFFFFFF), border: Border.all(color: const Color(0x24FFFFFF))),
+            child: Row(children: [
+              Container(width: 44, height: 44, decoration: BoxDecoration(borderRadius: BorderRadius.circular(13), color: const Color(0x24E8C468)), child: Center(child: PIcon(ic, color: kGold, size: 22))),
+              const SizedBox(width: 10),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(t, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(14.5, c: Colors.white)),
+                Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(11.5, c: Colors.white54)),
+              ])),
+            ]),
+          ),
+          if (neu) Positioned(top: -8, right: 18, child: Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2), decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), color: kGold), child: Text('جديد', style: tx(10.5, c: const Color(0xFF2A2106))))),
+        ]),
+      );
+
   void _settingsSheet() {
     final pc = app.player;
+    final t = pc.cur!;
     _sheet((c, ss) {
       void u(VoidCallback f) {
         f();
@@ -365,19 +454,158 @@ class _PlayerPageState extends State<PlayerPage> {
         setState(() {});
       }
 
-      return SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
-          _h('قوالب العرض'),
-          _chips(kVizNames.length, pc.viz, (i) => kVizNames[i], (i) => u(() => pc.setPref('viz', i))),
-          _h('لون الخلفية'),
-          _chips(kBgNames.length, pc.bg, (i) => kBgNames[i], (i) => u(() => pc.setPref('bg', i))),
-          _h('سرعة التشغيل'),
-          _chips(5, [0.75, 1.0, 1.25, 1.5, 2.0].indexOf(pc.speed), (i) => '${[0.75, 1.0, 1.25, 1.5, 2.0][i]}x', (i) => u(() => pc.setSpeed([0.75, 1.0, 1.25, 1.5, 2.0][i]))),
-          _h('تأخير الكلمات (للسماعات اللاسلكية)'),
-          _chips(5, [0.0, 0.2, 0.4, 0.6, 0.8].indexOf(pc.lyOffset), (i) => i == 0 ? 'بدون' : '${[0.0, 0.2, 0.4, 0.6, 0.8][i]} ث', (i) => u(() => pc.setLyOffset([0.0, 0.2, 0.4, 0.6, 0.8][i]))),
-        ]),
+      void soon() => snack2('هذه الأداة في التحديث القادم');
+      final spd = [0.75, 1.0, 1.25, 1.5, 2.0];
+      return SizedBox(
+        height: MediaQuery.of(c).size.height * 0.88,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 24),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Center(child: Container(width: 54, height: 5, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(3)))),
+            const SizedBox(height: 10),
+            Row(children: [
+              _box(Ic.x, () => Navigator.pop(c), size: 46, color: Colors.white),
+              const SizedBox(width: 12),
+              Text('إعدادات العرض والتشغيل', style: tx(19, c: Colors.white)),
+            ].reversed.toList()),
+            const SizedBox(height: 14),
+            _sc2(Ic.eq, 'قوالب العرض', chip: kVizNames[pc.viz % kVizNames.length], SizedBox(
+              height: 86,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: kVizNames.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                itemBuilder: (_, i) => GestureDetector(
+                  onTap: () => u(() => pc.setPref('viz', i)),
+                  child: Container(
+                    width: 86,
+                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), gradient: const RadialGradient(colors: [Color(0xFF14664F), Color(0xFF073D2E)]), border: Border.all(color: pc.viz == i ? kGold : Colors.transparent, width: 2.2)),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(18),
+                      child: i == 0
+                          ? CustomPaint(painter: MihrabPainter(mini: true), child: Center(child: Padding(padding: const EdgeInsets.only(top: 6), child: Cover(t.coverUrl, size: 28, radius: 4))))
+                          : Stack(alignment: Alignment.center, children: [
+                              CustomPaint(size: const Size(86, 86), painter: VizPainter(List.filled(22, 0.55), i - 1, 17, 0)),
+                              ClipOval(child: Cover(t.coverUrl, size: 34, radius: 17)),
+                            ]),
+                    ),
+                  ),
+                ),
+              ),
+            )),
+            _sc2(Ic.lay, 'ترتيب الواجهة', Row(children: [
+              for (var i = 0; i < 3; i++) ...[
+                if (i > 0) const SizedBox(width: 10),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => u(() {
+                      pc.setPref('layout', i);
+                      lyView = i == 2;
+                    }),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), color: pc.layout == i ? const Color(0x2EE8C468) : const Color(0x14FFFFFF), border: Border.all(color: pc.layout == i ? kGold : const Color(0x24FFFFFF), width: pc.layout == i ? 2 : 1.2)),
+                      child: Column(children: [
+                        Container(width: 38, height: 54, decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: pc.layout == i ? kGold.withOpacity(0.55) : Colors.white24), child: Icon(i == 2 ? Icons.notes : (i == 1 ? Icons.crop_square : Icons.circle), size: 16, color: Colors.white70)),
+                        const SizedBox(height: 8),
+                        Text(['غامر', 'كلاسيكي', 'الكلمات أولاً'][i], style: tx(14, c: pc.layout == i ? kGold : Colors.white)),
+                      ]),
+                    ),
+                  ),
+                ),
+              ],
+            ])),
+            _sc2(Ic.color, 'لون الخلفية', chip: kBgNames[pc.bg % kBgNames.length], SizedBox(
+              height: 82,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: kBgNames.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (_, i) => GestureDetector(
+                  onTap: () => u(() => pc.setPref('bg', i)),
+                  child: Column(children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(shape: BoxShape.circle, color: kBgColors[i] ?? const Color(0xFF4A3426), border: Border.all(color: pc.bg == i ? kGold : Colors.white24, width: pc.bg == i ? 3 : 1)),
+                      child: i == 0 ? const Center(child: PIcon(Ic.spark, color: Colors.white, size: 20)) : null,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(kBgNames[i], style: tx(12, c: pc.bg == i ? kGold : Colors.white70)),
+                  ]),
+                ),
+              ),
+            )),
+            _sc2(Ic.spark, 'أدوات القصيدة', GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              childAspectRatio: 2.45,
+              children: [
+                _tile(Ic.info, 'الإصدار $kBuild', 'اضغط للتحقق من التحديث', () async {
+                  final n = await latestBuild();
+                  if (!mounted) return;
+                  if (n > kBuild) {
+                    launchApk();
+                  } else {
+                    snack2('أنت على آخر نسخة');
+                  }
+                }),
+                _tile(Ic.info, 'عن القصيدة', 'الرادود والتفاصيل', () {
+                  showDialog(
+                    context: context,
+                    builder: (d) => Directionality(
+                      textDirection: TextDirection.rtl,
+                      child: AlertDialog(
+                        backgroundColor: const Color(0xFF1C1612),
+                        title: Text(t.title, style: tx(18, c: Colors.white)),
+                        content: Text([
+                          if (t.reciter.isNotEmpty) 'الرادود: ${t.reciter}',
+                          if (t.poet.isNotEmpty) 'الشاعر: ${t.poet}',
+                          if (t.albumName.isNotEmpty) 'الإصدار: ${t.albumName}',
+                          if (t.cat.isNotEmpty) 'التصنيف: ${t.cat}',
+                        ].join('\n'), style: tx(14, c: Colors.white70, h: 1.9)),
+                        actions: [TextButton(onPressed: () => Navigator.pop(d), child: Text('إغلاق', style: tx(13, c: kGold)))],
+                      ),
+                    ),
+                  );
+                }),
+                _tile(Ic.share, 'مشاركة اللحظة', 'من الدقيقة الحالية', () async {
+                  final sec = pc.p.position.inSeconds;
+                  await Clipboard.setData(ClipboardData(text: '${kBase}?p=${t.id}&t=$sec'));
+                  snack2('نُسخ رابط اللحظة');
+                }),
+                _tile(Ic.flame, 'الذروة', 'لا إعجابات', soon),
+                _tile(Ic.users, 'المجلس', 'استماع مشترك', soon, neu: true),
+                _tile(Ic.text, 'وضع الحسينية', 'كلمات كبيرة للشاشة', soon),
+                _tile(Ic.pulse, 'تحليل الصوت', 'كل القصائد محلّلة', soon),
+                _tile(Ic.wave, 'وضع الأداء', 'أخفّ وأثبت بالتطبيق', soon),
+                _tile(Ic.eq, 'الإحصائيات', 'الاستماعات والإعجابات', soon),
+                _tile(Ic.pulse, 'وضع اللطم', 'اهتزاز مع الإيقاع', soon),
+              ],
+            )),
+            _sc2(Ic.speed, 'سرعة التشغيل', Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), color: const Color(0x66000000)),
+              child: Row(children: [
+                for (final v in spd)
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => u(() => pc.setSpeed(v)),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        decoration: BoxDecoration(borderRadius: BorderRadius.circular(15), color: pc.speed == v ? kGold : Colors.transparent),
+                        child: Center(child: Text('${v}x', style: tx(16, c: pc.speed == v ? const Color(0xFF2A2106) : Colors.white))),
+                      ),
+                    ),
+                  ),
+              ],
+            ))),
+            _sc2(Ic.text, 'تأخير الكلمات (للسماعات اللاسلكية)', _chips(5, [0.0, 0.2, 0.4, 0.6, 0.8].indexOf(pc.lyOffset), (i) => i == 0 ? 'بدون' : '${[0.0, 0.2, 0.4, 0.6, 0.8][i]} ث', (i) => u(() => pc.setLyOffset([0.0, 0.2, 0.4, 0.6, 0.8][i])))),
+          ]),
+        ),
       );
     });
   }
@@ -697,4 +925,46 @@ class VizPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant VizPainter o) => true;
+}
+
+
+/// إطار المحراب الذهبي (قوس مزدوج + زخرفة سفلية)
+class MihrabPainter extends CustomPainter {
+  final bool mini;
+  MihrabPainter({this.mini = false});
+
+  Path _arch(double x0, double x1, double yt, double ys, double yb) {
+    final cx = (x0 + x1) / 2, w = x1 - x0, h = yb - yt;
+    return Path()
+      ..moveTo(x0, yb)
+      ..lineTo(x0, ys)
+      ..cubicTo(x0, ys - h * 0.30, cx - w * 0.06, yt + h * 0.30, cx, yt)
+      ..cubicTo(cx + w * 0.06, yt + h * 0.30, x1, ys - h * 0.30, x1, ys)
+      ..lineTo(x1, yb);
+  }
+
+  @override
+  void paint(Canvas canvas, Size s) {
+    final k = mini ? 0.55 : 1.0;
+    final w = s.width, h = s.height;
+    final px = mini ? w * 0.2 : 12.0, py = mini ? h * 0.12 : 12.0;
+    final outer = Paint()..style = PaintingStyle.stroke..strokeWidth = 1.1 * k..color = kGold.withOpacity(0.32);
+    final inner = Paint()..style = PaintingStyle.stroke..strokeWidth = 2.6 * k..strokeCap = StrokeCap.round..color = kGold.withOpacity(0.85);
+    final gap = mini ? 3.0 : 14.0;
+    canvas.drawPath(_arch(px - gap * 0.4, w - px + gap * 0.4, py - gap * 0.9, h * 0.52, h - py + 8), outer);
+    canvas.drawPath(_arch(px + gap * 0.6, w - px - gap * 0.6, py + gap * 0.4, h * 0.5, h - py - 2), inner);
+    if (!mini) {
+      final z = Paint()..style = PaintingStyle.stroke..strokeWidth = 2..strokeCap = StrokeCap.round..color = kGold.withOpacity(0.6);
+      final y = h - py - 18;
+      final n = 22;
+      final x0 = px + 30, x1 = w - px - 30, st = (x1 - x0) / n;
+      for (var i = 0; i < n; i++) {
+        final x = x0 + i * st;
+        canvas.drawLine(Offset(x, y), Offset(x + st * 0.5, y + 5), z);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant MihrabPainter o) => false;
 }
