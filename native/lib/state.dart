@@ -67,9 +67,9 @@ class PlayerCtl extends ChangeNotifier {
     });
     SharedPreferences.getInstance().then((sp) {
       lyOffset = sp.getDouble('lyOffset') ?? 0;
-      viz = sp.getInt('viz2') ?? 0;
+      viz = sp.getInt('viz3') ?? 0;
       layout = sp.getInt('layout') ?? 0;
-      bg = sp.getInt('bg') ?? 0;
+      bg = sp.getInt('bg3') ?? 0;
       lyFont = sp.getInt('lyFont') ?? 0;
       lyColor = sp.getInt('lyColor') ?? 1;
       lySize = sp.getDouble('lySize') ?? 22;
@@ -189,7 +189,7 @@ class PlayerCtl extends ChangeNotifier {
         lySize = v.toDouble();
         break;
     }
-    SharedPreferences.getInstance().then((sp) => v is int ? sp.setInt(k == 'viz' ? 'viz2' : k, v) : sp.setDouble(k, v.toDouble()));
+    SharedPreferences.getInstance().then((sp) => v is int ? sp.setInt(k == 'viz' ? 'viz3' : (k == 'bg' ? 'bg3' : k), v) : sp.setDouble(k, v.toDouble()));
     notifyListeners();
   }
 
