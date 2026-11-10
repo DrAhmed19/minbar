@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 import 'analysis.dart';
 import 'data.dart';
 import 'lyrics.dart';
@@ -377,4 +378,108 @@ void showStatsSheet(BuildContext context) {
       ),
     ),
   );
+}
+
+// ================= التعرّف على القصيدة بالمايك =================
+Future<void> recognizePoem(BuildContext context) async {
+  final stt = SpeechToText();
+  var ok = false;
+  try {
+    ok = await stt.initialize(onError: (_) {});
+  } catch (_) {}
+  if (!context.mounted) return;
+  if (!ok) {
+    _toast(context, 'يلزم السماح باستخدام الميكروفون وتوفّر خدمة التعرّف على الكلام من Google');
+    return;
+  }
+  app.repo.loadAllLyrics();
+  var heardText = '';
+  var sec = 10;
+  final st = ValueNotifier<String>('قرّب الهاتف من الصوت… $sec');
+  var cancelled = false;
+  final dlg = showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (d) => Directionality(
+      textDirection: TextDirection.rtl,
+      child: AlertDialog(
+        backgroundColor: const Color(0xFF1C1612),
+        title: Text('التعرّف على القصيدة', style: tx(18, c: Colors.white)),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          const PIcon('mic', color: kGold, size: 48),
+          const SizedBox(height: 12),
+          ValueListenableBuilder<String>(valueListenable: st, builder: (_, v, __) => Text(v, textAlign: TextAlign.center, style: tx(14, c: Colors.white70))),
+        ]),
+        actions: [
+          TextButton(
+            onPressed: () {
+              cancelled = true;
+              stt.cancel();
+              Navigator.pop(d);
+            },
+            child: Text('إلغاء', style: tx(14, c: kGold)),
+          ),
+        ],
+      ),
+    ),
+  );
+  final wasPlaying = app.player.p.playing;
+  if (wasPlaying) app.player.p.pause();
+  final locs = await stt.locales();
+  final loc = locs.where((l) => l.localeId.startsWith('ar_IQ')).firstOrNull ?? locs.where((l) => l.localeId.startsWith('ar')).firstOrNull;
+  await stt.listen(
+    onResult: (r) => heardText = r.recognizedWords,
+    localeId: loc?.localeId,
+    listenFor: const Duration(seconds: 10),
+    pauseFor: const Duration(seconds: 10),
+    listenOptions: SpeechListenOptions(partialResults: true, cancelOnError: false),
+  );
+  while (sec > 0 && !cancelled) {
+    await Future.delayed(const Duration(seconds: 1));
+    sec--;
+    st.value = sec > 0 ? 'قرّب الهاتف من الصوت… $sec\n$heardText' : 'جارٍ التحليل…';
+  }
+  await stt.stop();
+  await Future.delayed(const Duration(milliseconds: 600));
+  if (cancelled) return;
+  if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
+  await dlg;
+  final heard = norm(heardText).split(' ').where((x) => x.length > 1).toList();
+  if (!context.mounted) return;
+  if (heard.length < 2) {
+    _toast(context, 'لم يُسمع كلام واضح، حاول مرة أخرى');
+    if (wasPlaying) app.player.p.play();
+    return;
+  }
+  final bg = <String>{for (var i = 0; i < heard.length - 1; i++) '${heard[i]} ${heard[i + 1]}'};
+  String? bestId;
+  var bestS = 0, bestLine = '';
+  app.repo.allLy.forEach((id, txt) {
+    for (final ln in txt.split('\n')) {
+      final ws = norm(ln).split(' ').where((x) => x.length > 1).toList();
+      var s = 0;
+      for (final w in ws) {
+        if (heard.contains(w)) s += 1;
+      }
+      for (var k = 0; k < ws.length - 1; k++) {
+        if (bg.contains('${ws[k]} ${ws[k + 1]}')) s += 2;
+      }
+      if (s >= 3 && s > bestS) {
+        bestS = s;
+        bestId = id;
+        bestLine = ln;
+      }
+    }
+  });
+  final t = bestId == null ? null : app.repo.byId(bestId!);
+  if (t == null) {
+    _toast(context, 'لم نتعرّف على القصيدة في المكتبة');
+    if (wasPlaying) app.player.p.play();
+    return;
+  }
+  final ly = await app.repo.lyricsFor(t);
+  final at = ly.where((x) => x.l == bestLine).firstOrNull?.t ?? 0;
+  final all = app.repo.tracks;
+  app.player.playList(all, all.indexOf(t), pos: Duration(milliseconds: (at * 1000).round()));
+  if (context.mounted) _toast(context, 'تم التعرّف: ${t.title}');
 }

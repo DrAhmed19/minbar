@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:cached_network_image/cached_network_image.dart';
@@ -202,7 +203,7 @@ class _PlayerPageState extends State<PlayerPage> {
           _box(Ic.moon, _sleepSheet, size: 54, color: pc.sleepAt != null ? kA2 : kA),
           Expanded(
             child: Column(children: [
-              Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: lyricStyle(size: 24, color: Colors.white)),
+              Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: TextStyle(fontFamily: thx(pc.viz).font, fontFamilyFallback: const ['F0'], fontSize: 24, color: Colors.white, fontWeight: FontWeight.w700, height: 1.4)),
               Text([t.reciter, t.poet].where((e) => e.isNotEmpty).join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: tx(17, c: Color(0xFFE8C468))),
             ]),
           ),
@@ -223,9 +224,12 @@ class _PlayerPageState extends State<PlayerPage> {
                     if (dur > 0) pc.seek(f * dur);
                   }),
                 ),
+                ProgLine(pg: thx(pc.viz).pg, p: dur > 0 ? pos / dur : 0, onSeek: (f) {
+                  if (dur > 0) pc.seek(f * dur);
+                }),
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 2),
-                  child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  child: Row(textDirection: TextDirection.ltr, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                     Text(fmt(pos), style: tx(14, c: Colors.white60)),
                     Text(fmt(dur), style: tx(14, c: Colors.white60)),
                   ]),
@@ -238,30 +242,49 @@ class _PlayerPageState extends State<PlayerPage> {
         Directionality(
           textDirection: TextDirection.ltr,
           child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-            IconButton(onPressed: pc.prev, icon: PIcon(Ic.prev, color: kA, size: 40)),
+            HoldSeek(dir: -1, onTap: pc.prev, child: PIcon(Ic.prev, color: thx(pc.viz).btn == 'ring' ? kA : kA, size: 40)),
             StreamBuilder<PlayerState>(
               stream: pc.p.playerStateStream,
               builder: (_, s) {
                 final st = s.data;
                 final busy = st != null && st.playing && (st.processingState == ProcessingState.loading || st.processingState == ProcessingState.buffering);
+                final x = thx(pc.viz), playing = st?.playing ?? false;
+                BoxDecoration dec;
+                var icol = const Color(0xFF2A2106);
+                switch (x.btn) {
+                  case 'squ':
+                    dec = BoxDecoration(borderRadius: BorderRadius.circular(25), gradient: LinearGradient(colors: [kA2, kA], begin: Alignment.topLeft, end: Alignment.bottomRight), boxShadow: [BoxShadow(color: kA.withOpacity(0.35), blurRadius: 26)]);
+                  case 'disc':
+                    dec = BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(center: const Alignment(-0.3, -0.4), colors: [kA2, kA, const Color(0xFF3B3226)], stops: const [0, 0.42, 1]), border: Border.all(color: const Color(0x40000000), width: 4), boxShadow: [BoxShadow(color: kA.withOpacity(0.35), blurRadius: 30)]);
+                  case 'glass':
+                    dec = BoxDecoration(shape: BoxShape.circle, color: const Color(0x24FFFFFF), border: Border.all(color: const Color(0x66FFFFFF)), boxShadow: const [BoxShadow(color: Color(0x40000000), blurRadius: 20, offset: Offset(0, 8))]);
+                    icol = Colors.white;
+                  case 'ring':
+                    dec = BoxDecoration(shape: BoxShape.circle, border: Border.all(color: kA, width: 2), boxShadow: [BoxShadow(color: kA.withOpacity(playing ? 0.55 : 0.3), blurRadius: playing ? 30 : 18)]);
+                    icol = kA;
+                  case 'circle':
+                    dec = BoxDecoration(shape: BoxShape.circle, gradient: LinearGradient(colors: [kA2, kA], begin: Alignment.topLeft, end: Alignment.bottomRight), boxShadow: [BoxShadow(color: kA.withOpacity(0.35), blurRadius: 26)]);
+                  default:
+                    dec = BoxDecoration(borderRadius: const BorderRadius.only(topLeft: Radius.circular(46), topRight: Radius.circular(46), bottomLeft: Radius.circular(18), bottomRight: Radius.circular(18)), gradient: LinearGradient(colors: [kA2, kA], begin: Alignment.topLeft, end: Alignment.bottomRight), boxShadow: [BoxShadow(color: kA.withOpacity(0.35), blurRadius: 26)], border: playing ? Border.all(color: kA2.withOpacity(0.6), width: 1.5) : null);
+                }
                 return GestureDetector(
                   onTap: pc.toggle,
-                  child: Container(
-                    width: 94,
-                    height: 94,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.only(topLeft: Radius.circular(46), topRight: Radius.circular(46), bottomLeft: Radius.circular(34), bottomRight: Radius.circular(34)),
-                      gradient: LinearGradient(colors: [kA2, kA], begin: Alignment.topLeft, end: Alignment.bottomRight),
-                      boxShadow: [BoxShadow(color: kA.withOpacity(0.35), blurRadius: 26)],
+                  child: AnimatedScale(
+                    scale: x.dock == 'metal' && !playing ? 0.94 : 1,
+                    duration: const Duration(milliseconds: 200),
+                    child: Container(
+                      width: 94,
+                      height: 94,
+                      decoration: dec,
+                      child: busy
+                          ? Padding(padding: const EdgeInsets.all(30), child: CircularProgressIndicator(strokeWidth: 3.5, color: icol))
+                          : Center(child: PIcon(playing ? Ic.pause : Ic.play, size: 44, color: icol)),
                     ),
-                    child: busy
-                        ? Padding(padding: EdgeInsets.all(30), child: CircularProgressIndicator(strokeWidth: 3.5, color: Color(0xFF3A2D08)))
-                        : Center(child: PIcon((st?.playing ?? false) ? Ic.pause : Ic.play, size: 44, color: Color(0xFF2A2106))),
                   ),
                 );
               },
             ),
-            IconButton(onPressed: pc.next, icon: PIcon(Ic.next, color: kA, size: 40)),
+            HoldSeek(dir: 1, onTap: pc.next, child: PIcon(Ic.next, color: kA, size: 40)),
           ]),
         ),
       ]),
@@ -286,9 +309,26 @@ class _PlayerPageState extends State<PlayerPage> {
             ),
           ),
         );
+    final dk = thx(pc.viz).dock;
+    BoxDecoration dd;
+    var mg = EdgeInsets.zero;
+    switch (dk) {
+      case 'metal':
+        dd = const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF3D4043), Color(0xFF1B1D1F)]), border: Border(top: BorderSide(color: Color(0x2EFFFFFF))));
+      case 'outline':
+        dd = BoxDecoration(border: Border(top: BorderSide(color: kA.withOpacity(0.45))), boxShadow: [BoxShadow(color: kA.withOpacity(0.12), blurRadius: 24, offset: const Offset(0, -8))]);
+      case 'float':
+        dd = BoxDecoration(color: const Color(0x52000000), borderRadius: BorderRadius.circular(28), border: Border.all(color: const Color(0x24FFFFFF)));
+        mg = const EdgeInsets.fromLTRB(14, 0, 14, 10);
+      case 'bar':
+        dd = BoxDecoration(color: const Color(0x59000000), border: Border(top: BorderSide(color: kA.withOpacity(0.45))));
+      default:
+        dd = const BoxDecoration(color: Color(0xF2171210), borderRadius: BorderRadius.vertical(top: Radius.circular(30)));
+    }
     return Container(
+      margin: mg,
       padding: EdgeInsets.fromLTRB(8, 8, 8, 6),
-      decoration: BoxDecoration(color: Color(0xF2171210), borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
+      decoration: dd,
       child: Row(children: [
         b(Ic.rep, 'تكرار', pc.loop != LoopMode.off, pc.cycleLoop),
         b(Ic.text, 'الكلمات', false, () => showLyricsSheet(context, ly)),
@@ -766,4 +806,116 @@ class MihrabPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant MihrabPainter o) => false;
+}
+
+
+/// الضغط المستمر على التالي/السابق = تقديم/ترجيع متسارع (مثل الويب)
+class HoldSeek extends StatefulWidget {
+  final int dir;
+  final VoidCallback onTap;
+  final Widget child;
+  const HoldSeek({super.key, required this.dir, required this.onTap, required this.child});
+  @override
+  State<HoldSeek> createState() => _HoldSeekState();
+}
+
+class _HoldSeekState extends State<HoldSeek> {
+  Timer? _t0, _iv;
+  bool held = false;
+  int st0 = 0;
+  void _down() {
+    held = false;
+    st0 = DateTime.now().millisecondsSinceEpoch;
+    _t0 = Timer(const Duration(milliseconds: 380), () {
+      held = true;
+      HapticFeedback.lightImpact();
+      _iv = Timer.periodic(const Duration(milliseconds: 160), (_) {
+        final el = (DateTime.now().millisecondsSinceEpoch - st0) / 1000, s = el < 1.6 ? 2 : (el < 3.5 ? 5 : 12);
+        final p = app.player.p, d = (p.duration?.inMilliseconds ?? 0) / 1000.0;
+        if (d > 0) app.player.seek((p.position.inMilliseconds / 1000.0 + widget.dir * s).clamp(0.0, d - 0.5));
+      });
+    });
+  }
+
+  void _up() {
+    _t0?.cancel();
+    _iv?.cancel();
+    if (!held) widget.onTap();
+    held = false;
+  }
+
+  @override
+  void dispose() {
+    _t0?.cancel();
+    _iv?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (_) => _down(),
+        onTapUp: (_) => _up(),
+        onTapCancel: () {
+          _t0?.cancel();
+          _iv?.cancel();
+          held = false;
+        },
+        child: Padding(padding: const EdgeInsets.all(10), child: widget.child),
+      );
+}
+
+/// خط التقدّم بأشكال القوالب (line / thick / tape / seg / glow)
+class ProgLine extends StatelessWidget {
+  final String pg;
+  final double p;
+  final ValueChanged<double> onSeek;
+  const ProgLine({super.key, required this.pg, required this.p, required this.onSeek});
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (_, c) => GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (d) => onSeek((d.localPosition.dx / c.maxWidth).clamp(0.0, 1.0)),
+          onHorizontalDragUpdate: (d) => onSeek((d.localPosition.dx / c.maxWidth).clamp(0.0, 1.0)),
+          child: SizedBox(height: 26, width: c.maxWidth, child: CustomPaint(painter: _PgPainter(pg, p.clamp(0.0, 1.0), kA, kA2))),
+        ),
+      );
+}
+
+class _PgPainter extends CustomPainter {
+  final String pg;
+  final double p;
+  final Color a, a2;
+  _PgPainter(this.pg, this.p, this.a, this.a2);
+  @override
+  void paint(Canvas x, Size s) {
+    final h = pg == 'thick' ? 6.0 : (pg == 'tape' ? 8.0 : 4.0), y = s.height / 2 - h / 2, w = s.width;
+    final px = w * p; // من اليسار لليمين مثل الويب
+    if (pg == 'tape' || pg == 'seg') {
+      final on = pg == 'seg' ? 5.0 : 6.0, gap = pg == 'seg' ? 3.0 : 3.0;
+      var i = 0;
+      for (var xx = 0.0; xx < w; xx += on + gap) {
+        final done = xx < px;
+        x.drawRect(Rect.fromLTWH(xx, y, on, h), Paint()..color = done ? (pg == 'tape' && i.isOdd ? a2 : a) : Colors.white.withOpacity(pg == 'seg' ? 0.18 : 0.14));
+        i++;
+      }
+    } else {
+      x.drawRRect(RRect.fromLTRBR(0, y, w, y + h, Radius.circular(h / 2)), Paint()..color = Colors.white24);
+      final fp = Paint()..color = a;
+      if (pg == 'glow') x.drawRRect(RRect.fromLTRBR(0, y, px, y + h, Radius.circular(h / 2)), Paint()..color = a.withOpacity(0.6)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6));
+      x.drawRRect(RRect.fromLTRBR(0, y, px, y + h, Radius.circular(h / 2)), fp);
+    }
+    final th = Paint()..color = a2;
+    if (pg == 'thick') {
+      x.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(px, s.height / 2), width: 16, height: 16), const Radius.circular(5)), th);
+    } else if (pg == 'tape') {
+      x.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(px, s.height / 2), width: 10, height: 18), const Radius.circular(3)), th);
+    } else {
+      x.drawCircle(Offset(px, s.height / 2), 9, th);
+      x.drawCircle(Offset(px, s.height / 2), 9, Paint()..style = PaintingStyle.stroke..strokeWidth = 2..color = Colors.black26);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _PgPainter o) => o.p != p || o.pg != pg || o.a != a;
 }

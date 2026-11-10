@@ -7,6 +7,7 @@ import 'occasion.dart';
 import 'player_ui.dart';
 import 'samples.dart';
 import 'state.dart';
+import 'tools.dart';
 import 'ui.dart';
 
 void snack(BuildContext c, String s) {
@@ -175,6 +176,7 @@ class _HomeShellState extends State<HomeShell> {
               ),
             ),
           if (!searching) const Spacer(),
+          if (!searching) _ib('mic', () => recognizePoem(context)),
           if (!searching) _ib(Ic.users, _accountSheet),
           _ib(searching ? Ic.x : Ic.search, () => setState(() {
                 searching = !searching;
@@ -231,7 +233,7 @@ class _HomeShellState extends State<HomeShell> {
       case 3:
         return _reciters();
       default:
-        return HomeTab(onPlay: _play);
+        return HomeTab(onPlay: _play, onSub: (i) => setState(() => sub = i));
     }
   }
 
@@ -491,9 +493,17 @@ void openPlayer(BuildContext context) {
 /// ========== تبويب الرئيسية ==========
 class HomeTab extends StatelessWidget {
   final void Function(List<Track>, Track) onPlay;
-  const HomeTab({super.key, required this.onPlay});
+  final ValueChanged<int>? onSub;
+  const HomeTab({super.key, required this.onPlay, this.onSub});
 
-  Widget _sec(String s) => Padding(padding: const EdgeInsets.fromLTRB(16, 16, 16, 8), child: Text(s, style: tx(18, c: const Color(0xFF17231E))));
+  Widget _sec(String s, [VoidCallback? all]) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        child: Row(children: [
+          Text(s, style: tx(18, c: const Color(0xFF17231E))),
+          const Spacer(),
+          if (all != null) GestureDetector(onTap: all, child: Text('الكل', style: tx(14, c: kGreen))),
+        ]),
+      );
 
   Widget _row(List<Widget> c, {double h = 196}) => SizedBox(
         height: h,
@@ -541,7 +551,7 @@ class HomeTab extends StatelessWidget {
         final o = occasionToday();
         if (o != null) {
           final l = all.where((t) => o.k.any((k) => '${t.title} ${t.cat} ${t.poet}'.contains(k))).toList();
-          body.add(_occ('مناسبة اليوم', o.t, l.isNotEmpty ? '${l.length} قصيدة مناسبة' : 'لا توجد قصائد مصنّفة لهذه المناسبة بعد', l.isEmpty ? null : () => Navigator.push(context, MaterialPageRoute(builder: (_) => GroupPage(o.t, l)))));
+          body.add(_occ('مناسبة اليوم', o.t, l.isNotEmpty ? '${l.length} قصيدة مناسبة' : 'لا توجد قصائد مصنّفة لهذه المناسبة بعد', l.isEmpty ? null : () => Navigator.push(context, MaterialPageRoute(builder: (_) => GroupPage(o.t, l))), play: l.isEmpty ? null : () => app.player.playList(l, 0)));
         } else {
           final nx = occasionNext();
           if (nx != null) body.add(_occ('مناسبة قادمة', nx.t, nx.d == 1 ? 'غداً' : 'بعد ${nx.d} أيام', null));
@@ -570,14 +580,14 @@ class HomeTab extends StatelessWidget {
         // جديد الإصدارات
         final albs = r.albums.values.where((a) => all.any((t) => t.album == a.id)).toList()..sort((a, b) => b.at.compareTo(a.at));
         if (albs.isNotEmpty) {
-          body.add(_sec('جديد الإصدارات'));
+          body.add(_sec('جديد الإصدارات', onSub == null ? null : () => onSub!(2)));
           body.add(_row([for (final a in albs.take(10)) AlbumCard(a)], h: 186));
         }
 
         // أُضيفت حديثاً
         final fresh = all.where((t) => t.at > 0).take(12).toList();
         if (fresh.isNotEmpty) {
-          body.add(_sec('أُضيفت حديثاً'));
+          body.add(_sec('أُضيفت حديثاً', onSub == null ? null : () => onSub!(1)));
           body.add(_row([for (final t in fresh) _card(t, all)]));
         }
 
@@ -615,7 +625,7 @@ class HomeTab extends StatelessWidget {
     );
   }
 
-  Widget _occ(String k, String t, String s, VoidCallback? f) => GestureDetector(
+  Widget _occ(String k, String t, String s, VoidCallback? f, {VoidCallback? play}) => GestureDetector(
         onTap: f,
         child: Container(
           margin: const EdgeInsets.fromLTRB(12, 4, 12, 4),
@@ -627,6 +637,17 @@ class HomeTab extends StatelessWidget {
             Text(t, style: tx(19, c: Colors.white, w: FontWeight.w800)),
             const SizedBox(height: 4),
             Text(s, style: tx(12.5, c: Colors.white70, w: FontWeight.w500)),
+            if (play != null) ...[
+              const SizedBox(height: 10),
+              GestureDetector(
+                onTap: play,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), color: kGold),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [const PIcon(Ic.play, color: Color(0xFF2A2106), size: 16), const SizedBox(width: 6), Text('تشغيل', style: tx(13, c: const Color(0xFF2A2106)))]),
+                ),
+              ),
+            ],
           ]),
         ),
       );

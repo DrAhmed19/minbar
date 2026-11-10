@@ -8,6 +8,8 @@ perms = '''    <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
 '''
 if 'FOREGROUND_SERVICE_MEDIA_PLAYBACK' not in s:
     s = s.replace('<application', perms + '    <application', 1)
@@ -30,7 +32,7 @@ svc = '''        <service android:name="com.ryanheise.audioservice.AudioService"
 if 'com.ryanheise.audioservice.AudioService"' not in s:
     s = s.replace('</application>', svc + '    </application>', 1)
 if '<queries>' not in s:
-    s = s.replace('<application', '<queries><intent><action android:name="android.intent.action.VIEW"/><data android:scheme="https"/></intent></queries>\n    <application', 1)
+    s = s.replace('<application', '<queries><intent><action android:name="android.intent.action.VIEW"/><data android:scheme="https"/></intent><intent><action android:name="android.speech.RecognitionService"/></intent></queries>\n    <application', 1)
 if 'xmlns:tools' not in s:
     s = s.replace('<manifest ', '<manifest xmlns:tools="http://schemas.android.com/tools" ', 1)
 mf.write_text(s, encoding='utf-8')

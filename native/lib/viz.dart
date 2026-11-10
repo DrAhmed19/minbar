@@ -32,6 +32,25 @@ const kThemes = <String, Th>{
 const kVizIds = ['mihrab', 'ambient', 'wring', 'cover', 'vinyl', 'cassette', 'jog', 'reels', 'knob', 'speaker', 'scope', 'pond', 'dots', 'card', 'silk', 'strings', 'candles', 'halo', 'bars', 'blob', 'wave', 'spectrum', 'orbit', 'pulse', 'star', 'dust', 'neon'];
 const kVizTitles = ['المحراب', 'أجواء', 'حلقة الموجة', 'غلاف', 'أسطوانة', 'الكاسيت', 'عجلة الدوران', 'جهاز البكرات', 'مقبض الصوت', 'السمّاعة', 'جهاز الذبذبات', 'البركة', 'ذرّات الغلاف', 'البطاقة الزجاجية', 'الحرير المضيء', 'الأوتار', 'الشموع', 'هالة', 'حلقة الأعمدة', 'موجة دائرية', 'خط الصوت', 'أعمدة الطيف', 'مدارات', 'نبض', 'النجمة الثمانية', 'غبار ذهبي', 'إطار مضيء'];
 const _vth = {'mihrab': 'mihrab', 'ambient': 'mihrab', 'cover': 'mihrab', 'wring': 'silk', 'cassette': 'retro', 'jog': 'retro', 'reels': 'retro', 'knob': 'metal', 'speaker': 'metal', 'scope': 'scope', 'pond': 'water', 'dots': 'glass', 'card': 'glass', 'vinyl': 'retro', 'silk': 'silk', 'strings': 'wood', 'candles': 'wood', 'neon': 'neon', 'pulse': 'neon', 'spectrum': 'neon', 'bars': 'neon', 'halo': 'night', 'star': 'night', 'orbit': 'night', 'dust': 'night', 'blob': 'night', 'wave': 'night'};
+const _thx = {
+  'mihrab': ('F2', 'arch', 'glass', 'line'),
+  'retro': ('F14', 'disc', 'metal', 'tape'),
+  'scope': ('F1', 'squ', 'outline', 'seg'),
+  'metal': ('F0', 'disc', 'metal', 'thick'),
+  'water': ('F13', 'glass', 'float', 'glow'),
+  'glass': ('F5', 'glass', 'float', 'line'),
+  'silk': ('F12', 'squ', 'float', 'glow'),
+  'wood': ('F3', 'circle', 'bar', 'thick'),
+  'neon': ('F4', 'ring', 'outline', 'glow'),
+  'night': ('F2', 'circle', 'glass', 'line'),
+};
+
+/// (خط العنوان، شكل زر التشغيل، شكل الشريط السفلي، شكل خط التقدّم) لكل قالب
+({String font, String btn, String dock, String pg}) thx(int viz) {
+  final r = _thx[_vth[kVizIds[viz % kVizIds.length]] ?? 'mihrab']!;
+  return (font: r.$1, btn: r.$2, dock: r.$3, pg: r.$4);
+}
+
 Th themeOf(int viz) => kThemes[_vth[kVizIds[viz % kVizIds.length]] ?? 'mihrab']!;
 
 /// ألوان الخلفية: من الغلاف / لون القالب / ألوان ثابتة

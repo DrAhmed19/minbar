@@ -419,17 +419,17 @@ class Repo extends ChangeNotifier {
     if (_allLyLoading || allLy.isNotEmpty) return;
     _allLyLoading = true;
     try {
-      final at = _p?.getInt('allLy.at') ?? 0;
-      final cached = _p?.getString('allLy');
+      final at = _p?.getInt('allLy2.at') ?? 0;
+      final cached = _p?.getString('allLy2');
       if (cached != null && DateTime.now().millisecondsSinceEpoch - at < 7 * 86400000) {
         (jsonDecode(cached) as Map).forEach((k, v) => allLy['$k'] = '$v');
       } else {
         final s = await FirebaseFirestore.instance.collection('lyrApproved').get();
         for (final d in s.docs) {
-          allLy[d.id] = Lyric.parse(d.data()['json'] ?? '[]').map((e) => e.l).join(' ');
+          allLy[d.id] = Lyric.parse(d.data()['json'] ?? '[]').map((e) => e.l).join('\n');
         }
-        await _p?.setString('allLy', jsonEncode(allLy));
-        await _p?.setInt('allLy.at', DateTime.now().millisecondsSinceEpoch);
+        await _p?.setString('allLy2', jsonEncode(allLy));
+        await _p?.setInt('allLy2.at', DateTime.now().millisecondsSinceEpoch);
       }
       notifyListeners();
     } catch (_) {}
