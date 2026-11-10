@@ -12,6 +12,7 @@ import 'ui.dart';
 import 'viz.dart';
 import 'lyrics.dart';
 import 'audio.dart';
+import 'social.dart';
 
 Color kA = const Color(0xFFE8C468), kA2 = const Color(0xFFF3D88A);
 
@@ -59,6 +60,8 @@ class _PlayerPageState extends State<PlayerPage> {
     env = [];
     img = null;
     hue = null;
+    social.start();
+    social.load(t);
     coverImage(t.coverUrl, file: app.repo.offDir.isEmpty ? null : '${app.repo.offDir}/${t.id}.cover').then((im) async {
       if (im == null || !mounted || app.player.cur?.id != t.id) return;
       final h = await coverHue(t.coverUrl, im);
@@ -127,10 +130,16 @@ class _PlayerPageState extends State<PlayerPage> {
                     setState(() {});
                   }),
                   SizedBox(width: 8),
-                  _box(Ic.chat, () => snack2('التعليقات في التحديث القادم')),
+                  _box(Ic.chat, () => showCommentsSheet(context)),
                 ]),
               ),
-              Expanded(child: lyView ? _lyricsView() : _stage(t)),
+              Expanded(
+                child: Stack(children: [
+                  Positioned.fill(child: lyView ? _lyricsView() : _stage(t)),
+                  const Positioned.fill(child: CmLayer()),
+                  const Positioned(right: 4, bottom: 0, child: RxLayer()),
+                ]),
+              ),
               _bottom(t),
               _dock(),
             ]),
@@ -484,7 +493,13 @@ class _PlayerPageState extends State<PlayerPage> {
                   await Clipboard.setData(ClipboardData(text: '${kBase}?p=${t.id}&t=$sec'));
                   snack2('نُسخ رابط اللحظة');
                 }),
-                _tile(Ic.flame, 'الذروة', 'لا إعجابات', soon),
+                _tile(Ic.flame, 'الذروة', social.rx.isEmpty ? 'لا إعجابات' : 'أكثر لحظة إعجاباً', () {
+                  final pk = social.peakT();
+                  if (pk == null) return snack2('لا توجد إعجابات بعد');
+                  Navigator.pop(c);
+                  pc.seek(pk);
+                  if (!pc.p.playing) pc.toggle();
+                }),
                 _tile(Ic.users, 'المجلس', 'استماع مشترك', soon, neu: true),
                 _tile(Ic.text, 'وضع الحسينية', 'كلمات كبيرة للشاشة', soon),
                 _tile(Ic.pulse, 'تحليل الصوت', 'كل القصائد محلّلة', soon),
