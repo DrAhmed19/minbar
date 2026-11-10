@@ -195,15 +195,26 @@ class _VizStageState extends State<VizStage> with SingleTickerProviderStateMixin
   final vs = VizState();
   final _raw = List<double>.filled(22, 0);
   double _last = 0;
+  final _sw = Stopwatch()..start();
+  Timer? _pt;
 
   @override
   void initState() {
     super.initState();
-    if (!widget.still) _c.forward();
+    if (!widget.still) {
+      if (app.player.perf == 1) {
+        _pt = Timer.periodic(const Duration(milliseconds: 66), (_) {
+          if (mounted) setState(() {});
+        });
+      } else {
+        _c.forward();
+      }
+    }
   }
 
   @override
   void dispose() {
+    _pt?.cancel();
     _c.dispose();
     super.dispose();
   }
@@ -256,11 +267,8 @@ class _VizStageState extends State<VizStage> with SingleTickerProviderStateMixin
 
   @override
   Widget build(BuildContext context) {
-    return RepaintBoundary(
-      child: AnimatedBuilder(
-        animation: _c,
-        builder: (_, __) {
-          final now = (_c.lastElapsedDuration?.inMicroseconds ?? 0) / 1e6;
+    Widget frame() {
+          final now = _sw.elapsedMicroseconds / 1e6;
           final dt = (now - _last).clamp(0.0, 0.1);
           _last = now;
           _tick(now);
@@ -284,9 +292,9 @@ class _VizStageState extends State<VizStage> with SingleTickerProviderStateMixin
             painter: VizPainter(id, f, vs, widget.img, now, dt == 0 ? 0.016 : dt, !app.player.p.playing, widget.scale),
             size: Size.infinite,
           );
-        },
-      ),
-    );
+    }
+
+    return RepaintBoundary(child: app.player.perf == 1 || widget.still ? frame() : AnimatedBuilder(animation: _c, builder: (_, __) => frame()));
   }
 }
 

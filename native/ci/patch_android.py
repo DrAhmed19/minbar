@@ -35,6 +35,17 @@ if '<queries>' not in s:
     s = s.replace('<application', '<queries><intent><action android:name="android.intent.action.VIEW"/><data android:scheme="https"/></intent><intent><action android:name="android.speech.RecognitionService"/></intent></queries>\n    <application', 1)
 if 'xmlns:tools' not in s:
     s = s.replace('<manifest ', '<manifest xmlns:tools="http://schemas.android.com/tools" ', 1)
+if 'minbar-95z.pages.dev' not in s:
+    deep = '''            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="minbar-95z.pages.dev"/>
+            </intent-filter>
+'''
+    i = s.find('<category android:name="android.intent.category.LAUNCHER"')
+    j = s.find('</intent-filter>', i) + len('</intent-filter>')
+    s = s[:j] + '\n' + deep + s[j:]
 mf.write_text(s, encoding='utf-8')
 # MainActivity
 for kt in root.rglob('MainActivity.*'):

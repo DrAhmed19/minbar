@@ -107,7 +107,8 @@ class _HusnPageState extends State<HusnPage> {
 class Majlis extends ChangeNotifier {
   bool on = false, host = false;
   String code = '';
-  StreamSubscription? _un, _ps;
+  StreamSubscription? _un, _ps, _sug;
+  List<Map<String, dynamic>> sug = [];
   Timer? _iv;
   Map<String, dynamic>? d;
   int _push = 0, _sk = 0;
@@ -129,6 +130,13 @@ class Majlis extends ChangeNotifier {
       _iv = Timer.periodic(const Duration(seconds: 4), (_) => push(false));
       push(true);
       _toast(ctx, 'بدأ المجلس — رمزك $code');
+      var first = true;
+      _sug = db.collection('majlis/$code/sug').snapshots().listen((q) {
+        sug = [for (final d in q.docs) {...d.data(), 'id': d.id}];
+        if (!first && q.docChanges.any((c) => c.type == DocumentChangeType.added) && ctx.mounted) _toast(ctx, 'اقتراح جديد من الحضور (${sug.length})');
+        first = false;
+        notifyListeners();
+      }, onError: (_) {});
     } else {
       _un = db.doc('majlis/$code').snapshots().listen((s) {
         if (!s.exists) {
@@ -222,10 +230,38 @@ class Majlis extends ChangeNotifier {
     }
   }
 
+  /// الضيف يقترح قصيدة على المضيف
+  Future<void> suggest(BuildContext ctx, Track t) async {
+    final u = FirebaseAuth.instance.currentUser;
+    if (!on || host || u == null) return;
+    try {
+      await FirebaseFirestore.instance.doc('majlis/$code/sug/${u.uid}_${t.id}').set({'track': t.id, 'by': u.uid, 'name': (u.displayName ?? '').split(' ').first, 'at': FieldValue.serverTimestamp()});
+      if (ctx.mounted) _toast(ctx, 'أُرسل الاقتراح للمضيف');
+    } catch (_) {
+      if (ctx.mounted) _toast(ctx, 'تعذّر إرسال الاقتراح');
+    }
+  }
+
+  void acceptSug(Map<String, dynamic> x) {
+    final t = app.repo.byId('${x['track']}');
+    if (t != null) app.player.playNext(t);
+    dropSug(x);
+    push(true);
+  }
+
+  void dropSug(Map<String, dynamic> x) {
+    FirebaseFirestore.instance.doc('majlis/$code/sug/${x['id']}').delete().catchError((_) {});
+    sug.removeWhere((y) => y['id'] == x['id']);
+    notifyListeners();
+  }
+
   void stop({bool quiet = false}) {
     final wasHost = on && host;
     _un?.cancel();
     _ps?.cancel();
+    _sug?.cancel();
+    _sug = null;
+    sug = [];
     _iv?.cancel();
     _un = _ps = null;
     _iv = null;
@@ -265,6 +301,31 @@ void showMajlisSheet(BuildContext context) {
               ]),
             ),
             const SizedBox(height: 12),
+            if (majlis.host && majlis.sug.isNotEmpty) ...[
+              Text('اقتراحات الحضور', style: tx(14, c: Colors.white70)),
+              for (final x in List.of(majlis.sug))
+                Builder(builder: (_) {
+                  final t = app.repo.byId('${x['track']}');
+                  if (t == null) return const SizedBox.shrink();
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Cover(t.coverUrl, size: 40, radius: 8),
+                    title: Text(t.title, style: tx(14, c: Colors.white)),
+                    subtitle: Text('${x['name'] ?? ''}', style: tx(11.5, c: Colors.white38)),
+                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                      TextButton(onPressed: () {
+                        majlis.acceptSug(x);
+                        Navigator.pop(c);
+                      }, child: Text('التالي', style: tx(13, c: kGold))),
+                      TextButton(onPressed: () {
+                        majlis.dropSug(x);
+                        Navigator.pop(c);
+                      }, child: Text('تجاهل', style: tx(13, c: Colors.white54))),
+                    ]),
+                  );
+                }),
+              const SizedBox(height: 8),
+            ],
             if (majlis.host)
               GoldButton('نسخ الرمز', () {
                 Clipboard.setData(ClipboardData(text: majlis.code));

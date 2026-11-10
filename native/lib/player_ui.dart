@@ -224,7 +224,7 @@ class _PlayerPageState extends State<PlayerPage> {
                     if (dur > 0) pc.seek(f * dur);
                   }),
                 ),
-                ProgLine(pg: thx(pc.viz).pg, p: dur > 0 ? pos / dur : 0, onSeek: (f) {
+                ProgLine(pg: thx(pc.viz).pg, p: dur > 0 ? pos / dur : 0, heat: social.rx, dur: dur, onSeek: (f) {
                   if (dur > 0) pc.seek(f * dur);
                 }),
                 Padding(
@@ -551,7 +551,11 @@ class _PlayerPageState extends State<PlayerPage> {
                   Navigator.push(context, MaterialPageRoute(builder: (_) => HusnPage(ly)));
                 }),
                 _tile(Ic.pulse, 'تحليل الصوت', 'كل القصائد محلّلة', soon),
-                _tile(Ic.wave, 'وضع الأداء', 'أخفّ وأثبت بالتطبيق', soon),
+                _tile(Ic.wave, 'وضع الأداء', pc.perf == 1 ? 'مفعّل — رسوم أخف' : 'للأجهزة الضعيفة', () {
+                  pc.setPref('perf', pc.perf == 1 ? 0 : 1);
+                  ss(() {});
+                  snack2(pc.perf == 1 ? 'وضع الأداء مفعّل: يُطبَّق عند فتح المشغّل من جديد' : 'أُوقف وضع الأداء');
+                }),
                 _tile(Ic.eq, 'الإحصائيات', 'الاستماعات والإعجابات', () => showStatsSheet(context)),
                 _tile(Ic.pulse, 'وضع اللطم', Latm.on ? 'مفعّل — اضغط للإيقاف' : 'اهتزاز مع الإيقاع', () {
                   Latm.toggle();
@@ -699,7 +703,7 @@ class _Background extends StatelessWidget {
     final pal = bgPal(pc.bg, themeOf(pc.viz), hue);
     return Stack(fit: StackFit.expand, children: [
       Container(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: pal.b))),
-      if (t.coverUrl.isNotEmpty)
+      if (t.coverUrl.isNotEmpty && pc.perf == 0)
         Opacity(
           opacity: pc.layout == 2 ? 0.35 : 0.16,
           child: ImageFiltered(
@@ -870,14 +874,32 @@ class ProgLine extends StatelessWidget {
   final String pg;
   final double p;
   final ValueChanged<double> onSeek;
-  const ProgLine({super.key, required this.pg, required this.p, required this.onSeek});
+  final List<double> heat;
+  final double dur;
+  const ProgLine({super.key, required this.pg, required this.p, required this.onSeek, this.heat = const [], this.dur = 0});
+  /// خريطة الإعجابات (40 خانة) مثل heatUi في الويب
+  List<double>? _heat() {
+    if (heat.isEmpty || dur <= 0) return null;
+    final b = List<double>.filled(40, 0);
+    for (final t in heat) {
+      final i = (t / dur * 40).floor();
+      if (i >= 0 && i < 40) b[i] += 1;
+    }
+    final s = List<double>.filled(40, 0);
+    for (var i = 0; i < 40; i++) {
+      s[i] = b[i] + (i > 0 ? b[i - 1] * 0.5 : 0) + (i < 39 ? b[i + 1] * 0.5 : 0);
+    }
+    final mx = s.reduce(math.max);
+    return mx <= 0 ? null : [for (final v in s) v / mx];
+  }
+
   @override
   Widget build(BuildContext context) => LayoutBuilder(
         builder: (_, c) => GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTapDown: (d) => onSeek((d.localPosition.dx / c.maxWidth).clamp(0.0, 1.0)),
           onHorizontalDragUpdate: (d) => onSeek((d.localPosition.dx / c.maxWidth).clamp(0.0, 1.0)),
-          child: SizedBox(height: 26, width: c.maxWidth, child: CustomPaint(painter: _PgPainter(pg, p.clamp(0.0, 1.0), kA, kA2))),
+          child: SizedBox(height: 26, width: c.maxWidth, child: CustomPaint(painter: _PgPainter(pg, p.clamp(0.0, 1.0), kA, kA2, _heat()))),
         ),
       );
 }
@@ -886,7 +908,8 @@ class _PgPainter extends CustomPainter {
   final String pg;
   final double p;
   final Color a, a2;
-  _PgPainter(this.pg, this.p, this.a, this.a2);
+  final List<double>? heat;
+  _PgPainter(this.pg, this.p, this.a, this.a2, this.heat);
   @override
   void paint(Canvas x, Size s) {
     final h = pg == 'thick' ? 6.0 : (pg == 'tape' ? 8.0 : 4.0), y = s.height / 2 - h / 2, w = s.width;
@@ -901,6 +924,13 @@ class _PgPainter extends CustomPainter {
       }
     } else {
       x.drawRRect(RRect.fromLTRBR(0, y, w, y + h, Radius.circular(h / 2)), Paint()..color = Colors.white24);
+      if (heat != null) {
+        for (var i = 0; i < 40; i++) {
+          final v = heat![i];
+          if (v < 0.05) continue;
+          x.drawRect(Rect.fromLTWH(w * i / 40, y, w / 40 + 0.5, h), Paint()..color = Color.fromRGBO((255 - v * 40).round(), (255 - v * 170).round(), (255 - v * 190).round(), 0.18 + v * 0.55));
+        }
+      }
       final fp = Paint()..color = a;
       if (pg == 'glow') x.drawRRect(RRect.fromLTRBR(0, y, px, y + h, Radius.circular(h / 2)), Paint()..color = a.withOpacity(0.6)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6));
       x.drawRRect(RRect.fromLTRBR(0, y, px, y + h, Radius.circular(h / 2)), fp);
@@ -917,5 +947,5 @@ class _PgPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _PgPainter o) => o.p != p || o.pg != pg || o.a != a;
+  bool shouldRepaint(covariant _PgPainter o) => true;
 }

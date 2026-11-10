@@ -20,7 +20,7 @@ class PlayerCtl extends ChangeNotifier {
   LoopMode loop = LoopMode.off;
   double speed = 1.0;
   double lyOffset = 0; // تأخير الكلمات (سماعات بلوتوث)
-  int viz = 0, bg = 0, lyFont = 2, lyColor = 0, layout = 0, lyTr = 0, lySplit = 1;
+  int viz = 0, bg = 0, lyFont = 2, lyColor = 0, layout = 0, lyTr = 0, lySplit = 1, perf = 0, cmOn = 1, cmDens = 2, cmView = 0;
   double lySize = 1;
   ConcatenatingAudioSource? _cs;
   bool quiet = false; // أثناء العينات: لا نحفظ الموضع ولا نحسب الاستماع
@@ -76,6 +76,10 @@ class PlayerCtl extends ChangeNotifier {
       lySize = sp.getDouble('lyS') ?? 1;
       lyTr = sp.getInt('lyTr') ?? 0;
       lySplit = sp.getInt('lySp') ?? 1;
+      perf = sp.getInt('perf') ?? 0;
+      cmOn = sp.getInt('cmOn') ?? 1;
+      cmDens = sp.getInt('cmDens') ?? 2;
+      cmView = sp.getInt('cmView') ?? 0;
       notifyListeners();
       speed = sp.getDouble('speed') ?? 1.0;
     });
@@ -196,6 +200,18 @@ class PlayerCtl extends ChangeNotifier {
         break;
       case 'lySp':
         lySplit = v.toInt();
+        break;
+      case 'perf':
+        perf = v.toInt();
+        break;
+      case 'cmOn':
+        cmOn = v.toInt();
+        break;
+      case 'cmDens':
+        cmDens = v.toInt();
+        break;
+      case 'cmView':
+        cmView = v.toInt();
         break;
     }
     SharedPreferences.getInstance().then((sp) => v is int ? sp.setInt(const {'viz': 'viz4', 'bg': 'bg3', 'lyFont': 'lyF', 'lyColor': 'lyC'}[k] ?? k, v) : sp.setDouble(k == 'lySize' ? 'lyS' : k, v.toDouble()));

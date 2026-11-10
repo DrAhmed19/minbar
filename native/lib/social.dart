@@ -117,7 +117,7 @@ class Social extends ChangeNotifier {
   }
 
   void _tick(Duration d) {
-    if (!app.player.p.playing || app.player.quiet) return;
+    if (!app.player.p.playing || app.player.quiet || app.player.cmOn == 0) return;
     final now = d.inMilliseconds / 1000.0;
     if ((now - _last).abs() > 1.5) _reset();
     _last = now;
@@ -261,6 +261,7 @@ class _RxLayerState extends State<RxLayer> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    if (app.player.cmOn == 0) return const SizedBox.shrink();
     final n = social.rx.length;
     return SizedBox(
       width: 70,
@@ -325,7 +326,8 @@ class _CmLayerState extends State<CmLayer> {
   void initState() {
     super.initState();
     _s = social.bubble.listen((c) {
-      if (items.length >= 6) items.removeAt(0);
+      final mx = [3, 5, 8][(app.player.cmDens - 1).clamp(0, 2)];
+      if (items.length >= mx) items.removeAt(0);
       side = 1 - side;
       items.add((c, DateTime.now(), c.mine ? 1 : side));
       _t ??= Timer.periodic(const Duration(milliseconds: 50), (_) {
@@ -352,24 +354,28 @@ class _CmLayerState extends State<CmLayer> {
       child: LayoutBuilder(builder: (_, c) {
         final H = c.maxHeight;
         return Stack(children: [
-          for (final it in items)
+          for (var j = 0; j < items.length; j++)
             Builder(builder: (_) {
+              final it = items[j];
               final p = DateTime.now().difference(it.$2).inMilliseconds / 9000;
+              final bubble = Container(
+                constraints: BoxConstraints(maxWidth: c.maxWidth * 0.62),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: it.$1.mine ? const Color(0xCC8A6A1E) : const Color(0x8C000000), border: Border.all(color: const Color(0x2EFFFFFF))),
+                child: Text(it.$1.text, style: tx(13, c: Colors.white)),
+              );
+              if (app.player.cmView == 1) {
+                // طائر عبر الشاشة بممرّات علوية
+                final W = c.maxWidth, lane = (it.$2.millisecondsSinceEpoch ~/ 7) % 5;
+                return Positioned(top: 6.0 + lane * 34, right: -W * 0.7 + p * W * 1.6, child: Opacity(opacity: p < 0.05 ? p / 0.05 : (p > 0.92 ? (1 - p) / 0.08 : 1.0), child: bubble));
+              }
               final op = p < 0.08 ? p / 0.08 : (p > 0.8 ? (1 - p) / 0.2 : 1.0);
               final y = p < 0.08 ? 14 * (1 - p / 0.08) : -H * 0.62 * ((p - 0.08) / 0.72).clamp(0.0, 1.0) - (p > 0.8 ? H * 0.23 * (p - 0.8) / 0.2 : 0.0);
               return Positioned(
                 bottom: 10 - y,
                 right: it.$3 == 1 ? 10 : null,
                 left: it.$3 == 0 ? 10 : null,
-                child: Opacity(
-                  opacity: op.clamp(0.0, 1.0),
-                  child: Container(
-                    constraints: BoxConstraints(maxWidth: c.maxWidth * 0.62),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: it.$1.mine ? const Color(0xCC8A6A1E) : const Color(0x8C000000), border: Border.all(color: const Color(0x2EFFFFFF))),
-                    child: Text(it.$1.text, style: tx(13, c: Colors.white)),
-                  ),
-                ),
+                child: Opacity(opacity: op.clamp(0.0, 1.0), child: bubble),
               );
             }),
         ]);
@@ -405,6 +411,28 @@ void showCommentsSheet(BuildContext context) {
                 ]),
               ),
               Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Text('يظهر تعليقك عائماً للجميع عند هذه اللحظة من القصيدة', style: tx(12, c: Colors.white38))),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+                child: Wrap(spacing: 6, runSpacing: 6, children: [
+                  _chip(app.player.cmOn == 1 ? 'العائمة: تشغيل' : 'العائمة: إيقاف', app.player.cmOn == 1, () {
+                    app.player.setPref('cmOn', app.player.cmOn == 1 ? 0 : 1);
+                    ss(() {});
+                  }),
+                  for (final d in [(1, 'قليلة'), (2, 'متوسطة'), (3, 'كثيرة')])
+                    _chip(d.$2, app.player.cmDens == d.$1, () {
+                      app.player.setPref('cmDens', d.$1);
+                      ss(() {});
+                    }),
+                  _chip('جانبية', app.player.cmView == 0, () {
+                    app.player.setPref('cmView', 0);
+                    ss(() {});
+                  }),
+                  _chip('طائرة', app.player.cmView == 1, () {
+                    app.player.setPref('cmView', 1);
+                    ss(() {});
+                  }),
+                ]),
+              ),
               Expanded(
                 child: l.isEmpty
                     ? Center(child: Text('لا تعليقات بعد — كن أول من يعلّق', style: tx(14, c: Colors.white38)))
@@ -466,3 +494,12 @@ void showCommentsSheet(BuildContext context) {
     }),
   );
 }
+
+Widget _chip(String s, bool on, VoidCallback f) => GestureDetector(
+      onTap: f,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: on ? const Color(0x2EE8C468) : const Color(0x12FFFFFF), border: Border.all(color: on ? kGold : const Color(0x24FFFFFF))),
+        child: Text(s, style: tx(12.5, c: on ? kGold : Colors.white70)),
+      ),
+    );

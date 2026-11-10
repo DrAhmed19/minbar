@@ -8,6 +8,9 @@ import 'player_ui.dart';
 import 'samples.dart';
 import 'state.dart';
 import 'tools.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:app_links/app_links.dart';
 import 'ui.dart';
 
 void snack(BuildContext c, String s) {
@@ -29,6 +32,22 @@ class _HomeShellState extends State<HomeShell> {
   bool searching = false;
   final _sc = TextEditingController();
   DateTime _lastBack = DateTime(2000);
+  StreamSubscription? _linkSub;
+
+  /// فتح رابط الموقع داخل التطبيق: ?p=<id>&t=<ثانية>
+  Future<void> _link(Uri? u) async {
+    final id = u?.queryParameters['p'];
+    if (id == null) return;
+    for (var i = 0; i < 40 && !app.repo.loaded; i++) {
+      await Future.delayed(const Duration(milliseconds: 250));
+    }
+    final t = app.repo.byId(id);
+    if (t == null || !mounted) return;
+    final at = double.tryParse(u!.queryParameters['t'] ?? '') ?? 0;
+    final all = app.repo.tracks;
+    app.player.playList(all, all.indexOf(t), pos: Duration(milliseconds: (at * 1000).round()));
+    openPlayer(context);
+  }
 
   @override
   void initState() {
@@ -37,6 +56,9 @@ class _HomeShellState extends State<HomeShell> {
     app.player.addListener(_r);
     if (app.repo.loaded) app.player.restore();
     Future.delayed(const Duration(seconds: 4), _checkUpdate);
+    final al = AppLinks();
+    al.getInitialLink().then(_link).catchError((_) {});
+    _linkSub = al.uriLinkStream.listen(_link, onError: (_) {});
     app.repo.loadHot();
   }
 
@@ -75,6 +97,7 @@ class _HomeShellState extends State<HomeShell> {
     app.repo.removeListener(_r);
     app.player.removeListener(_r);
     _sc.dispose();
+    _linkSub?.cancel();
     super.dispose();
   }
 
@@ -688,6 +711,26 @@ class GroupPage extends StatefulWidget {
 }
 
 class _GroupPageState extends State<GroupPage> {
+  bool _dl = false;
+  Future<void> _downloadAll(List<Track> tl) async {
+    if (_dl) return;
+    final todo = tl.where((x) => !app.repo.offline.contains(x.id)).toList();
+    if (todo.isEmpty) {
+      snack(context, 'كلها منزّلة');
+      return;
+    }
+    _dl = true;
+    var ok = 0;
+    for (var i = 0; i < todo.length; i++) {
+      if (!mounted) break;
+      snack(context, 'جارٍ التنزيل ${i + 1} من ${todo.length}…');
+      if (await app.repo.offSave(todo[i], (_) {})) ok++;
+      if (mounted) setState(() {});
+    }
+    _dl = false;
+    if (mounted) snack(context, 'نُزّلت $ok من ${todo.length} — تعمل بدون إنترنت');
+  }
+
   @override
   Widget build(BuildContext context) {
     final r = app.repo, tl = widget.tracks;
@@ -711,6 +754,12 @@ class _GroupPageState extends State<GroupPage> {
                   const SizedBox(height: 10),
                   Row(children: [
                     GoldPill('تشغيل', Ic.play, tl.isEmpty ? () {} : () => app.player.playList(tl, 0)),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      tooltip: 'تنزيل الكل',
+                      onPressed: () => _downloadAll(tl),
+                      icon: PIcon(tl.every((x) => r.offline.contains(x.id)) ? Ic.check : Ic.down, color: kGreen, size: 24),
+                    ),
                     if (widget.reciter != null) ...[
                       const SizedBox(width: 8),
                       OutlinedButton(
@@ -784,6 +833,11 @@ void trackSheet(BuildContext context, Track t) {
                 }),
               ],
             ]),
+            if (majlis.on && !majlis.host)
+              _a(Ic.users, 'اقترح للمجلس', () {
+                Navigator.pop(sheet);
+                majlis.suggest(context, t);
+              }),
             _a(r.isFav(t.id) ? Ic.heartF : Ic.heart, r.isFav(t.id) ? 'إزالة من المفضلة' : 'إضافة للمفضلة', () {
               Navigator.pop(sheet);
               r.toggleFav(t.id);
@@ -815,10 +869,9 @@ void trackSheet(BuildContext context, Track t) {
                 if (context.mounted) snack(context, 'أُضيفت إلى «${pick.name}»');
               }
             }),
-            _a(Ic.share, 'نسخ رابط المشاركة', () {
+            _a(Ic.share, 'مشاركة (رابط و QR)', () {
               Navigator.pop(sheet);
-              Clipboard.setData(ClipboardData(text: '${kBase}?p=${t.id}'));
-              snack(context, 'نُسخ الرابط');
+              shareTrack(context, t);
             }),
             if (r.offline.contains(t.id))
               _a(Ic.x, 'حذف التنزيل', () {
@@ -893,4 +946,46 @@ class TrackTile extends StatelessWidget {
       ]),
     );
   }
+}
+
+
+/// مشاركة القصيدة: رمز QR + نسخ الرابط + مشاركة عبر التطبيقات
+void shareTrack(BuildContext context, Track t, {int? at}) {
+  final url = '${kBase}?p=${t.id}${at != null ? '&t=$at' : ''}';
+  showDialog(
+    context: context,
+    builder: (d) => Directionality(
+      textDirection: TextDirection.rtl,
+      child: AlertDialog(
+        backgroundColor: kCream,
+        title: Text(t.title, textAlign: TextAlign.center, style: tx(17, c: kGreen)),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+            child: SizedBox(width: 200, height: 200, child: QrImageView(data: url, size: 200, eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.circle, color: kGreen), dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.circle, color: kGreen))),
+          ),
+          const SizedBox(height: 10),
+          Text(t.reciter, style: tx(13, c: kMuted)),
+        ]),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: url));
+              Navigator.pop(d);
+              snack(context, 'نُسخ الرابط');
+            },
+            child: Text('نسخ الرابط', style: tx(14, c: kGreen)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(d);
+              Share.share('${t.title} — ${t.reciter}\n$url');
+            },
+            child: Text('مشاركة', style: tx(14, c: kGreen)),
+          ),
+        ],
+      ),
+    ),
+  );
 }
