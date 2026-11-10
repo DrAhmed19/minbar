@@ -13,6 +13,7 @@ import 'viz.dart';
 import 'lyrics.dart';
 import 'audio.dart';
 import 'social.dart';
+import 'tools.dart';
 
 Color kA = const Color(0xFFE8C468), kA2 = const Color(0xFFF3D88A);
 
@@ -76,6 +77,7 @@ class _PlayerPageState extends State<PlayerPage> {
       if (mounted && app.player.cur?.id == t.id) {
         setState(() {
           an = a;
+          curAn = a;
           env = a?.envelope(400) ?? [];
         });
       }
@@ -500,12 +502,22 @@ class _PlayerPageState extends State<PlayerPage> {
                   pc.seek(pk);
                   if (!pc.p.playing) pc.toggle();
                 }),
-                _tile(Ic.users, 'المجلس', 'استماع مشترك', soon, neu: true),
-                _tile(Ic.text, 'وضع الحسينية', 'كلمات كبيرة للشاشة', soon),
+                _tile(Ic.users, 'المجلس', majlis.on ? 'مفعّل · ${majlis.code}' : 'استماع مشترك', () {
+                  Navigator.pop(c);
+                  showMajlisSheet(context);
+                }, neu: true),
+                _tile(Ic.text, 'وضع الحسينية', 'كلمات كبيرة للشاشة', () {
+                  Navigator.pop(c);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => HusnPage(ly)));
+                }),
                 _tile(Ic.pulse, 'تحليل الصوت', 'كل القصائد محلّلة', soon),
                 _tile(Ic.wave, 'وضع الأداء', 'أخفّ وأثبت بالتطبيق', soon),
-                _tile(Ic.eq, 'الإحصائيات', 'الاستماعات والإعجابات', soon),
-                _tile(Ic.pulse, 'وضع اللطم', 'اهتزاز مع الإيقاع', soon),
+                _tile(Ic.eq, 'الإحصائيات', 'الاستماعات والإعجابات', () => showStatsSheet(context)),
+                _tile(Ic.pulse, 'وضع اللطم', Latm.on ? 'مفعّل — اضغط للإيقاف' : 'اهتزاز مع الإيقاع', () {
+                  Latm.toggle();
+                  ss(() {});
+                  snack2(Latm.on ? 'وضع اللطم مفعّل: يهتز الهاتف مع الإيقاع' : 'أُوقف وضع اللطم');
+                }),
               ],
             )),
             _sc2(Ic.speed, 'سرعة التشغيل', Container(
