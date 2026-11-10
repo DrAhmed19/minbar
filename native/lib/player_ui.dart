@@ -11,6 +11,7 @@ import 'state.dart';
 import 'ui.dart';
 import 'viz.dart';
 import 'lyrics.dart';
+import 'audio.dart';
 
 Color kA = const Color(0xFFE8C468), kA2 = const Color(0xFFF3D88A);
 
@@ -280,7 +281,7 @@ class _PlayerPageState extends State<PlayerPage> {
       child: Row(children: [
         b(Ic.rep, 'تكرار', pc.loop != LoopMode.off, pc.cycleLoop),
         b(Ic.text, 'الكلمات', false, () => showLyricsSheet(context, ly)),
-        b(Ic.eq, 'الصوت', false, () => snack2('قسم الصوت (المعادل والمؤثرات) في الدفعة القادمة')),
+        b(Ic.eq, 'الصوت', false, () => showAudioSheet(context)),
         b(Ic.plist, 'القائمة', false, _queueSheet),
         b(Ic.shuf, 'عشوائي', pc.shuffle, pc.toggleShuffle),
       ]),

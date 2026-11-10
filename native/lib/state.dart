@@ -8,10 +8,11 @@ import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'audio.dart';
 import 'data.dart';
 
 class PlayerCtl extends ChangeNotifier {
-  final AudioPlayer p = AudioPlayer();
+  final AudioPlayer p = AudioPlayer(audioPipeline: AudioPipeline(androidAudioEffects: [auLoud, auEq]));
   final Repo repo;
   List<Track> queue = [];
   int index = -1;

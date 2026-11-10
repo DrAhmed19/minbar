@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'pages.dart';
 import 'state.dart';
+import 'audio.dart';
 import 'ui.dart';
 
 Future<void> main() async {
@@ -37,6 +38,7 @@ Future<void> _start() async {
     await ses.configure(const AudioSessionConfiguration.music());
   } catch (_) {}
   app.player.init();
+  auLoad();
   app.repo.init();
   app.auth.init();
   await loadIcons();
