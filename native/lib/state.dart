@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ffi' show Abi;
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -247,16 +248,42 @@ class PlayerCtl extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool sleepFade = true;
+  Timer? _fadeT;
   void setSleep(int minutes) {
     sleepTimer?.cancel();
+    _fadeT?.cancel();
+    p.setVolume(1);
     sleepAt = null;
     if (minutes > 0) {
       sleepAt = DateTime.now().add(Duration(minutes: minutes));
-      sleepTimer = Timer(Duration(minutes: minutes), () {
+      const fadeSec = 30;
+      final total = minutes * 60;
+      void finish() {
+        _fadeT?.cancel();
         p.pause();
+        p.setVolume(1);
         sleepAt = null;
         notifyListeners();
-      });
+      }
+
+      if (!sleepFade) {
+        sleepTimer = Timer(Duration(seconds: total), finish);
+      } else {
+        // إطفاء تدريجي: آخر 30 ثانية ينخفض الصوت شيئاً فشيئاً
+        sleepTimer = Timer(Duration(seconds: total - fadeSec), () {
+          var k = 0;
+          _fadeT = Timer.periodic(const Duration(milliseconds: 500), (_) {
+            k++;
+            final v = 1 - k / (fadeSec * 2);
+            if (v <= 0.02) {
+              finish();
+            } else {
+              p.setVolume(v * v);
+            }
+          });
+        });
+      }
     }
     notifyListeners();
   }
@@ -397,8 +424,20 @@ class AuthCtl extends ChangeNotifier {
 
 /// فحص التحديثات: يقارن رقم البناء المدمج بآخر إصدار منشور على GitHub
 const kBuild = int.fromEnvironment('BUILD', defaultValue: 0);
-void launchApk() => launchUrl(Uri.parse(kApkUrl), mode: LaunchMode.externalApplication);
-const kApkUrl = 'https://github.com/DrAhmed19/minbar/releases/download/apk-latest/minbar.apk';
+void launchApk([String? url]) => launchUrl(Uri.parse(url == null || url.isEmpty ? kApkUrl : url), mode: LaunchMode.externalApplication);
+final kApkUrl = 'https://github.com/DrAhmed19/minbar/releases/download/apk-latest/${Abi.current() == Abi.androidArm ? 'minbar-arm32' : 'minbar'}.apk';
+
+/// آخر نسخة منشورة: من وثيقة config/app (apkBuild, apkUrl) التي يكتبها البناء تلقائياً،
+/// وإن تعذّر فمن إصدار GitHub (يعمل فقط إن كان المستودع عاماً)
+Future<({int build, String url})> latestUpdate() async {
+  try {
+    final d = await FirebaseFirestore.instance.doc('config/app').get().timeout(const Duration(seconds: 8));
+    final b = (d.data()?['apkBuild'] as num?)?.toInt() ?? 0;
+    final u = '${d.data()?['apkUrl'] ?? ''}';
+    if (b > 0) return (build: b, url: u);
+  } catch (_) {}
+  return (build: await latestBuild(), url: '');
+}
 
 Future<int> latestBuild() async {
   final c = HttpClient();

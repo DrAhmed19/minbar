@@ -51,3 +51,26 @@ Occ? occasionToday() {
   }
   return null;
 }
+
+/// بدايات المناسبات خلال الأيام القادمة (لجدولة التذكير)
+List<({String t, DateTime day})> occasionsUpcoming(int days) {
+  const M = [
+    [1, 1, 'بداية محرم الحرام'],
+    [1, 10, 'يوم عاشوراء'],
+    [2, 20, 'زيارة الأربعين'],
+    [2, 28, 'وفاة النبي ﷺ والإمام الحسن'],
+    [5, 13, 'الأيام الفاطمية'],
+    [6, 3, 'الأيام الفاطمية الثانية'],
+    [9, 19, 'ليالي القدر وشهادة الإمام علي'],
+  ];
+  final out = <({String t, DateTime day})>[];
+  final now = DateTime.now();
+  for (var i = 0; i <= days; i++) {
+    final g = DateTime(now.year, now.month, now.day + i);
+    final h = hijriOf(g);
+    for (final x in M) {
+      if (x[0] == h.m && x[1] == h.d) out.add((t: x[2] as String, day: g));
+    }
+  }
+  return out;
+}

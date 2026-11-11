@@ -244,10 +244,12 @@ class Repo extends ChangeNotifier {
   List<Track> plTracks(Pl p) => p.ids.map(byId).whereType<Track>().toList();
 
   bool isFav(String id) => favs.contains(id);
+  void Function()? onFav;
   void toggleFav(String id) {
     favs.contains(id) ? favs.remove(id) : favs.add(id);
     _p?.setStringList('fav', favs.toList());
     notifyListeners();
+    onFav?.call();
   }
 
   /// الكلمات المعتمدة للجميع (lyrApproved) ثم كلمات القصيدة نفسها

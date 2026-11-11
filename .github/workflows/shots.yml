@@ -20,7 +20,7 @@ jobs:
       - name: تنزيل آخر APK
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release download apk-latest -p minbar.apk
+        run: gh release download apk-latest -p minbar-x64.apk && mv minbar-x64.apk minbar.apk
       - uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 33

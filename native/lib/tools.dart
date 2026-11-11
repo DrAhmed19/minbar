@@ -235,7 +235,7 @@ class Majlis extends ChangeNotifier {
     final u = FirebaseAuth.instance.currentUser;
     if (!on || host || u == null) return;
     try {
-      await FirebaseFirestore.instance.doc('majlis/$code/sug/${u.uid}_${t.id}').set({'track': t.id, 'by': u.uid, 'name': (u.displayName ?? '').split(' ').first, 'at': FieldValue.serverTimestamp()});
+      await FirebaseFirestore.instance.doc('majlis/$code/sug/${u.uid}_${t.id}').set({'track': t.id, 'by': u.uid, 'at': FieldValue.serverTimestamp()});
       if (ctx.mounted) _toast(ctx, 'أُرسل الاقتراح للمضيف');
     } catch (_) {
       if (ctx.mounted) _toast(ctx, 'تعذّر إرسال الاقتراح');

@@ -43,21 +43,33 @@ jobs:
       - name: بناء
         working-directory: native
         run: |
-          for i in 1 2 3; do flutter build apk --release --build-number=${{ github.run_number }} --dart-define=BUILD=${{ github.run_number }} && exit 0; echo "retry $i"; sleep 45; done; exit 1
+          for i in 1 2 3; do flutter build apk --release --split-per-abi --target-platform android-arm64,android-arm,android-x64 --build-number=${{ github.run_number }} --dart-define=BUILD=${{ github.run_number }} && exit 0; echo "retry $i"; sleep 45; done; exit 1
       - name: بصمة التوقيع (من ملف APK نفسه)
         run: |
           AS=$(ls $ANDROID_HOME/build-tools/*/apksigner | tail -1)
-          $AS verify --print-certs native/build/app/outputs/flutter-apk/app-release.apk | grep -iE "SHA-1|SHA-256"
-          $AS verify --print-certs native/build/app/outputs/flutter-apk/app-release.apk | grep -qi "33:e9:a1:92\|33e9a192" && echo OK-SIGNATURE || (echo "توقيع غير مطابق"; exit 1)
+          $AS verify --print-certs native/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk | grep -iE "SHA-1|SHA-256"
+          $AS verify --print-certs native/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk | grep -qi "33:e9:a1:92\|33e9a192" && echo OK-SIGNATURE || (echo "توقيع غير مطابق"; exit 1)
       - uses: actions/upload-artifact@v4
         with:
           name: minbar-apk
-          path: native/build/app/outputs/flutter-apk/app-release.apk
+          path: native/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
       - name: نشر كإصدار (للتحميل المباشر)
         if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cp native/build/app/outputs/flutter-apk/app-release.apk minbar.apk
+          O=native/build/app/outputs/flutter-apk
+          cp $O/app-arm64-v8a-release.apk minbar.apk
+          cp $O/app-armeabi-v7a-release.apk minbar-arm32.apk
+          cp $O/app-x86_64-release.apk minbar-x64.apk
+          ls -la *.apk
           gh release delete apk-latest --yes --cleanup-tag || true
-          gh release create apk-latest minbar.apk --title "منبر APK" --notes "build:${{ github.run_number }}" --prerelease
+          gh release create apk-latest minbar.apk minbar-arm32.apk minbar-x64.apk --title "منبر APK" --notes "build:${{ github.run_number }}" --prerelease
+      - name: تسجيل رقم البناء في Firestore (لتنبيه التحديث داخل التطبيق)
+        if: github.ref == 'refs/heads/main'
+        continue-on-error: true
+        run: |
+          echo '${{ secrets.FIREBASE_SA }}' > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          npm i --no-save google-auth-library@9 >/dev/null 2>&1
+          node .github/scripts/setbuild.mjs ${{ github.run_number }}

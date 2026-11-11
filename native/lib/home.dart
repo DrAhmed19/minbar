@@ -8,6 +8,7 @@ import 'player_ui.dart';
 import 'samples.dart';
 import 'state.dart';
 import 'tools.dart';
+import 'extras.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:app_links/app_links.dart';
@@ -56,6 +57,7 @@ class _HomeShellState extends State<HomeShell> {
     app.player.addListener(_r);
     if (app.repo.loaded) app.player.restore();
     Future.delayed(const Duration(seconds: 4), _checkUpdate);
+    Future.delayed(const Duration(seconds: 6), extrasStart);
     final al = AppLinks();
     al.getInitialLink().then(_link).catchError((_) {});
     _linkSub = al.uriLinkStream.listen(_link, onError: (_) {});
@@ -68,7 +70,8 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   Future<void> _checkUpdate() async {
-    final n = await latestBuild();
+    final up = await latestUpdate();
+    final n = up.build;
     if (!mounted || kBuild == 0 || n <= kBuild) return;
     showDialog(
       context: context,
@@ -82,7 +85,7 @@ class _HomeShellState extends State<HomeShell> {
             TextButton(
               onPressed: () {
                 Navigator.pop(d);
-                launchApk();
+                launchApk(up.url);
               },
               child: Text('تحديث', style: tx(13.5, c: kGreen, w: FontWeight.w800)),
             ),
@@ -200,7 +203,7 @@ class _HomeShellState extends State<HomeShell> {
             ),
           if (!searching) const Spacer(),
           if (!searching) _ib('mic', () => recognizePoem(context)),
-          if (!searching) _ib(Ic.users, _accountSheet),
+          if (!searching) _ib(Ic.users, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsPage()))),
           _ib(searching ? Ic.x : Ic.search, () => setState(() {
                 searching = !searching;
                 if (!searching) {
@@ -402,10 +405,10 @@ class _HomeShellState extends State<HomeShell> {
                 subtitle: Text('نسخة 1.0 · بناء $kBuild', style: tx(11.5, c: kMuted)),
                 onTap: () async {
                   Navigator.pop(s);
-                  final n = await latestBuild();
+                  final up = await latestUpdate();
                   if (!mounted) return;
-                  if (n > kBuild) {
-                    launchApk();
+                  if (up.build > kBuild) {
+                    launchApk(up.url);
                   } else {
                     snack(context, 'أنت على آخر نسخة');
                   }

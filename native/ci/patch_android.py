@@ -10,6 +10,8 @@ perms = '''    <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 '''
 if 'FOREGROUND_SERVICE_MEDIA_PLAYBACK' not in s:
     s = s.replace('<application', perms + '    <application', 1)
@@ -22,6 +24,15 @@ svc = '''        <service android:name="com.ryanheise.audioservice.AudioService"
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
         </service>
+        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
         <receiver android:name="com.ryanheise.audioservice.MediaButtonReceiver"
             android:exported="true" tools:ignore="Instantiatable">
             <intent-filter>
@@ -77,3 +88,14 @@ if g.exists():
         t = t.replace('signingConfig = signingConfigs.getByName("debug")', 'signingConfig = signingConfigs.getByName("minbar")')
         g.write_text(t, encoding='utf-8')
         print('signing patched', 'getByName("minbar")' in t)
+
+# تفعيل desugaring المطلوب لمكتبة الإشعارات
+if g.exists():
+    t = g.read_text(encoding='utf-8')
+    if 'isCoreLibraryDesugaringEnabled' not in t:
+        t = re.sub(r'compileOptions\s*\{', 'compileOptions {\n        isCoreLibraryDesugaringEnabled = true', t, count=1)
+        t += '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
+        if 'multiDexEnabled' not in t:
+            t = re.sub(r'defaultConfig\s*\{', 'defaultConfig {\n        multiDexEnabled = true', t, count=1)
+        g.write_text(t, encoding='utf-8')
+        print('desugar patched', 'isCoreLibraryDesugaringEnabled' in t)

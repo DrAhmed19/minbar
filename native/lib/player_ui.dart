@@ -4,7 +4,6 @@ import 'dart:ui' as ui;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:just_audio/just_audio.dart';
 import 'analysis.dart';
 import 'data.dart';
@@ -15,6 +14,7 @@ import 'lyrics.dart';
 import 'audio.dart';
 import 'social.dart';
 import 'tools.dart';
+import 'extras.dart';
 
 Color kA = const Color(0xFFE8C468), kA2 = const Color(0xFFF3D88A);
 
@@ -503,10 +503,10 @@ class _PlayerPageState extends State<PlayerPage> {
               childAspectRatio: 2.45,
               children: [
                 _tile(Ic.info, 'الإصدار $kBuild', 'اضغط للتحقق من التحديث', () async {
-                  final n = await latestBuild();
+                  final up = await latestUpdate();
                   if (!mounted) return;
-                  if (n > kBuild) {
-                    launchApk();
+                  if (up.build > kBuild) {
+                    launchApk(up.url);
                   } else {
                     snack2('أنت على آخر نسخة');
                   }
@@ -550,7 +550,10 @@ class _PlayerPageState extends State<PlayerPage> {
                   Navigator.pop(c);
                   Navigator.push(context, MaterialPageRoute(builder: (_) => HusnPage(ly)));
                 }),
-                _tile(Ic.pulse, 'تحليل الصوت', 'كل القصائد محلّلة', soon),
+                _tile(Ic.speed, 'وضع السيارة', 'أزرار كبيرة للقيادة', () {
+                  Navigator.pop(c);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const CarPage()));
+                }),
                 _tile(Ic.wave, 'وضع الأداء', pc.perf == 1 ? 'مفعّل — رسوم أخف' : 'للأجهزة الضعيفة', () {
                   pc.setPref('perf', pc.perf == 1 ? 0 : 1);
                   ss(() {});
@@ -635,6 +638,7 @@ class _PlayerPageState extends State<PlayerPage> {
             Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
             _h(pc.sleepAt == null ? 'مؤقت الإيقاف' : 'مؤقت الإيقاف (فعّال)'),
             _chips(5, -1, (i) => ['إيقاف', '10 د', '15 د', '30 د', '60 د'][i], (i) {
+              pc.sleepFade = Opt.fade;
               pc.setSleep([0, 10, 15, 30, 60][i]);
               Navigator.pop(c);
               setState(() {});
