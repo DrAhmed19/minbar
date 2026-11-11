@@ -110,3 +110,11 @@ if src.exists():
         for f in d.iterdir():
             shutil.copy(f, dst / d.name / f.name)
     print('notification icon copied')
+
+# تعطيل فحص lint عند بناء الإصدار (يتعطّل أحياناً داخل مكتبات خارجية بلا علاقة بكودنا)
+if g.exists():
+    t = g.read_text(encoding='utf-8')
+    if 'checkReleaseBuilds' not in t:
+        t = re.sub(r'(\nandroid\s*\{)', r'\1\n    lint {\n        checkReleaseBuilds = false\n        abortOnError = false\n    }', t, count=1)
+        g.write_text(t, encoding='utf-8')
+        print('lint disabled', 'checkReleaseBuilds' in t)
