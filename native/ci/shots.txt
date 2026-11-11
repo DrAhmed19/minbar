@@ -94,97 +94,97 @@ wait 7
 shot 25-stats
 back
 wait 2
-long 540 150
+long 540 210
 wait 3
 shot v01
-long 540 150
+long 540 210
 wait 3
 shot v02
 swipe 400 800 700 1000 500
 wait 2
 shot v02-touch
-long 540 150
+long 540 210
 wait 3
 shot v03
-long 540 150
+long 540 210
 wait 3
 shot v04
 swipe 400 800 700 1000 500
 wait 2
 shot v04-touch
-long 540 150
+long 540 210
 wait 3
 shot v05
 swipe 400 800 700 1000 500
 wait 2
 shot v05-touch
-long 540 150
+long 540 210
 wait 3
 shot v06
 swipe 400 800 700 1000 500
 wait 2
 shot v06-touch
-long 540 150
+long 540 210
 wait 3
 shot v07
-long 540 150
+long 540 210
 wait 3
 shot v08
-long 540 150
+long 540 210
 wait 3
 shot v09
-long 540 150
+long 540 210
 wait 3
 shot v10
-long 540 150
+long 540 210
 wait 3
 shot v11
-long 540 150
+long 540 210
 wait 3
 shot v12
-long 540 150
+long 540 210
 wait 3
 shot v13
 swipe 400 800 700 1000 500
 wait 2
 shot v13-touch
-long 540 150
+long 540 210
 wait 3
 shot v14
-long 540 150
+long 540 210
 wait 3
 shot v15
-long 540 150
+long 540 210
 wait 3
 shot v16
-long 540 150
+long 540 210
 wait 3
 shot v17
-long 540 150
+long 540 210
 wait 3
 shot v18
-long 540 150
+long 540 210
 wait 3
 shot v19
-long 540 150
+long 540 210
 wait 3
 shot v20
-long 540 150
+long 540 210
 wait 3
 shot v21
-long 540 150
+long 540 210
 wait 3
 shot v22
-long 540 150
+long 540 210
 wait 3
 shot v23
-long 540 150
+long 540 210
 wait 3
 shot v24
-long 540 150
+long 540 210
 wait 3
 shot v25
-long 540 150
+long 540 210
 wait 3
 shot v26
 back
