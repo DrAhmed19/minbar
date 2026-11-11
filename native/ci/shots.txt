@@ -3,7 +3,7 @@ shot 01-login
 text "الدخول كضيف"
 wait 14
 shot 02-home
-tap 210 200
+text "الإعدادات"
 wait 4
 shot 03-settings
 swipe 540 1800 540 700 400
@@ -13,23 +13,25 @@ text "وضع السيارة"
 wait 4
 shot 05-car
 back
-wait 1
+wait 2
 back
 wait 2
+app
 text "الإصدارات"
 wait 3
 text "يسجلني"
 wait 5
 shot 06-album
-tap 540 610
+tap 540 640
 wait 14
 shot 07-album-playing
 back
 wait 2
-tap 600 2080
+app
+text "فتح المشغل"
 wait 6
 shot 10-player
-wait 9
+wait 8
 shot 11-player-b
 swipe 540 1150 540 950 300
 wait 3
@@ -58,20 +60,20 @@ wait 3
 shot 17-queue
 back
 wait 2
-tap 262 210
+text "التعليقات"
 wait 4
 shot 18-comments
 back
 wait 2
-tap 978 1176
+text "إعجاب"
 wait 1
 shot 19-hearts
-tap 962 1530
+text "مؤقت النوم"
 wait 3
 shot 20-sleep
 back
 wait 2
-tap 118 1530
+text "إعدادات المشغل"
 wait 4
 shot 21-sheet
 swipe 540 1900 540 900 400
@@ -82,7 +84,8 @@ wait 5
 shot 23-husn
 back
 wait 2
-tap 118 1530
+app
+text "إعدادات المشغل"
 wait 3
 swipe 540 1900 540 900 400
 wait 2
@@ -90,106 +93,103 @@ text "الإحصائيات"
 wait 7
 shot 25-stats
 back
-wait 1
-back
 wait 2
-long 540 210
+long 540 150
 wait 3
 shot v01
-long 540 210
+long 540 150
 wait 3
 shot v02
 swipe 400 800 700 1000 500
 wait 2
 shot v02-touch
-long 540 210
+long 540 150
 wait 3
 shot v03
-long 540 210
+long 540 150
 wait 3
 shot v04
 swipe 400 800 700 1000 500
 wait 2
 shot v04-touch
-long 540 210
+long 540 150
 wait 3
 shot v05
 swipe 400 800 700 1000 500
 wait 2
 shot v05-touch
-long 540 210
+long 540 150
 wait 3
 shot v06
 swipe 400 800 700 1000 500
 wait 2
 shot v06-touch
-long 540 210
+long 540 150
 wait 3
 shot v07
-long 540 210
+long 540 150
 wait 3
 shot v08
-long 540 210
+long 540 150
 wait 3
 shot v09
-long 540 210
+long 540 150
 wait 3
 shot v10
-long 540 210
+long 540 150
 wait 3
 shot v11
-long 540 210
+long 540 150
 wait 3
 shot v12
-long 540 210
+long 540 150
 wait 3
 shot v13
 swipe 400 800 700 1000 500
 wait 2
 shot v13-touch
-long 540 210
+long 540 150
 wait 3
 shot v14
-long 540 210
+long 540 150
 wait 3
 shot v15
-long 540 210
+long 540 150
 wait 3
 shot v16
-long 540 210
+long 540 150
 wait 3
 shot v17
-long 540 210
+long 540 150
 wait 3
 shot v18
-long 540 210
+long 540 150
 wait 3
 shot v19
-long 540 210
+long 540 150
 wait 3
 shot v20
-long 540 210
+long 540 150
 wait 3
 shot v21
-long 540 210
+long 540 150
 wait 3
 shot v22
-long 540 210
+long 540 150
 wait 3
 shot v23
-long 540 210
+long 540 150
 wait 3
 shot v24
-long 540 210
+long 540 150
 wait 3
 shot v25
-long 540 210
+long 540 150
 wait 3
 shot v26
-long 540 210
-wait 2
 back
 wait 2
+app
 text "عينات"
 wait 12
 shot 30-samples
@@ -198,6 +198,7 @@ wait 8
 shot 31-samples2
 back
 wait 2
+app
 text "القصائد"
 wait 3
 long 540 800
@@ -210,6 +211,7 @@ wait 3
 shot 33-share
 back
 wait 1
+app
 text "القوائم"
 wait 2
 shot 34-playlists

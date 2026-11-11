@@ -126,7 +126,7 @@ class _PlayerPageState extends State<PlayerPage> {
               Padding(
                 padding: EdgeInsets.fromLTRB(14, 6, 14, 0),
                 child: Row(children: [
-                  _box(Ic.down, () => Navigator.pop(context)),
+                  _box(Ic.down, () => Navigator.pop(context), label: 'إغلاق المشغل'),
                   Expanded(
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
@@ -139,7 +139,7 @@ class _PlayerPageState extends State<PlayerPage> {
                       child: SizedBox(height: 52, child: Center(child: Text('${pc.index + 1} من ${pc.queue.length}', style: tx(15, c: Colors.white60)))),
                     ),
                   ),
-                  _box(Ic.chat, () => showCommentsSheet(context)),
+                  _box(Ic.chat, () => showCommentsSheet(context), label: 'التعليقات'),
                   SizedBox(width: 8),
                   _box(fav ? Ic.heartF : Ic.heart, () {
                     app.repo.toggleFav(t.id);
@@ -168,7 +168,10 @@ class _PlayerPageState extends State<PlayerPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m, style: tx(13, c: Colors.white)), duration: Duration(seconds: 2)));
   }
 
-  Widget _box(String ic, VoidCallback f, {double size = 52, Color? color}) => GestureDetector(
+  Widget _box(String ic, VoidCallback f, {double size = 52, Color? color, String? label}) => Semantics(
+      label: label,
+      button: true,
+      child: GestureDetector(
         onTap: f,
         child: Container(
           width: size,
@@ -176,7 +179,7 @@ class _PlayerPageState extends State<PlayerPage> {
           decoration: BoxDecoration(borderRadius: BorderRadius.circular(15), color: Color(0x14FFFFFF), border: Border.all(color: Color(0x73E8C468), width: 1.3)),
           child: Center(child: PIcon(ic, color: color ?? kA, size: 24)),
         ),
-      );
+      ));
 
   Widget _stage(Track t) {
     final pc = app.player;
@@ -211,14 +214,14 @@ class _PlayerPageState extends State<PlayerPage> {
       padding: EdgeInsets.fromLTRB(18, 6, 18, 4),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Row(children: [
-          _box(Ic.moon, _sleepSheet, size: 54, color: pc.sleepAt != null ? kA2 : kA),
+          _box(Ic.moon, _sleepSheet, size: 54, color: pc.sleepAt != null ? kA2 : kA, label: 'مؤقت النوم'),
           Expanded(
             child: Column(children: [
               Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: TextStyle(fontFamily: thx(pc.viz).font, fontFamilyFallback: const ['F0'], fontSize: 24, color: Colors.white, fontWeight: FontWeight.w700, height: 1.4)),
               FittedBox(fit: BoxFit.scaleDown, child: Text([t.reciter, t.poet].where((e) => e.isNotEmpty).join(' · '), maxLines: 1, textAlign: TextAlign.center, style: tx(16, c: kA))),
             ]),
           ),
-          _box(Ic.more, _settingsSheet, size: 54),
+          _box(Ic.more, _settingsSheet, size: 54, label: 'إعدادات المشغل'),
         ]),
         SizedBox(height: 6),
         StreamBuilder<Duration>(
@@ -278,7 +281,7 @@ class _PlayerPageState extends State<PlayerPage> {
                   default:
                     dec = BoxDecoration(borderRadius: const BorderRadius.only(topLeft: Radius.circular(46), topRight: Radius.circular(46), bottomLeft: Radius.circular(18), bottomRight: Radius.circular(18)), gradient: LinearGradient(colors: [kA2, kA], begin: Alignment.topLeft, end: Alignment.bottomRight), boxShadow: [BoxShadow(color: kA.withOpacity(0.35), blurRadius: 26)], border: playing ? Border.all(color: kA2.withOpacity(0.6), width: 1.5) : null);
                 }
-                return GestureDetector(
+                return Semantics(label: 'تشغيل أو إيقاف', button: true, child: GestureDetector(
                   onTap: pc.toggle,
                   child: AnimatedScale(
                     scale: x.dock == 'metal' && !playing ? 0.94 : 1,
@@ -292,7 +295,7 @@ class _PlayerPageState extends State<PlayerPage> {
                           : Center(child: PIcon(playing ? Ic.pause : Ic.play, size: 44, color: icol)),
                     ),
                   ),
-                );
+                ));
               },
             ),
             HoldSeek(dir: 1, onTap: pc.next, child: PIcon(Ic.next, color: kA, size: 40)),

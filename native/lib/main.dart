@@ -21,6 +21,7 @@ Future<void> _start() async {
     androidNotificationChannelId: 'com.minbar.app.audio',
     androidNotificationChannelName: 'منبر',
     androidNotificationOngoing: true,
+    androidNotificationIcon: 'drawable/ic_stat_minbar',
   );
   await Firebase.initializeApp(
     options: const FirebaseOptions(

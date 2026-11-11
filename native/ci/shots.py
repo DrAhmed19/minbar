@@ -58,6 +58,12 @@ for ln in open('native/ci/shots.txt', encoding='utf-8'):
         elif c[0] == 'swipe': adb('shell', 'input', 'swipe', *c[1:])
         elif c[0] == 'long': adb('shell', 'input', 'swipe', c[1], c[2], c[1], c[2], '900')
         elif c[0] == 'back': adb('shell', 'input', 'keyevent', '4')
+        elif c[0] == 'app':
+            f = adb('shell', 'dumpsys', 'window', out=True).decode('utf-8', 'ignore')
+            m = re.search(r'mCurrentFocus=.*', f)
+            if not m or PKG not in m.group(0):
+                print('relaunch', flush=True)
+                adb('shell', 'monkey', '-p', PKG, '-c', 'android.intent.category.LAUNCHER', '1'); time.sleep(8)
         elif c[0] == 'dump': (OUT / (c[1] + '.xml')).write_text(dump(), encoding='utf-8')
     except Exception as e:
         print('step err', ln, e, flush=True)

@@ -56,7 +56,7 @@ const _chOcc = AndroidNotificationDetails('occ', 'المناسبات', channelDe
 Future<bool> notifInit({bool ask = false}) async {
   try {
     if (!_nReady) {
-      await _fln.initialize(settings: const InitializationSettings(android: AndroidInitializationSettings('@mipmap/ic_launcher')));
+      await _fln.initialize(settings: const InitializationSettings(android: AndroidInitializationSettings('@drawable/ic_stat_minbar')));
       _nReady = true;
     }
     if (ask) {

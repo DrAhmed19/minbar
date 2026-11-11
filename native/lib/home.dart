@@ -163,7 +163,10 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
-  Widget _ib(String ic, VoidCallback f) => GestureDetector(
+  Widget _ib(String ic, VoidCallback f, [String? label]) => Semantics(
+      label: label,
+      button: true,
+      child: GestureDetector(
         onTap: f,
         child: Container(
           width: 40,
@@ -172,7 +175,7 @@ class _HomeShellState extends State<HomeShell> {
           decoration: BoxDecoration(borderRadius: BorderRadius.circular(13), border: Border.all(color: const Color(0x210E5C46)), color: const Color(0x0DFFFFFF)),
           child: Center(child: PIcon(ic, color: const Color(0xFF083B2D), size: 21)),
         ),
-      );
+      ));
 
   Widget _header() => Container(
         height: 56,
@@ -202,8 +205,8 @@ class _HomeShellState extends State<HomeShell> {
               ),
             ),
           if (!searching) const Spacer(),
-          if (!searching) _ib('mic', () => recognizePoem(context)),
-          if (!searching) _ib(Ic.users, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsPage()))),
+          if (!searching) _ib('mic', () => recognizePoem(context), 'التعرف على القصيدة'),
+          if (!searching) _ib(Ic.users, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsPage())), 'الإعدادات'),
           _ib(searching ? Ic.x : Ic.search, () => setState(() {
                 searching = !searching;
                 if (!searching) {
@@ -432,7 +435,7 @@ class _HomeShellState extends State<HomeShell> {
   Widget _mini() {
     final t = app.player.cur;
     if (t == null) return const SizedBox.shrink();
-    return GestureDetector(
+    return Semantics(label: 'فتح المشغل', button: true, child: GestureDetector(
       onTap: () => openPlayer(context),
       child: Container(
         margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
@@ -467,7 +470,7 @@ class _HomeShellState extends State<HomeShell> {
           ),
         ]),
       ),
-    );
+    ));
   }
 
   Widget _nav() {

@@ -99,3 +99,14 @@ if g.exists():
             t = re.sub(r'defaultConfig\s*\{', 'defaultConfig {\n        multiDexEnabled = true', t, count=1)
         g.write_text(t, encoding='utf-8')
         print('desugar patched', 'isCoreLibraryDesugaringEnabled' in t)
+
+# أيقونة الإشعارات البيضاء
+import shutil
+src = pathlib.Path(__file__).parent / 'res'
+dst = pathlib.Path('android/app/src/main/res')
+if src.exists():
+    for d in src.iterdir():
+        (dst / d.name).mkdir(parents=True, exist_ok=True)
+        for f in d.iterdir():
+            shutil.copy(f, dst / d.name / f.name)
+    print('notification icon copied')

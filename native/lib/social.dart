@@ -291,7 +291,7 @@ class _RxLayerState extends State<RxLayer> with SingleTickerProviderStateMixin {
         ),
         Positioned(
           bottom: 0,
-          child: GestureDetector(
+          child: Semantics(label: 'إعجاب', button: true, child: GestureDetector(
             onTap: () => social.sendRx(context),
             child: Container(
               width: 62,
@@ -302,7 +302,7 @@ class _RxLayerState extends State<RxLayer> with SingleTickerProviderStateMixin {
                 if (n > 0) Text(n > 999 ? '${(n / 1000).toStringAsFixed(1)}k' : '$n', style: tx(10, c: Colors.white70)),
               ]),
             ),
-          ),
+          )),
         ),
       ]),
     );
