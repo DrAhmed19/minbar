@@ -24,9 +24,20 @@ def dump():
     adb('shell', 'uiautomator', 'dump', '/sdcard/u.xml')
     return adb('exec-out', 'cat', '/sdcard/u.xml', out=True).decode('utf-8', 'ignore')
 
+def anr(x=None):
+    x = x if x is not None else dump()
+    if "isn't responding" in x or 'keeps stopping' in x:
+        for lbl in ('Wait', 'Close app'):
+            m = re.search(r'<node [^>]*text="' + lbl + r'"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', x)
+            if m:
+                a, b, c, d = map(int, m.groups()); adb('shell', 'input', 'tap', str((a + c) // 2), str((b + d) // 2))
+                print('anr dismissed', flush=True); time.sleep(3); return True
+    return False
+
 def tap_text(s, idx=0):
-    for _ in range(3):
+    for _ in range(4):
         x = dump()
+        if anr(x): x = dump()
         hits = []
         for m in re.finditer(r'<node [^>]*>', x):
             n = m.group(0)
@@ -44,6 +55,9 @@ subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', 'pillow'], capture
 adb('install', '-r', 'minbar.apk', t=180)
 for p in ['POST_NOTIFICATIONS', 'RECORD_AUDIO']:
     adb('shell', 'pm', 'grant', PKG, 'android.permission.' + p)
+for _ in range(12):
+    time.sleep(10)
+    if not anr(): break
 adb('logcat', '-c')
 adb('shell', 'monkey', '-p', PKG, '-c', 'android.intent.category.LAUNCHER', '1')
 for ln in open('native/ci/shots.txt', encoding='utf-8'):
@@ -52,7 +66,11 @@ for ln in open('native/ci/shots.txt', encoding='utf-8'):
     c = shlex.split(ln)
     try:
         if c[0] == 'wait': time.sleep(float(c[1]))
-        elif c[0] == 'shot': shot(c[1])
+        elif c[0] == 'shot': anr(); shot(c[1])
+        elif c[0] == 'until':
+            for _ in range(int(c[2]) if len(c) > 2 else 6):
+                if c[1] not in dump(): break
+                tap_text(c[1]); time.sleep(8)
         elif c[0] == 'tap': adb('shell', 'input', 'tap', c[1], c[2])
         elif c[0] == 'text': tap_text(c[1], int(c[2]) if len(c) > 2 else 0)
         elif c[0] == 'swipe': adb('shell', 'input', 'swipe', *c[1:])

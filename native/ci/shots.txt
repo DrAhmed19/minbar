@@ -1,7 +1,7 @@
 wait 14
 shot 01-login
-text "الدخول كضيف"
-wait 14
+until "الدخول كضيف"
+wait 8
 shot 02-home
 text "الإعدادات"
 wait 4
