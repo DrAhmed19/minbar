@@ -29,7 +29,9 @@ jobs:
           profile: pixel_6
           disk-size: 3072M
           emulator-boot-timeout: 420
-          disable-animations: false
+          disable-animations: true
+          ram-size: 4096M
+          cores: 4
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           script: python3 native/ci/shots.py
       - name: رفع اللقطات إلى فرع ci-shots

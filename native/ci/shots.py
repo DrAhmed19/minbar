@@ -35,7 +35,7 @@ def anr(x=None):
     return False
 
 def tap_text(s, idx=0):
-    for _ in range(4):
+    for _ in range(3):
         x = dump()
         if anr(x): x = dump()
         hits = []
@@ -55,7 +55,10 @@ subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', 'pillow'], capture
 adb('install', '-r', 'minbar.apk', t=180)
 for p in ['POST_NOTIFICATIONS', 'RECORD_AUDIO']:
     adb('shell', 'pm', 'grant', PKG, 'android.permission.' + p)
-for _ in range(12):
+for k in ('hide_error_dialogs 1','anr_show_background 0'):
+    adb('shell','settings','put','global',*k.split())
+adb('shell','am','force-stop','com.android.systemui')
+for _ in range(6):
     time.sleep(10)
     if not anr(): break
 adb('logcat', '-c')
