@@ -7,7 +7,7 @@ text "الإعدادات"
 wait 4
 shot 03-settings
 swipe 540 1800 540 700 400
-wait 2
+wait 4
 shot 04-settings2
 text "وضع السيارة"
 wait 4
