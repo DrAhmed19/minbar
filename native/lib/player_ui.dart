@@ -127,20 +127,31 @@ class _PlayerPageState extends State<PlayerPage> {
                 padding: EdgeInsets.fromLTRB(14, 6, 14, 0),
                 child: Row(children: [
                   _box(Ic.down, () => Navigator.pop(context)),
-                  Expanded(child: Center(child: Text('${pc.index + 1} من ${pc.queue.length}', style: tx(15, c: Colors.white60)))),
+                  Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onLongPress: () {
+                        HapticFeedback.selectionClick();
+                        pc.setPref('viz', (pc.viz + 1) % kVizIds.length);
+                        setState(() {});
+                        snack2(kVizTitles[pc.viz]);
+                      },
+                      child: SizedBox(height: 52, child: Center(child: Text('${pc.index + 1} من ${pc.queue.length}', style: tx(15, c: Colors.white60)))),
+                    ),
+                  ),
+                  _box(Ic.chat, () => showCommentsSheet(context)),
+                  SizedBox(width: 8),
                   _box(fav ? Ic.heartF : Ic.heart, () {
                     app.repo.toggleFav(t.id);
                     setState(() {});
                   }),
-                  SizedBox(width: 8),
-                  _box(Ic.chat, () => showCommentsSheet(context)),
                 ]),
               ),
               Expanded(
                 child: Stack(children: [
                   Positioned.fill(child: lyView ? _lyricsView() : _stage(t)),
                   const Positioned.fill(child: CmLayer()),
-                  const Positioned(right: 4, bottom: 0, child: RxLayer()),
+                  const Positioned(right: 4, bottom: 70, child: RxLayer()),
                 ]),
               ),
               _bottom(t),
@@ -172,7 +183,7 @@ class _PlayerPageState extends State<PlayerPage> {
     Widget st = Column(children: [
       Expanded(
         flex: 5,
-        child: VizStage(an: an, img: img, viz: pc.viz, env: env),
+        child: Padding(padding: EdgeInsets.only(top: 14), child: VizStage(an: an, img: img, viz: pc.viz, env: env)),
       ),
       Expanded(
         flex: 3,
@@ -204,7 +215,7 @@ class _PlayerPageState extends State<PlayerPage> {
           Expanded(
             child: Column(children: [
               Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: TextStyle(fontFamily: thx(pc.viz).font, fontFamilyFallback: const ['F0'], fontSize: 24, color: Colors.white, fontWeight: FontWeight.w700, height: 1.4)),
-              Text([t.reciter, t.poet].where((e) => e.isNotEmpty).join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: tx(17, c: Color(0xFFE8C468))),
+              FittedBox(fit: BoxFit.scaleDown, child: Text([t.reciter, t.poet].where((e) => e.isNotEmpty).join(' · '), maxLines: 1, textAlign: TextAlign.center, style: tx(16, c: kA))),
             ]),
           ),
           _box(Ic.more, _settingsSheet, size: 54),
@@ -230,8 +241,8 @@ class _PlayerPageState extends State<PlayerPage> {
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 2),
                   child: Row(textDirection: TextDirection.ltr, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                    Text(fmt(pos), style: tx(14, c: Colors.white60)),
-                    Text(fmt(dur), style: tx(14, c: Colors.white60)),
+                    Text(fmt2(pos), style: tx(14, c: Colors.white60)),
+                    Text(fmt2(dur), style: tx(14, c: Colors.white60)),
                   ]),
                 ),
               ]);
@@ -332,8 +343,8 @@ class _PlayerPageState extends State<PlayerPage> {
       child: Row(children: [
         b(Ic.rep, 'تكرار', pc.loop != LoopMode.off, pc.cycleLoop),
         b(Ic.text, 'الكلمات', false, () => showLyricsSheet(context, ly)),
-        b(Ic.eq, 'الصوت', false, () => showAudioSheet(context)),
-        b(Ic.plist, 'القائمة', false, _queueSheet),
+        b(Ic.pulse, 'الصوت', true, () => showAudioSheet(context), act: true),
+        b(Ic.queue, 'القائمة', false, _queueSheet),
         b(Ic.shuf, 'عشوائي', pc.shuffle, pc.toggleShuffle),
       ]),
     );

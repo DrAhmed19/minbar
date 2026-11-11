@@ -283,7 +283,7 @@ class _RxLayerState extends State<RxLayer> with SingleTickerProviderStateMixin {
                   return Positioned(
                     bottom: 40 + e * 250,
                     left: 23 + h.dx * e,
-                    child: Opacity(opacity: op.clamp(0.0, 1.0), child: Transform.scale(scale: sc, child: Text('❤', style: TextStyle(fontSize: 22, color: h.me ? const Color(0xFFFF4D6D) : HSLColor.fromAHSL(1, h.hue % 360, 0.85, 0.64).toColor())))),
+                    child: Opacity(opacity: op.clamp(0.0, 1.0), child: Transform.scale(scale: sc, child: PIcon(Ic.heartF, size: 24, color: h.me ? const Color(0xFFFF4D6D) : HSLColor.fromAHSL(1, h.hue % 360, 0.85, 0.64).toColor()))),
                   );
                 }),
             ]);
@@ -298,7 +298,7 @@ class _RxLayerState extends State<RxLayer> with SingleTickerProviderStateMixin {
               height: 62,
               decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0x33FFFFFF), boxShadow: const [BoxShadow(color: Color(0x40000000), blurRadius: 14)]),
               child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                const Text('❤', style: TextStyle(fontSize: 24, color: Colors.white)),
+                const PIcon(Ic.heartF, size: 26, color: Colors.white),
                 if (n > 0) Text(n > 999 ? '${(n / 1000).toStringAsFixed(1)}k' : '$n', style: tx(10, c: Colors.white70)),
               ]),
             ),

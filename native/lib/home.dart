@@ -327,7 +327,7 @@ class _HomeShellState extends State<HomeShell> {
           leading: Cover(l.first.coverUrl, size: 48, radius: 24),
           title: Text(ks[i], style: tx(14.5, w: FontWeight.w800)),
           subtitle: Text('${l.length} قصيدة${na > 0 ? ' · $na إصدار' : ''}', style: tx(12, c: kMuted, w: FontWeight.w500)),
-          trailing: const PIcon(Ic.back, color: kMuted),
+          trailing: Transform.flip(flipX: true, child: const PIcon(Ic.back, color: kMuted)),
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GroupPage(ks[i], l, reciter: ks[i]))),
         );
       },
@@ -536,7 +536,7 @@ class HomeTab extends StatelessWidget {
         child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: c),
       );
 
-  Widget _card(Track t, List<Track> ctx, {String? sub, double? prog}) => GestureDetector(
+  Widget _card(Track t, List<Track> ctx, {String? sub, double? prog, bool heart = false}) => GestureDetector(
         onTap: () => onPlay(ctx, t),
         onLongPress: () => trackSheet(_ctx!, t),
         child: Container(
@@ -556,7 +556,10 @@ class HomeTab extends StatelessWidget {
             ]),
             const SizedBox(height: 6),
             Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(14)),
-            Text(sub ?? t.reciter, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(12, c: kMuted)),
+            if (heart)
+              Row(children: [const PIcon(Ic.heartF, size: 12, color: kMuted), const SizedBox(width: 4), Text(sub ?? '', style: tx(12, c: kMuted))])
+            else
+              Text(sub ?? t.reciter, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(12, c: kMuted)),
           ]),
         ),
       );
@@ -613,7 +616,7 @@ class HomeTab extends StatelessWidget {
         // أُضيفت حديثاً
         final fresh = all.where((t) => t.at > 0).take(12).toList();
         if (fresh.isNotEmpty) {
-          body.add(_sec('أُضيفت حديثاً', onSub == null ? null : () => onSub!(1)));
+          body.add(_sec('أُضيفت حديثاً'));
           body.add(_row([for (final t in fresh) _card(t, all)]));
         }
 
@@ -621,7 +624,7 @@ class HomeTab extends StatelessWidget {
         final likes = r.hotLikes.map((e) => (r.byId(e.key), e.value)).where((e) => e.$1 != null).toList();
         if (likes.isNotEmpty) {
           body.add(_sec('الأكثر إعجاباً هذا الأسبوع'));
-          body.add(_row([for (final e in likes) _card(e.$1!, all, sub: '${e.$2} ♥')]));
+          body.add(_row([for (final e in likes) _card(e.$1!, all, sub: '${e.$2}', heart: true)]));
         }
         final plays = r.hotPlays.map((e) => (r.byId(e.key), e.value)).where((e) => e.$1 != null).toList();
         if (plays.isNotEmpty) {

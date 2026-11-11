@@ -28,6 +28,11 @@ String fmt(double s) {
   return '$m:${x.toString().padLeft(2, '0')}';
 }
 
+String fmt2(double s) {
+  if (s.isNaN || s < 0) s = 0;
+  return '${(s ~/ 60).toString().padLeft(2, '0')}:${(s % 60).floor().toString().padLeft(2, '0')}';
+}
+
 class Lyric {
   final double t;
   final String l;

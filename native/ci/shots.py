@@ -13,8 +13,11 @@ def adb(*a, out=False, t=60):
 def shot(name):
     png = adb('exec-out', 'screencap', '-p', out=True)
     p = OUT / (name + '.png'); p.write_bytes(png)
-    subprocess.run(['convert', str(p), '-resize', '50%', '-quality', '82', str(OUT / (name + '.jpg'))])
-    if (OUT / (name + '.jpg')).exists(): p.unlink()
+    try:
+        from PIL import Image
+        im = Image.open(p).convert('RGB'); im = im.resize((im.width // 2, im.height // 2)); im.save(OUT / (name + '.jpg'), quality=78); p.unlink()
+    except Exception as e:
+        print('img', e)
     print('shot', name, flush=True)
 
 def dump():
@@ -37,7 +40,7 @@ def tap_text(s, idx=0):
         time.sleep(2)
     print('NOT FOUND', s, flush=True); return False
 
-subprocess.run(['sudo', 'apt-get', 'install', '-y', '-q', 'imagemagick'], capture_output=True)
+subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', 'pillow'], capture_output=True)
 adb('install', '-r', 'minbar.apk', t=180)
 for p in ['POST_NOTIFICATIONS', 'RECORD_AUDIO']:
     adb('shell', 'pm', 'grant', PKG, 'android.permission.' + p)
@@ -59,5 +62,5 @@ for ln in open('native/ci/shots.txt', encoding='utf-8'):
     except Exception as e:
         print('step err', ln, e, flush=True)
 log = adb('logcat', '-d', '-v', 'brief', out=True).decode('utf-8', 'ignore')
-keep = [l for l in log.splitlines() if 'flutter' in l or 'AndroidRuntime' in l or 'FATAL' in l or PKG in l]
+keep = [l for l in log.splitlines() if 'I/flutter' in l or 'E/flutter' in l or 'FATAL' in l or 'E/AndroidRuntime' in l]
 (OUT / 'log.txt').write_text('\n'.join(keep[-1500:]), encoding='utf-8')
