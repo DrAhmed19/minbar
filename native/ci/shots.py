@@ -1,0 +1,63 @@
+"""يقود التطبيق على المحاكي حسب native/ci/shots.txt ويحفظ لقطات مصغّرة في shots/"""
+import subprocess, time, re, os, sys, pathlib, shlex
+PKG = 'com.minbar.minbar_native'
+OUT = pathlib.Path('shots'); OUT.mkdir(exist_ok=True)
+
+def adb(*a, out=False, t=60):
+    try:
+        r = subprocess.run(['adb', *a], capture_output=True, timeout=t)
+        return r.stdout if out else r.returncode
+    except Exception as e:
+        print('adb err', a, e); return b'' if out else 1
+
+def shot(name):
+    png = adb('exec-out', 'screencap', '-p', out=True)
+    p = OUT / (name + '.png'); p.write_bytes(png)
+    subprocess.run(['convert', str(p), '-resize', '50%', '-quality', '82', str(OUT / (name + '.jpg'))])
+    if (OUT / (name + '.jpg')).exists(): p.unlink()
+    print('shot', name, flush=True)
+
+def dump():
+    adb('shell', 'uiautomator', 'dump', '/sdcard/u.xml')
+    return adb('exec-out', 'cat', '/sdcard/u.xml', out=True).decode('utf-8', 'ignore')
+
+def tap_text(s, idx=0):
+    for _ in range(3):
+        x = dump()
+        hits = []
+        for m in re.finditer(r'<node [^>]*>', x):
+            n = m.group(0)
+            if s in (re.search(r'text="([^"]*)"', n) or [0, ''])[1] or s in (re.search(r'content-desc="([^"]*)"', n) or [0, ''])[1]:
+                b = re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', n)
+                if b: hits.append([int(v) for v in b.groups()])
+        if len(hits) > idx:
+            a, b, c, d = hits[idx]
+            adb('shell', 'input', 'tap', str((a + c) // 2), str((b + d) // 2))
+            print('tap', s, (a + c) // 2, (b + d) // 2, flush=True); return True
+        time.sleep(2)
+    print('NOT FOUND', s, flush=True); return False
+
+subprocess.run(['sudo', 'apt-get', 'install', '-y', '-q', 'imagemagick'], capture_output=True)
+adb('install', '-r', 'minbar.apk', t=180)
+for p in ['POST_NOTIFICATIONS', 'RECORD_AUDIO']:
+    adb('shell', 'pm', 'grant', PKG, 'android.permission.' + p)
+adb('logcat', '-c')
+adb('shell', 'monkey', '-p', PKG, '-c', 'android.intent.category.LAUNCHER', '1')
+for ln in open('native/ci/shots.txt', encoding='utf-8'):
+    ln = ln.strip()
+    if not ln or ln.startswith('#'): continue
+    c = shlex.split(ln)
+    try:
+        if c[0] == 'wait': time.sleep(float(c[1]))
+        elif c[0] == 'shot': shot(c[1])
+        elif c[0] == 'tap': adb('shell', 'input', 'tap', c[1], c[2])
+        elif c[0] == 'text': tap_text(c[1], int(c[2]) if len(c) > 2 else 0)
+        elif c[0] == 'swipe': adb('shell', 'input', 'swipe', *c[1:])
+        elif c[0] == 'long': adb('shell', 'input', 'swipe', c[1], c[2], c[1], c[2], '900')
+        elif c[0] == 'back': adb('shell', 'input', 'keyevent', '4')
+        elif c[0] == 'dump': (OUT / (c[1] + '.xml')).write_text(dump(), encoding='utf-8')
+    except Exception as e:
+        print('step err', ln, e, flush=True)
+log = adb('logcat', '-d', '-v', 'brief', out=True).decode('utf-8', 'ignore')
+keep = [l for l in log.splitlines() if 'flutter' in l or 'AndroidRuntime' in l or 'FATAL' in l or PKG in l]
+(OUT / 'log.txt').write_text('\n'.join(keep[-1500:]), encoding='utf-8')

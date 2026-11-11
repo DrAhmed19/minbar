@@ -10,12 +10,12 @@ import 'audio.dart';
 import 'ui.dart';
 
 Future<void> main() async {
-  runZonedGuarded(_start, (e, s) => debugPrint('خطأ غير متوقع: $e'));
+  runZonedGuarded(_start, (e, s) => debugPrint('MBERR zone: $e\n${s.toString().split('\n').take(6).join('\n')}'));
 }
 
 Future<void> _start() async {
   WidgetsFlutterBinding.ensureInitialized();
-  FlutterError.onError = (d) => debugPrint('UI: ${d.exception}');
+  FlutterError.onError = (d) => debugPrint('MBERR ui: ${d.exception}\n${(d.stack ?? '').toString().split('\n').take(6).join('\n')}');
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(statusBarColor: Colors.transparent, systemNavigationBarColor: kCream));
   await JustAudioBackground.init(
     androidNotificationChannelId: 'com.minbar.app.audio',

@@ -1,0 +1,33 @@
+wait 14
+shot 01-start
+text "الدخول كضيف"
+wait 14
+shot 02-home
+dump 02-home
+swipe 540 1700 540 700 400
+wait 3
+shot 03-home2
+swipe 540 1700 540 700 400
+wait 3
+shot 04-home3
+text "القصائد"
+wait 4
+shot 05-poems
+dump 05-poems
+text "الإصدارات"
+wait 4
+shot 06-albums
+text "الرواديد"
+wait 4
+shot 07-reciters
+text "القصائد"
+wait 3
+tap 540 700
+wait 12
+shot 08-playing-mini
+tap 540 2050
+wait 6
+shot 09-player
+dump 09-player
+wait 10
+shot 10-player-b

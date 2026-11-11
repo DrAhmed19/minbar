@@ -1,0 +1,38 @@
+# يشغّل آخر APK على محاكي أندرويد ويلتقط لقطات شاشة (يُشغَّل يدوياً فقط)
+name: لقطات من المحاكي
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: تنزيل آخر APK
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release download apk-latest -p minbar.apk
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          script: python3 native/ci/shots.py
+      - name: رفع اللقطات إلى فرع ci-shots
+        if: always()
+        run: |
+          cd shots
+          git init -q -b ci-shots
+          git config user.name ci && git config user.email ci@users.noreply.github.com
+          git add -A && git commit -qm "shots ${{ github.run_number }}"
+          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" ci-shots

@@ -27,6 +27,9 @@ jobs:
       - name: الحزم
         working-directory: native
         run: flutter pub get
+      - name: تحليل الكود (للمراجعة فقط)
+        working-directory: native
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings > analyze.txt 2>&1 || true; grep -E "^\s*(error|warning) " analyze.txt | head -150 || true; tail -2 analyze.txt
       - name: الأيقونة وشاشة البداية
         working-directory: native
         run: |
