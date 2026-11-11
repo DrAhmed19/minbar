@@ -57,6 +57,7 @@ for p in ['POST_NOTIFICATIONS', 'RECORD_AUDIO']:
     adb('shell', 'pm', 'grant', PKG, 'android.permission.' + p)
 for k in ('hide_error_dialogs 1','anr_show_background 0'):
     adb('shell','settings','put','global',*k.split())
+adb('shell','settings','put','secure','immersive_mode_confirmations','confirmed')
 adb('shell','am','force-stop','com.android.systemui')
 for _ in range(6):
     time.sleep(10)
