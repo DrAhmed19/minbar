@@ -43,7 +43,7 @@ jobs:
       - name: بناء
         working-directory: native
         run: |
-          for i in 1 2 3; do flutter build apk --release --split-per-abi --target-platform android-arm64,android-arm,android-x64 --build-number=${{ github.run_number }} --dart-define=BUILD=${{ github.run_number }} && exit 0; echo "retry $i"; sleep 45; done; exit 1
+          for i in 1 2 3; do flutter build apk --release --obfuscate --split-debug-info=build/symbols --split-per-abi --target-platform android-arm64,android-arm,android-x64 --build-number=${{ github.run_number }} --dart-define=BUILD=${{ github.run_number }} && exit 0; echo "retry $i"; sleep 45; done; exit 1
       - name: بصمة التوقيع (من ملف APK نفسه)
         run: |
           AS=$(ls $ANDROID_HOME/build-tools/*/apksigner | tail -1)

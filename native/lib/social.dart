@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'data.dart';
+import 'cmfilter.dart';
 import 'state.dart';
 import 'ui.dart';
 
@@ -174,9 +175,19 @@ class Social extends ChangeNotifier {
     if (t == null || text.isEmpty) return null;
     if (text.length > 70) text = text.substring(0, 70);
     if (_bad.hasMatch(text) || RegExp(r'(.)\1{6,}').hasMatch(text)) return 'لا يُسمح بالروابط أو التكرار';
+    await CmFilter.load();
+    final fc = CmFilter.check(text);
     final at = (app.player.p.position.inMilliseconds / 10).round() / 100;
     final u = FirebaseAuth.instance.currentUser;
     final name = (u?.displayName ?? '').trim().split(' ').first;
+    if (fc.st == 'block') {
+      if (signed) {
+        try {
+          await FirebaseFirestore.instance.collection('cmts').add({'track': t.id, 't': at, 'text': text, 'uid': u!.uid, 'name': name, 'st': 'block', 'at': FieldValue.serverTimestamp()});
+        } catch (_) {}
+      }
+      return 'التعليق يحتوي ألفاظاً غير لائقة ولن يُنشر';
+    }
     final c = Cm('', at, text, name, uid ?? '', true);
     cm.add(c);
     cm.sort((a, b) => a.t.compareTo(b.t));
@@ -184,11 +195,11 @@ class Social extends ChangeNotifier {
     notifyListeners();
     if (!signed) return 'سجّل الدخول ليظهر تعليقك للآخرين';
     try {
-      await FirebaseFirestore.instance.collection('cmts').add({'track': t.id, 't': at, 'text': text, 'uid': u!.uid, 'name': name, 'st': 'ok', 'at': FieldValue.serverTimestamp()});
+      await FirebaseFirestore.instance.collection('cmts').add({'track': t.id, 't': at, 'text': text, 'uid': u!.uid, 'name': name, 'st': fc.st, 'at': FieldValue.serverTimestamp()});
     } catch (_) {
       return 'تعذّر الإرسال';
     }
-    return null;
+    return fc.st == 'review' ? 'سيظهر تعليقك للجميع بعد المراجعة' : null;
   }
 
   /// الذروة: أكثر نافذة 10 ثوانٍ إعجاباً

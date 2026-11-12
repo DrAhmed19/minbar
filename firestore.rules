@@ -72,16 +72,21 @@ service cloud.firestore { match /databases/{db}/documents {
   match /cmts/{id} {
     allow read: if true;
     allow create: if signed() && request.resource.data.uid == request.auth.uid
+      && request.resource.data.keys().hasOnly(['track','t','text','uid','name','st','at'])
       && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 220
       && (!('st' in request.resource.data) || request.resource.data.st in ['ok', 'review', 'block'])
-      && request.resource.data.t is number && request.resource.data.track is string;
+      && (!('name' in request.resource.data) || (request.resource.data.name is string && request.resource.data.name.size() <= 80))
+      && (!('at' in request.resource.data) || request.resource.data.at == request.time)
+      && request.resource.data.t is number && request.resource.data.t >= 0 && request.resource.data.t <= 36000
+      && request.resource.data.track is string && request.resource.data.track.size() < 64;
     allow update: if isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['st']);
     allow delete: if isAdmin() || (signed() && resource.data.uid == request.auth.uid);
   }
-  // عدّاد الاستماع: الكل يقرأ، والزيادة بواحد فقط
+  // عدّاد الاستماع: الكل يقرأ، والزيادة بواحد فقط، ولقصيدة موجودة فعلاً
   match /stats/{id} {
     allow read: if true;
-    allow create: if request.resource.data.keys().hasOnly(['plays']) && request.resource.data.plays == 1;
+    allow create: if id.size() < 64 && exists(/databases/$(db)/documents/tracks/$(id))
+      && request.resource.data.keys().hasOnly(['plays']) && request.resource.data.plays == 1;
     allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['plays']) && request.resource.data.plays == resource.data.plays + 1;
   }
   // فلتر التعليقات (كلمات إضافية يديرها المشرف)
@@ -93,8 +98,11 @@ service cloud.firestore { match /databases/{db}/documents {
   match /rx/{id} {
     allow read: if true;
     allow create: if signed() && request.resource.data.uid == request.auth.uid
+      && request.resource.data.keys().hasOnly(['track','t','e','uid','at'])
       && request.resource.data.e in ['❤️','😢','🤲','💔']
-      && request.resource.data.t is number && request.resource.data.track is string;
+      && (!('at' in request.resource.data) || request.resource.data.at == request.time)
+      && request.resource.data.t is number && request.resource.data.t >= 0 && request.resource.data.t <= 36000
+      && request.resource.data.track is string && request.resource.data.track.size() < 64;
     allow delete: if isAdmin() || (signed() && resource.data.uid == request.auth.uid);
   }
   // القصائد المرفوعة: الكل يقرأ، والمالك وحده يضيف ويعدّل ويحذف
