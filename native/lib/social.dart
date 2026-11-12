@@ -136,6 +136,21 @@ class Social extends ChangeNotifier {
     }
   }
 
+  /// عدّاد الضغطات المتتالية (×2 ×3 مثل تيك توك)
+  final combo = ValueNotifier<int>(0);
+  Timer? _comboT;
+
+  /// زر الإعجاب الموحّد: أول ضغطة تضيف للمفضلة، وكل ضغطة إعجاب بهذه اللحظة (بلا حد)
+  Future<void> like(BuildContext ctx) async {
+    final t = app.player.cur;
+    if (t == null) return;
+    if (!app.repo.isFav(t.id)) app.repo.toggleFav(t.id);
+    combo.value = combo.value + 1;
+    _comboT?.cancel();
+    _comboT = Timer(const Duration(milliseconds: 1400), () => combo.value = 0);
+    await sendRx(ctx);
+  }
+
   Future<void> sendRx(BuildContext ctx) async {
     final t = app.player.cur;
     if (t == null) return;
@@ -144,7 +159,7 @@ class Social extends ChangeNotifier {
     }
     HapticFeedback.lightImpact();
     final n = DateTime.now();
-    if (n.difference(_sent).inMilliseconds < 1200) return;
+    if (n.difference(_sent).inMilliseconds < 250) return;
     _sent = n;
     final at = (app.player.p.position.inMilliseconds / 10).round() / 100;
     rx.add(at);
@@ -273,7 +288,6 @@ class _RxLayerState extends State<RxLayer> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     if (app.player.cmOn == 0) return const SizedBox.shrink();
-    final n = social.rx.length;
     return SizedBox(
       width: 70,
       height: 320,
@@ -301,19 +315,20 @@ class _RxLayerState extends State<RxLayer> with SingleTickerProviderStateMixin {
           },
         ),
         Positioned(
-          bottom: 0,
-          child: Semantics(label: 'إعجاب', button: true, child: GestureDetector(
-            onTap: () => social.sendRx(context),
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0x33FFFFFF), boxShadow: const [BoxShadow(color: Color(0x40000000), blurRadius: 14)]),
-              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                const PIcon(Ic.heartF, size: 19, color: Colors.white),
-                if (n > 0) Text(n > 999 ? '${(n / 1000).toStringAsFixed(1)}k' : '$n', style: tx(8.5, c: Colors.white70)),
-              ]),
-            ),
-          )),
+          bottom: 30,
+          child: ValueListenableBuilder<int>(
+            valueListenable: social.combo,
+            builder: (_, c, __) => c < 2
+                ? const SizedBox.shrink()
+                : TweenAnimationBuilder<double>(
+                    key: ValueKey(c),
+                    tween: Tween(begin: 1.6, end: 1),
+                    duration: const Duration(milliseconds: 260),
+                    curve: Curves.easeOutBack,
+                    builder: (_, v, ch) => Transform.scale(scale: v, child: ch),
+                    child: Text('×$c', style: tx(22, c: const Color(0xFFFF4D6D), w: FontWeight.w800).copyWith(shadows: const [Shadow(color: Colors.black54, blurRadius: 8)])),
+                  ),
+          ),
         ),
       ]),
     );
@@ -327,10 +342,11 @@ class CmLayer extends StatefulWidget {
   State<CmLayer> createState() => _CmLayerState();
 }
 
-class _CmLayerState extends State<CmLayer> {
+class _CmLayerState extends State<CmLayer> with SingleTickerProviderStateMixin {
   final items = <(Cm, DateTime, int)>[];
   StreamSubscription? _s;
-  Timer? _t;
+  // حركة بمعدل إطارات الشاشة (60/120) بدل مؤقّت 20 إطاراً — أنعم وبلا ارتعاش
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(seconds: 1));
   int side = 0;
 
   @override
@@ -341,21 +357,14 @@ class _CmLayerState extends State<CmLayer> {
       if (items.length >= mx) items.removeAt(0);
       side = 1 - side;
       items.add((c, DateTime.now(), c.mine ? 1 : side));
-      _t ??= Timer.periodic(const Duration(milliseconds: 50), (_) {
-        items.removeWhere((x) => DateTime.now().difference(x.$2).inMilliseconds > 9000);
-        if (items.isEmpty) {
-          _t?.cancel();
-          _t = null;
-        }
-        if (mounted) setState(() {});
-      });
+      if (!_c.isAnimating) _c.repeat();
     });
   }
 
   @override
   void dispose() {
     _s?.cancel();
-    _t?.cancel();
+    _c.dispose();
     super.dispose();
   }
 
@@ -363,33 +372,49 @@ class _CmLayerState extends State<CmLayer> {
   Widget build(BuildContext context) {
     return IgnorePointer(
       child: LayoutBuilder(builder: (_, c) {
-        final H = c.maxHeight;
-        return Stack(children: [
-          for (var j = 0; j < items.length; j++)
-            Builder(builder: (_) {
-              final it = items[j];
-              final p = DateTime.now().difference(it.$2).inMilliseconds / 9000;
-              final bubble = Container(
-                constraints: BoxConstraints(maxWidth: c.maxWidth * 0.62),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: it.$1.mine ? const Color(0xCC8A6A1E) : const Color(0x8C000000), border: Border.all(color: const Color(0x2EFFFFFF))),
-                child: Text(it.$1.text, style: tx(13, c: Colors.white)),
-              );
-              if (app.player.cmView == 1) {
-                // طائر عبر الشاشة بممرّات علوية
-                final W = c.maxWidth, lane = (it.$2.millisecondsSinceEpoch ~/ 7) % 5;
-                return Positioned(top: 6.0 + lane * 34, right: -W * 0.7 + p * W * 1.6, child: Opacity(opacity: p < 0.05 ? p / 0.05 : (p > 0.92 ? (1 - p) / 0.08 : 1.0), child: bubble));
-              }
-              final op = p < 0.08 ? p / 0.08 : (p > 0.8 ? (1 - p) / 0.2 : 1.0);
-              final y = p < 0.08 ? 14 * (1 - p / 0.08) : -H * 0.62 * ((p - 0.08) / 0.72).clamp(0.0, 1.0) - (p > 0.8 ? H * 0.23 * (p - 0.8) / 0.2 : 0.0);
-              return Positioned(
-                bottom: 10 - y,
-                right: it.$3 == 1 ? 10 : null,
-                left: it.$3 == 0 ? 10 : null,
-                child: Opacity(opacity: op.clamp(0.0, 1.0), child: bubble),
-              );
-            }),
-        ]);
+        final H = c.maxHeight, W = c.maxWidth;
+        return AnimatedBuilder(
+          animation: _c,
+          builder: (_, __) {
+            final now = DateTime.now();
+            items.removeWhere((x) => now.difference(x.$2).inMilliseconds > 9000);
+            if (items.isEmpty && _c.isAnimating) Future.microtask(() => _c.stop());
+            return Stack(children: [
+              for (final it in items)
+                Builder(builder: (_) {
+                  final p = now.difference(it.$2).inMilliseconds / 9000;
+                  final bubble = RepaintBoundary(
+                    child: Container(
+                      constraints: BoxConstraints(maxWidth: W * 0.62),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: it.$1.mine ? const Color(0xE08A6A1E) : const Color(0xB3000000), border: Border.all(color: const Color(0x2EFFFFFF))),
+                      child: Text(it.$1.text, style: tx(13.5, c: Colors.white)),
+                    ),
+                  );
+                  if (app.player.cmView == 1) {
+                    final lane = (it.$2.millisecondsSinceEpoch ~/ 7) % 5;
+                    return Positioned(
+                      top: 6.0 + lane * 34,
+                      right: 0,
+                      child: Transform.translate(
+                        offset: Offset(W * 0.7 - p * W * 1.6, 0),
+                        child: Opacity(opacity: (p < 0.05 ? p / 0.05 : (p > 0.92 ? (1 - p) / 0.08 : 1.0)).clamp(0.0, 1.0), child: bubble),
+                      ),
+                    );
+                  }
+                  // صعود ناعم بمنحنى واحد متصل + ظهور وتلاشٍ هادئ
+                  final y = Curves.easeOutSine.transform(p.clamp(0.0, 1.0)) * H * 0.8;
+                  final op = p < 0.07 ? p / 0.07 : (p > 0.78 ? (1 - p) / 0.22 : 1.0);
+                  return Positioned(
+                    bottom: 10,
+                    right: it.$3 == 1 ? 10 : null,
+                    left: it.$3 == 0 ? 10 : null,
+                    child: Transform.translate(offset: Offset(0, -y), child: Opacity(opacity: op.clamp(0.0, 1.0), child: bubble)),
+                  );
+                }),
+            ]);
+          },
+        );
       }),
     );
   }

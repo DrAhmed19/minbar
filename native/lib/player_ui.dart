@@ -79,6 +79,7 @@ class _PlayerPageState extends State<PlayerPage> {
       if (mounted && app.player.cur?.id == t.id) {
         setState(() {
           an = a;
+          auAn = a;
           curAn = a;
           env = a?.envelope(400) ?? [];
         });
@@ -231,12 +232,31 @@ class _PlayerPageState extends State<PlayerPage> {
   final _sc = ScrollController();
   int _lastIdx = -2;
 
-  Widget _favBtn(Track t, {double size = 24}) => GestureDetector(
-        onTap: () {
-          app.repo.toggleFav(t.id);
+  /// زر الإعجاب الموحّد: ضغطة = إعجاب بهذه اللحظة (+ المفضلة أول مرة)، ضغطة مطوّلة = إزالة من المفضلة
+  Widget _favBtn(Track t, {double size = 25}) => GestureDetector(
+        onTap: () async {
+          await social.like(context);
           setState(() {});
         },
-        child: Padding(padding: const EdgeInsets.all(6), child: PIcon(app.repo.isFav(t.id) ? Ic.heartF : Ic.heart, color: kA, size: size)),
+        onLongPress: () {
+          if (!app.repo.isFav(t.id)) return;
+          app.repo.toggleFav(t.id);
+          setState(() {});
+          snack2('أُزيلت من المفضلة');
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: ListenableBuilder(
+            listenable: social,
+            builder: (_, __) {
+              final n = social.rx.length, on = app.repo.isFav(t.id);
+              return Column(mainAxisSize: MainAxisSize.min, children: [
+                PIcon(on ? Ic.heartF : Ic.heart, color: on ? const Color(0xFFFF4D6D) : kA, size: size),
+                if (n > 0) Text(n > 999 ? '${(n / 1000).toStringAsFixed(1)}k' : '$n', style: tx(10.5, c: on ? const Color(0xFFFF8FA3) : Colors.white60)),
+              ]);
+            },
+          ),
+        ),
       );
   Widget _cmBtn({double size = 23}) => GestureDetector(
         onTap: () => showCommentsSheet(context),
@@ -791,45 +811,120 @@ class _PlayerPageState extends State<PlayerPage> {
 
   void _queueSheet() {
     final pc = app.player;
+    String fd(int ms) {
+      final m = ms ~/ 60000, sx = (ms ~/ 1000) % 60;
+      return '${m.toString().padLeft(2, '0')}:${sx.toString().padLeft(2, '0')}';
+    }
+
+    Widget hb(String ic, bool on, VoidCallback f) => GestureDetector(
+          onTap: f,
+          child: Container(
+            width: 44,
+            height: 44,
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), color: on ? const Color(0x2EE8C468) : const Color(0x12FFFFFF), border: Border.all(color: on ? kGold : const Color(0x24FFFFFF))),
+            child: Center(child: PIcon(ic, color: on ? kGold : Colors.white, size: 20)),
+          ),
+        );
+    Widget row(Track q, {Widget? end, bool cur = false}) => Container(
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), color: cur ? const Color(0x2EE8C468) : const Color(0x0DFFFFFF), border: cur ? Border.all(color: kGold.withOpacity(0.7), width: 1.4) : null),
+          child: Row(children: [
+            Cover(q.coverUrl, size: 50, radius: 12),
+            const SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(q.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(15.5, w: FontWeight.w800, c: cur ? kGold : Colors.white)),
+              Text(q.reciter, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(12, c: Colors.white54)),
+            ])),
+            if ((app.repo.durs[q.id] ?? 0) > 0) Text(fd(app.repo.durs[q.id]!), textDirection: TextDirection.ltr, style: tx(12.5, c: Colors.white54)),
+            if (end != null) end,
+          ]),
+        );
     showMSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Color(0xFF16100B),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      backgroundColor: const Color(0xFF16100B),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (c) => Directionality(
         textDirection: TextDirection.rtl,
         child: DraggableScrollableSheet(
           expand: false,
-          initialChildSize: 0.7,
+          initialChildSize: 0.8,
           maxChildSize: 0.92,
           builder: (c2, sc) => ListenableBuilder(
             listenable: pc,
-            builder: (_, __) => Column(children: [
-              Padding(
-                padding: EdgeInsets.fromLTRB(18, 14, 18, 6),
-                child: Row(children: [
-                  Expanded(child: Text('قائمة التشغيل · ${pc.queue.length}', style: tx(15.5, w: FontWeight.w800, c: Colors.white))),
-                  IconButton(onPressed: pc.toggleShuffle, icon: PIcon(Ic.shuf, color: pc.shuffle ? kA : Colors.white54)),
-                ]),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  controller: sc,
-                  itemCount: pc.queue.length,
-                  itemBuilder: (_, i) {
-                    final q = pc.queue[i];
-                    final on = i == pc.index;
-                    return ListTile(
-                      onTap: () => pc.jump(i),
-                      leading: Cover(q.coverUrl, size: 44, radius: 10),
-                      title: Text(q.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(14, w: FontWeight.w800, c: on ? kA : Colors.white)),
-                      subtitle: Text(q.reciter, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(11.5, c: Colors.white54, w: FontWeight.w500)),
-                      trailing: on ? PIcon(Ic.eq, color: kA) : IconButton(icon: PIcon(Ic.x, color: Colors.white38, size: 20), onPressed: () => pc.removeAt(i)),
-                    );
-                  },
+            builder: (_, __) {
+              final n = pc.queue.length, ci = pc.index.clamp(0, n == 0 ? 0 : n - 1);
+              final next = n == 0 ? <Track>[] : pc.queue.sublist(ci + 1);
+              final tot = pc.queue.fold<int>(0, (a, q) => a + (app.repo.durs[q.id] ?? 0));
+              final hdr = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 14, 4, 10),
+                  child: Row(children: [
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('قائمة التشغيل', style: tx(19, w: FontWeight.w800, c: Colors.white)),
+                      Text('$n قصيدة${tot > 0 ? ' · ${fd(tot)}' : ''}', style: tx(12.5, c: Colors.white54)),
+                    ])),
+                    hb(Ic.shuf, pc.shuffle, pc.toggleShuffle),
+                    hb(Ic.rep, pc.loop != LoopMode.off, pc.cycleLoop),
+                  ]),
                 ),
-              ),
-            ]),
+                if (n > 0) ...[
+                  Padding(padding: const EdgeInsets.fromLTRB(4, 6, 4, 8), child: Text('يُشغَّل الآن', style: tx(13, c: Colors.white60))),
+                  StreamBuilder<Duration>(
+                    stream: pc.p.positionStream,
+                    builder: (_, s) {
+                      final d = pc.p.duration?.inMilliseconds ?? 0, pos = s.data?.inMilliseconds ?? 0;
+                      return Stack(children: [
+                        row(pc.queue[ci], cur: true),
+                        if (d > 0)
+                          Positioned(
+                            left: 14,
+                            right: 14,
+                            bottom: 1,
+                            child: Align(alignment: Alignment.centerRight, child: FractionallySizedBox(widthFactor: (pos / d).clamp(0.0, 1.0), child: Container(height: 3, decoration: BoxDecoration(color: kGold, borderRadius: BorderRadius.circular(2))))),
+                          ),
+                      ]);
+                    },
+                  ),
+                  if (next.isNotEmpty) Padding(padding: const EdgeInsets.fromLTRB(4, 16, 4, 8), child: Text('التالي', style: tx(13, c: Colors.white60))),
+                ],
+              ]);
+              return ReorderableListView.builder(
+                scrollController: sc,
+                padding: const EdgeInsets.fromLTRB(14, 0, 14, 24),
+                buildDefaultDragHandles: false,
+                header: hdr,
+                itemCount: next.length,
+                proxyDecorator: (w, _, __) => Material(color: Colors.transparent, elevation: 8, borderRadius: BorderRadius.circular(18), child: w),
+                onReorder: (o, nw) {
+                  if (nw > o) nw--;
+                  HapticFeedback.selectionClick();
+                  pc.moveQ(ci + 1 + o, ci + 1 + nw);
+                },
+                itemBuilder: (_, k) {
+                  final q = next[k];
+                  return Padding(
+                    key: ValueKey('q${q.id}_$k'),
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Dismissible(
+                      key: ValueKey('d${q.id}_$k'),
+                      direction: DismissDirection.horizontal,
+                      background: Container(alignment: Alignment.centerRight, padding: const EdgeInsets.symmetric(horizontal: 22), decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), color: const Color(0x33FF6B6B)), child: Text('إزالة', style: tx(13, c: const Color(0xFFFF8F8F)))),
+                      secondaryBackground: Container(alignment: Alignment.centerLeft, padding: const EdgeInsets.symmetric(horizontal: 22), decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), color: const Color(0x33FF6B6B)), child: Text('إزالة', style: tx(13, c: const Color(0xFFFF8F8F)))),
+                      onDismissed: (_) {
+                        HapticFeedback.lightImpact();
+                        pc.removeAt(ci + 1 + k);
+                      },
+                      child: GestureDetector(
+                        onTap: () => pc.jump(ci + 1 + k),
+                        child: row(q, end: ReorderableDragStartListener(index: k, child: const Padding(padding: EdgeInsets.fromLTRB(4, 8, 10, 8), child: Icon(Icons.drag_handle_rounded, color: Colors.white54, size: 26)))),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
           ),
         ),
       ),

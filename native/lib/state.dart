@@ -237,6 +237,19 @@ class PlayerCtl extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> moveQ(int from, int to) async {
+    if (from == to || from < 0 || to < 0 || from >= queue.length || to >= queue.length) return;
+    try {
+      await _cs?.move(from, to);
+      final l = List<Track>.from(queue);
+      final t = l.removeAt(from);
+      l.insert(to, t);
+      queue = l;
+      index = p.currentIndex ?? index;
+    } catch (_) {}
+    notifyListeners();
+  }
+
   void setLyOffset(double v) {
     lyOffset = v;
     SharedPreferences.getInstance().then((sp) => sp.setDouble('lyOffset', v));

@@ -6,12 +6,16 @@ import 'package:flutter/services.dart';
 import 'package:audio_session/audio_session.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'analysis.dart';
 import 'state.dart';
 import 'ui.dart';
 
 /// قسم الصوت — معادل 12 نطاقاً (كالويب) يُطبَّق على معادل أندرويد + تعزيز المستوى + طبقة الصوت
 final auEq = AndroidEqualizer();
 final auLoud = AndroidLoudnessEnhancer();
+
+/// تحليل القصيدة الحالية (للطيف الحي خلف منحنى المعادل)
+Analysis? auAn;
 
 const kEQF = [30, 50, 90, 160, 300, 500, 1000, 1600, 3000, 5000, 9000, 16000];
 String fmtF(int f) => f >= 1000 ? '${f % 1000 == 0 ? f ~/ 1000 : (f / 1000)}k' : '$f';
@@ -320,7 +324,10 @@ Widget _box(Widget child) => Container(
 SliderThemeData _sth() => SliderThemeData(activeTrackColor: kGold, inactiveTrackColor: Colors.white12, thumbColor: kGold2, overlayColor: kGold.withOpacity(0.15), trackHeight: 5);
 
 List<Widget> _bands(BuildContext c, StateSetter ss, VoidCallback edited) => [
-      _box(SizedBox(height: 150, child: CustomPaint(painter: _CurvePainter(), size: Size.infinite))),
+      _box(SizedBox(height: 170, child: EqGraph(onChange: () {
+        auApply();
+        ss(() {});
+      }, onEnd: edited))),
       Row(children: [
         Text('التضخيم المسبق', style: tx(14, c: Colors.white)),
         Expanded(
@@ -377,22 +384,117 @@ List<Widget> _bands(BuildContext c, StateSetter ss, VoidCallback edited) => [
       Text('يُطبَّق على معادل أندرويد للجهاز (عادة 5 نطاقات)، لذلك يُقرَّب منحنى الـ12 نطاقاً عليه.', style: tx(11.5, c: Colors.white38)),
     ];
 
+/// منحنى المعادل مثل الويب: شبكة بالترددات، نقاط النطاقات (تُسحب للأعلى والأسفل)، والطيف الحي خلفه أثناء التشغيل
+const _cl = 30.0, _cb = 20.0;
+double _fx(double hz, double w) => _cl + (w - _cl - 8) * (math.log(hz / 20) / math.log(1000));
+double _gy(double g, double h) => (h - _cb) / 2 - g / 12 * ((h - _cb) / 2 - 10);
+
+class EqGraph extends StatefulWidget {
+  final VoidCallback onChange, onEnd;
+  const EqGraph({super.key, required this.onChange, required this.onEnd});
+  @override
+  State<EqGraph> createState() => _EqGraphState();
+}
+
+class _EqGraphState extends State<EqGraph> with SingleTickerProviderStateMixin {
+  late final AnimationController _t = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat();
+  final _raw = List<double>.filled(22, 0), _v = List<double>.filled(22, 0);
+  int? _drag;
+
+  @override
+  void dispose() {
+    _t.dispose();
+    super.dispose();
+  }
+
+  void _at(Offset o, Size s, {bool start = false}) {
+    if (start) {
+      var best = 0, bd = 1e9;
+      for (var i = 0; i < kEQF.length; i++) {
+        final d = (_fx(kEQF[i].toDouble(), s.width) - o.dx).abs();
+        if (d < bd) {
+          bd = d;
+          best = i;
+        }
+      }
+      _drag = best;
+    }
+    final i = _drag;
+    if (i == null) return;
+    final half = (s.height - _cb) / 2 - 10;
+    final g = (((s.height - _cb) / 2 - o.dy) / half * 12).clamp(-12.0, 12.0);
+    au.eq[i] = (g * 2).round() / 2;
+    au.pre = 'custom';
+    widget.onChange();
+  }
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (_, c) {
+          final sz = Size(c.maxWidth, c.maxHeight);
+          return GestureDetector(
+            onPanStart: (d) => _at(d.localPosition, sz, start: true),
+            onPanUpdate: (d) => _at(d.localPosition, sz),
+            onPanEnd: (_) {
+              _drag = null;
+              widget.onEnd();
+            },
+            child: AnimatedBuilder(
+              animation: _t,
+              builder: (_, __) {
+                final pl = app.player.p;
+                if (pl.playing && auAn != null) {
+                  auAn!.bandsAt(pl.position.inMilliseconds / 1000.0, _raw);
+                } else {
+                  _raw.fillRange(0, 22, 0);
+                }
+                for (var k = 0; k < 22; k++) {
+                  _v[k] += (_raw[k] - _v[k]) * (_raw[k] > _v[k] ? 0.45 : 0.12);
+                }
+                return CustomPaint(painter: _CurvePainter(_v, _drag), size: sz);
+              },
+            ),
+          );
+        },
+      );
+}
+
 class _CurvePainter extends CustomPainter {
+  final List<double> sp;
+  final int? hot;
+  _CurvePainter(this.sp, this.hot);
   @override
   void paint(Canvas x, Size s) {
+    final w = s.width, h = s.height;
     final g = Paint()
       ..color = Colors.white10
       ..strokeWidth = 1;
+    // الطيف الحي
+    final bw = (w - _cl - 8) / sp.length;
+    for (var k = 0; k < sp.length; k++) {
+      final v = sp[k].clamp(0.0, 1.0);
+      if (v < 0.01) continue;
+      final top = _gy(-12 + v * 20, h);
+      x.drawRect(Rect.fromLTRB(_cl + k * bw, top, _cl + (k + 1) * bw - 1, _gy(-12, h)), Paint()..color = const Color(0xFF2FBF8F).withOpacity(0.18 + v * 0.18));
+    }
     for (final d in [12, 6, 0, -6, -12]) {
-      final y = s.height / 2 - d / 12 * (s.height / 2 - 10);
-      x.drawLine(Offset(28, y), Offset(s.width, y), g);
+      final y = _gy(d.toDouble(), h);
+      x.drawLine(Offset(_cl, y), Offset(w, y), g);
       final tp = TextPainter(text: TextSpan(text: d > 0 ? '+$d' : '$d', style: const TextStyle(fontSize: 10, color: Colors.white54)), textDirection: TextDirection.ltr)..layout();
       tp.paint(x, Offset(0, y - 7));
+    }
+    for (var i = 0; i < kEQF.length; i++) {
+      final px = _fx(kEQF[i].toDouble(), w);
+      x.drawLine(Offset(px, 4), Offset(px, h - _cb), g);
+      if (i.isEven || i == kEQF.length - 1) {
+        final tp = TextPainter(text: TextSpan(text: fmtF(kEQF[i]), style: const TextStyle(fontSize: 10, color: Colors.white54)), textDirection: TextDirection.ltr)..layout();
+        tp.paint(x, Offset(px - tp.width / 2, h - _cb + 4));
+      }
     }
     final p = Path();
     for (var i = 0; i <= 100; i++) {
       final hz = 20 * math.pow(1000, i / 100).toDouble();
-      final px = 28 + (s.width - 28) * i / 100, py = s.height / 2 - eqAt(hz).clamp(-15.0, 15.0) / 12 * (s.height / 2 - 10);
+      final px = _fx(hz, w), py = _gy(eqAt(hz).clamp(-15.0, 15.0), h);
       i == 0 ? p.moveTo(px, py) : p.lineTo(px, py);
     }
     x.drawPath(
@@ -401,6 +503,14 @@ class _CurvePainter extends CustomPainter {
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2.5
           ..color = kGold);
+    for (var i = 0; i < kEQF.length; i++) {
+      final c = Offset(_fx(kEQF[i].toDouble(), w), _gy(au.eq[i], h));
+      x.drawCircle(c, hot == i ? 8 : 5.5, Paint()..color = kGold);
+      x.drawCircle(c, hot == i ? 8 : 5.5, Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = const Color(0xFF1C1612));
+    }
   }
 
   @override
