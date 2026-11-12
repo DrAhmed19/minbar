@@ -1335,3 +1335,13 @@ textarea.mdin{resize:none}
 .plrtt b{font-size:21px!important}.plrtt small{font-size:14.5px!important}
 .lay-c .plrtt b{font-size:18px!important}
 .plrdock .tg{background:none!important;box-shadow:none!important}
+/* v3.75: عنوان أصغر بالويب، الصوت بلا مربع، زر إعجاب موحّد */
+.plrtt b{font-size:17px!important}.plrtt small{font-size:12.5px!important}.lay-c .plrtt b{font-size:15.5px!important}
+.plrfull .plrdock button.tg,.plrfull[data-th] .plrdock button.tg{background:none!important;border-radius:0!important}
+.plrrx .rxb{visibility:hidden;pointer-events:none}
+#plrFav{position:relative;flex-direction:column;gap:0}
+#plrFav.on{color:#FF4D6D!important}#plrFav.on svg{fill:#FF4D6D}
+#plrFav[data-n]:not([data-n=""])::after{content:attr(data-n);font-size:10px;line-height:1;margin-top:1px;color:rgba(255,255,255,.65)}
+#plrFav.pop svg{animation:fpop .35s cubic-bezier(.3,1.6,.5,1)}@keyframes fpop{0%{transform:scale(.7)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
+#plrFav .cmb{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);font-style:normal;font-weight:800;font-size:18px;color:#FF4D6D;text-shadow:0 2px 8px rgba(0,0,0,.6);pointer-events:none;white-space:nowrap}
+#plrFav .cmb.go{animation:cmbgo .3s cubic-bezier(.3,1.6,.5,1)}@keyframes cmbgo{0%{transform:translateX(-50%) scale(1.7)}100%{transform:translateX(-50%) scale(1)}}

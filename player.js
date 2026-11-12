@@ -283,7 +283,7 @@
     if (!pfq || pfq.length !== n) pfq = new Float32Array(n); pfq.set(fqd);
   }
   /* ===== تحليل صوتي مسبق: يُحسب مرة واحدة (بالخلفية عند المالك) ويُقرأ وقت التشغيل بلا أي معالجة صوت — يحرّك الرسم واللطم بدل التحليل الحي ===== */
-  const APPV = '3.74';
+  const APPV = '3.75';
   const ANV = 'v1', ANKEY = (t) => 'n/' + t.id + '-' + ANV + '.bin', ANOK = (t) => /^[A-Za-z0-9_-]{3,64}$/.test((t && t.id) || '');
   let PRE = null; const PF = { dd: new Float32Array(22), vb: { db: 0, peak: 1 }, cb: { db: 0, flat: 0 }, hb: { db: 0 }, lb: { db: 0 }, on: 0 }; let synW = null, synT = 0;
   async function anLoad(t) { PRE = null; if (!t || t.an !== 1 || !ANOK(t)) return; try { const r = await fetch('media/u/' + ANKEY(t)); if (!r.ok) return; const b = new Uint8Array(await r.arrayBuffer()); if (b.length < 12 || b[0] !== 77 || b[1] !== 66 || b[2] !== 65) return; const nf = new DataView(b.buffer).getUint32(8, true); if (tracks[cur] && tracks[cur].id === t.id) PRE = { id: t.id, fps: b[4], nf, W: b[5] + b[6], d: b, o: 12 }; } catch (e) {} }
@@ -557,7 +557,14 @@
   g('plrPlay').onclick = g('plrMiniPlay').onclick = (e) => { e.stopPropagation(); toggle(); };
   g('plrNext').onclick = g('plrMiniNext').onclick = (e) => { e.stopPropagation(); if (Date.now() - (g('plrNext')._held || 0) < 450) return; step(1); }; g('plrPrev').onclick = () => { if (Date.now() - (g('plrPrev')._held || 0) < 450) return; if (A.currentTime > 4) A.currentTime = 0; else step(-1); };
   g('plrShuf').onclick = () => { st.shuf = !st.shuf; save(); qShuf(); ui(); }; g('plrRep').onclick = () => { st.rep = (st.rep + 1) % 3; save(); ui(); };
-  g('plrFav').onclick = () => { const t = tracks[cur]; if (t) { tog(t.id); if (tab === 'fav') render(); } };
+  /* زر الإعجاب الموحّد: ضغطة = إعجاب بهذه اللحظة (+ المفضلة أول مرة، ×n للمتتالي)، ضغطة مطوّلة = إزالة من المفضلة */
+  let cmbN = 0, cmbT = 0, favLP = 0, favLong = false;
+  const favB = g('plrFav'); favB.insertAdjacentHTML('beforeend', '<i class="cmb"></i>');
+  favB.addEventListener('pointerdown', () => { favLong = false; clearTimeout(favLP); favLP = setTimeout(() => { const t = tracks[cur]; if (t && st.fav.includes(t.id)) { favLong = true; tog(t.id); if (tab === 'fav') render(); toast('أُزيلت من المفضلة'); } }, 650); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => favB.addEventListener(ev, () => clearTimeout(favLP)));
+  favB.onclick = () => { if (favLong) { favLong = false; return; } const t = tracks[cur]; if (!t) return; if (!st.fav.includes(t.id)) { tog(t.id); if (tab === 'fav') render(); }
+    cmbN++; clearTimeout(cmbT); const cb = favB.querySelector('.cmb'); if (cmbN >= 2) { cb.textContent = '×' + cmbN; cb.classList.remove('go'); void cb.offsetWidth; cb.classList.add('go'); } cmbT = setTimeout(() => { cmbN = 0; cb.textContent = ''; }, 1400);
+    favB.classList.remove('pop'); void favB.offsetWidth; favB.classList.add('pop'); const k = g('plrRx').querySelector('.rxb'); if (k) rxSend('❤️', k); };
   function openFull() { g('plrFull').hidden = false; applyViz();  }
   function closeFull() { tp(false); qs(false); au(false); cmS(false); g('plrFull').hidden = true; }
   g('plrMini').onclick = openFull; (function () { const m = g('plrMini'), f = g('plrFull'); let y0 = 0, dy = 0, drag = false, t0 = 0;
@@ -1326,7 +1333,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   /* التفاعلات العائمة عبر المقطع (❤️ 😢 🤲 💔): تُحفظ بلحظتها وتطفو للجميع أثناء التشغيل */
   const RXE = ['❤️'], RXL = 'minbar.rx.local'; let rxList = [], rxPtr = 0, rxLast = 0, rxTrack = null, rxSentAt = {};
   function rxUi() { try { heatUi(); } catch (e) {} const b = g('plrRx'); b.textContent = ''; b.hidden = !st.cm.on; const cnt = {}; rxList.forEach((r) => { cnt[r.e] = (cnt[r.e] || 0) + 1; });
-    const e = '❤️', n = rxList.length; const k = el('button', 'rxb rxh'); k.type = 'button'; k.dataset.e = e; k.setAttribute('aria-label', 'إعجاب'); k.innerHTML = '<span><svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 21s-7.5-4.6-9.6-9.2C1 8.6 3 5 6.5 5c2 0 3.6 1.2 4.5 2.6.3.4.7.4 1 0C12.9 6.2 14.5 5 16.5 5 20 5 22 8.6 20.6 11.8 18.5 16.4 12 21 12 21z" fill="currentColor"/></svg></span><small></small>'; k.lastChild.textContent = n ? (n > 999 ? (n / 1000).toFixed(1) + 'k' : n) : ''; k.onclick = () => rxSend(e, k); b.appendChild(k); }
+    const e = '❤️', n = rxList.length; const k = el('button', 'rxb rxh'); k.type = 'button'; k.dataset.e = e; k.setAttribute('aria-label', 'إعجاب'); k.innerHTML = '<span><svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 21s-7.5-4.6-9.6-9.2C1 8.6 3 5 6.5 5c2 0 3.6 1.2 4.5 2.6.3.4.7.4 1 0C12.9 6.2 14.5 5 16.5 5 20 5 22 8.6 20.6 11.8 18.5 16.4 12 21 12 21z" fill="currentColor"/></svg></span><small></small>'; k.lastChild.textContent = n ? (n > 999 ? (n / 1000).toFixed(1) + 'k' : n) : ''; k.onclick = () => rxSend(e, k); b.appendChild(k); g('plrFav').dataset.n = n ? (n > 999 ? (n / 1000).toFixed(1) + 'k' : n) : ''; }
   function rxFloat(e, own) { const b = g('plrRx'); if (b.hidden) return; const k = b.querySelector(`[data-e="${e}"]`) || b.firstChild; if (!k) return; const L = el('span', 'rxf' + (own ? ' me' : ''), '❤'); L.style.color = own ? '' : `hsl(${340 + Math.random() * 30},85%,${58 + Math.random() * 12}%)`; const n = own ? 1 : 1; L.style.top = k.offsetTop + 'px'; b.appendChild(L);
     const dx = (Math.random() * 40 - 30), H = Math.min(260, (b.offsetTop || 300) * 0.8), s = 0.8 + Math.random() * 0.5 + (own ? 0.3 : 0);
     const a = L.animate([{ transform: 'translate(0,0) scale(.4)', opacity: 0 }, { transform: `translate(${dx * 0.3}px,-30px) scale(${s})`, opacity: 1, offset: 0.15 }, { transform: `translate(${dx}px,${-H}px) scale(${s * 0.9})`, opacity: 0 }], { duration: 2600 + Math.random() * 900, easing: 'cubic-bezier(.2,.6,.4,1)' }); a.onfinish = () => L.remove(); }
@@ -1343,7 +1350,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   function rxTick() { if (!st.cm.on || !rxList.length || A.paused) return; const now = A.currentTime || 0; if (Math.abs(now - rxLast) > 1.5) rxReset(); rxLast = now; const pn = performance.now();
     while (rxPtr < rxList.length && rxList[rxPtr].t <= now) { if (pn - rxBurst > 140) { rxFloat(rxList[rxPtr].e); rxBurst = pn; } rxPtr++; } }
   async function rxSend(e, k) { const t = tracks[cur]; if (!t) return; for (let i = 0; i < 3; i++) setTimeout(() => rxFloat(e, true), i * 120); k.classList.remove('pop'); void k.offsetWidth; k.classList.add('pop'); try { navigator.vibrate && navigator.vibrate(8); } catch (x) {}
-    const now = Date.now(); if (now - (rxSentAt[e] || 0) < 1200) return; if (!fuid() && !rxSentAt.warn) { rxSentAt.warn = 1; toast('سجّل الدخول ليظهر إعجابك للآخرين'); } rxSentAt[e] = now; const r = { t: r2(A.currentTime || 0), e }; rxList.push(r); rxReset(); rxPtr = Math.max(rxPtr, rxList.indexOf(r) + 1);
+    const now = Date.now(); if (now - (rxSentAt[e] || 0) < 250) return; if (!fuid() && !rxSentAt.warn) { rxSentAt.warn = 1; toast('سجّل الدخول ليظهر إعجابك للآخرين'); } rxSentAt[e] = now; const r = { t: r2(A.currentTime || 0), e }; rxList.push(r); rxReset(); rxPtr = Math.max(rxPtr, rxList.indexOf(r) + 1);
     const db = fdb(), u = window.firebase && firebase.auth ? firebase.auth().currentUser : null; let ok = false;
     if (db && u) { try { rxIgnore = true; await db.collection('rx').add({ track: t.id, t: r.t, e, uid: u.uid, at: firebase.firestore.FieldValue.serverTimestamp() }); ok = true; } catch (x) {} }
     if (!ok) { const all = jget(RXL, {}); (all[t.id] = all[t.id] || []).push({ t: r.t, e }); jset(RXL, all); } rxUi(); }
