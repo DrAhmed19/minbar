@@ -52,6 +52,7 @@ class MinbarApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: kNav,
       title: 'منبر',
       debugShowCheckedModeBanner: false,
       locale: const Locale('ar'),

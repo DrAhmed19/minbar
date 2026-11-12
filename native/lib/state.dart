@@ -5,6 +5,8 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:ota_update/ota_update.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -424,7 +426,84 @@ class AuthCtl extends ChangeNotifier {
 
 /// فحص التحديثات: يقارن رقم البناء المدمج بآخر إصدار منشور على GitHub
 const kBuild = int.fromEnvironment('BUILD', defaultValue: 0);
-void launchApk([String? url]) => launchUrl(Uri.parse(url == null || url.isEmpty ? kApkUrl : url), mode: LaunchMode.externalApplication);
+final kNav = GlobalKey<NavigatorState>();
+
+/// تحديث داخل التطبيق: تنزيل مع شريط تقدّم ثم فتح شاشة التثبيت مباشرة
+void launchApk([String? url]) {
+  final u = url == null || url.isEmpty ? kApkUrl : url;
+  final ctx = kNav.currentContext;
+  if (ctx == null) {
+    launchUrl(Uri.parse(u), mode: LaunchMode.externalApplication);
+    return;
+  }
+  final prog = ValueNotifier<double?>(null), msg = ValueNotifier<String>('جارٍ تنزيل التحديث…');
+  StreamSubscription<OtaEvent>? sub;
+  var open = true;
+  void close() {
+    if (open && (kNav.currentState?.canPop() ?? false)) kNav.currentState!.pop();
+    open = false;
+  }
+
+  showDialog(
+    context: ctx,
+    barrierDismissible: false,
+    builder: (_) => Directionality(
+      textDirection: TextDirection.rtl,
+      child: AlertDialog(
+        backgroundColor: const Color(0xFF16100B),
+        title: const Text('تحديث منبر', style: TextStyle(color: Colors.white, fontSize: 16)),
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          ValueListenableBuilder<String>(valueListenable: msg, builder: (_, m, __) => Text(m, style: const TextStyle(color: Colors.white70, fontSize: 13))),
+          const SizedBox(height: 14),
+          ValueListenableBuilder<double?>(
+            valueListenable: prog,
+            builder: (_, p, __) => Column(children: [
+              ClipRRect(borderRadius: BorderRadius.circular(6), child: LinearProgressIndicator(value: p, minHeight: 7, color: const Color(0xFFE8C468), backgroundColor: Colors.white12)),
+              const SizedBox(height: 6),
+              Text(p == null ? '' : '${(p * 100).round()}%', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+            ]),
+          ),
+        ]),
+        actions: [
+          TextButton(
+            onPressed: () {
+              sub?.cancel();
+              close();
+            },
+            child: const Text('إلغاء', style: TextStyle(color: Color(0xFFE8C468))),
+          ),
+        ],
+      ),
+    ),
+  ).then((_) => open = false);
+  try {
+    sub = OtaUpdate().execute(u, destinationFilename: 'minbar.apk').listen((e) {
+      switch (e.status) {
+        case OtaStatus.DOWNLOADING:
+          final v = double.tryParse('${e.value}');
+          if (v != null) prog.value = v / 100;
+        case OtaStatus.INSTALLING:
+          prog.value = 1;
+          msg.value = 'اكتمل التنزيل — وافق على التثبيت';
+          Future.delayed(const Duration(seconds: 2), close);
+        case OtaStatus.PERMISSION_NOT_GRANTED_ERROR:
+          msg.value = 'اسمح لمنبر بتثبيت التطبيقات من الإعدادات ثم أعد المحاولة';
+        case OtaStatus.DOWNLOAD_ERROR:
+        case OtaStatus.INTERNAL_ERROR:
+          close();
+          launchUrl(Uri.parse(u), mode: LaunchMode.externalApplication);
+        default:
+          close();
+      }
+    }, onError: (_) {
+      close();
+      launchUrl(Uri.parse(u), mode: LaunchMode.externalApplication);
+    });
+  } catch (_) {
+    close();
+    launchUrl(Uri.parse(u), mode: LaunchMode.externalApplication);
+  }
+}
 final kApkUrl = 'https://github.com/DrAhmed19/minbar-releases/raw/main/${Abi.current() == Abi.androidArm ? 'minbar-arm32' : 'minbar'}.apk';
 
 /// آخر نسخة منشورة: من وثيقة config/app (apkBuild, apkUrl) التي يكتبها البناء تلقائياً،
