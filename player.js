@@ -280,7 +280,7 @@
     if (!pfq || pfq.length !== n) pfq = new Float32Array(n); pfq.set(fqd);
   }
   /* ===== تحليل صوتي مسبق: يُحسب مرة واحدة (بالخلفية عند المالك) ويُقرأ وقت التشغيل بلا أي معالجة صوت — يحرّك الرسم واللطم بدل التحليل الحي ===== */
-  const APPV = '3.70';
+  const APPV = '3.71';
   const ANV = 'v1', ANKEY = (t) => 'n/' + t.id + '-' + ANV + '.bin', ANOK = (t) => /^[A-Za-z0-9_-]{3,64}$/.test((t && t.id) || '');
   let PRE = null; const PF = { dd: new Float32Array(22), vb: { db: 0, peak: 1 }, cb: { db: 0, flat: 0 }, hb: { db: 0 }, lb: { db: 0 }, on: 0 }; let synW = null, synT = 0;
   async function anLoad(t) { PRE = null; if (!t || t.an !== 1 || !ANOK(t)) return; try { const r = await fetch('media/u/' + ANKEY(t)); if (!r.ok) return; const b = new Uint8Array(await r.arrayBuffer()); if (b.length < 12 || b[0] !== 77 || b[1] !== 66 || b[2] !== 65) return; const nf = new DataView(b.buffer).getUint32(8, true); if (tracks[cur] && tracks[cur].id === t.id) PRE = { id: t.id, fps: b[4], nf, W: b[5] + b[6], d: b, o: 12 }; } catch (e) {} }
@@ -1120,8 +1120,8 @@
   const EQF = [30, 50, 90, 160, 300, 500, 1000, 1600, 3000, 5000, 9000, 16000];
   const fmtF = (f) => f >= 1000 ? (f / 1000) + 'k' : String(f);
   const Z12 = () => EQF.map(() => 0);
-  const KN = { zb: 0, cp: 0, zm: 0, zt: 0, echo: 0, rev: 0, wid: 0, rot: 0 };
-  const AUD = () => ({ pre: 'flat', pitch: 0, preamp: 0, lim: true, eq: Z12(), agc: false, bal: 0, fl: false, k: Object.assign({}, KN), on: { zb: false, cp: false, zm: false, zt: false, echo: false, rev: false, wid: false, rot: false } });
+  const KN = { zb: 0, cp: 0, zm: 0, zt: 0, echo: 0, rev: 0, wid: 0, rot: 0, wah: 0 };
+  const AUD = () => ({ pre: 'flat', pitch: 0, preamp: 0, lim: true, eq: Z12(), agc: false, bal: 0, fl: false, k: Object.assign({}, KN), on: { zb: false, cp: false, zm: false, zt: false, echo: false, rev: false, wid: false, rot: false, wah: false } });
   const PR = (eq, k, x) => Object.assign({ eq, k: k || {} }, x || {});
   const AUP = [
     ['flat', 'مسطّح (الأصلي)', PR(Z12())],
@@ -1189,6 +1189,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     AU.ed = c.createDelay(1); AU.ed.delayTime.value = 0.33; AU.efb = N('Gain'); AU.ew = N('Gain'); AU.ed.connect(AU.efb); AU.efb.connect(AU.ed); AU.ed.connect(AU.ew); AU.ew.connect(AU.sum); x = AU.sum;
     AU.fd = c.createDelay(0.05); AU.fd.delayTime.value = 0.004; AU.fo = N('Oscillator'); AU.fo.frequency.value = 0.22; AU.fod = N('Gain'); AU.fod.gain.value = 0.0028; AU.fo.connect(AU.fod); AU.fod.connect(AU.fd.delayTime); AU.fo.start();
     AU.ffb = N('Gain'); AU.fw = N('Gain'); AU.fsum = N('Gain'); x.connect(AU.fsum); AU.fsrc = x; AU.fd.connect(AU.ffb); AU.ffb.connect(AU.fd); AU.fd.connect(AU.fw); AU.fw.connect(AU.fsum); x = AU.fsum;
+    AU.wf = bq('bandpass', 900, 3.5); AU.wo = N('Oscillator'); AU.wo.frequency.value = 1.6; AU.wod = N('Gain'); AU.wod.gain.value = 650; AU.wo.connect(AU.wod); AU.wod.connect(AU.wf.frequency); AU.wo.start(); AU.ww = N('Gain'); AU.ww.gain.value = 0; AU.wsum = N('Gain'); x.connect(AU.wsum); x.connect(AU.wf); AU.wf.connect(AU.ww); AU.ww.connect(AU.wsum); x = AU.wsum;
     const sp = c.createChannelSplitter(2), mg = c.createChannelMerger(2); AU.ll = N('Gain'); AU.lr = N('Gain'); AU.rr = N('Gain'); AU.rl = N('Gain');
     x.connect(sp); sp.connect(AU.ll, 0); sp.connect(AU.lr, 0); sp.connect(AU.rr, 1); sp.connect(AU.rl, 1); AU.ll.connect(mg, 0, 0); AU.rl.connect(mg, 0, 0); AU.rr.connect(mg, 0, 1); AU.lr.connect(mg, 0, 1); x = mg;
     AU.pan = c.createStereoPanner ? c.createStereoPanner() : N('Gain'); chain(AU.pan);
@@ -1204,7 +1205,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     const cp = kv('cp'); set(AU.cp.threshold, -cp * 32); set(AU.cp.ratio, 1 + cp * 8); set(AU.mk.gain, Math.pow(10, cp * 8 / 20));
     set(AU.agc.threshold, s.agc ? -32 : 0); set(AU.agc.ratio, s.agc ? 4 : 1); set(AU.agm.gain, s.agc ? Math.pow(10, 9 / 20) : 1);
     const rv = kv('rev'), ec = kv('echo'); set(AU.wet.gain, rv * 0.9); set(AU.dry.gain, 1 - rv * 0.3); set(AU.efb.gain, ec * 0.55); set(AU.ew.gain, ec * 0.6);
-    set(AU.ffb.gain, s.fl ? 0.55 : 0); set(AU.fw.gain, s.fl ? 0.7 : 0);
+    set(AU.ffb.gain, s.fl ? 0.55 : 0); set(AU.fw.gain, s.fl ? 0.7 : 0); if (AU.ww) set(AU.ww.gain, kv('wah') * 1.6);
     const w = 1 + kv('wid'); set(AU.ll.gain, 0.5 + 0.5 * w); set(AU.rr.gain, 0.5 + 0.5 * w); set(AU.lr.gain, 0.5 - 0.5 * w); set(AU.rl.gain, 0.5 - 0.5 * w);
     if (AU.pan.pan) { set(AU.pan.pan, s.bal); if (AU.lfo) { const r = kv('rot'); AU.lfo.frequency.value = 0.03 + r * 0.35; set(AU.lfd.gain, r > 0 ? Math.min(0.9, 1 - Math.abs(s.bal)) : 0); } }
     set(AU.master.gain, 1); const ps = s.pitch || 0, on = !!AU.ps && Math.abs(ps) > 0.04;
@@ -1216,7 +1217,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     const s = st.au, k = g('plrAuT').querySelector('.on').dataset.k, d = AUD();
     if (k === 'b') { s.eq = Z12(); s.preamp = 0; s.lim = true; }
     else if (k === 'f') { s.agc = false; s.bal = 0; ['zb', 'cp', 'zm', 'zt'].forEach((n) => { s.k[n] = 0; s.on[n] = false; }); }
-    else { s.pitch = 0; s.fl = false; st.speed = 1; A.playbackRate = 1; pills(); ['echo', 'rev', 'wid', 'rot'].forEach((n) => { s.k[n] = 0; s.on[n] = false; }); }
+    else { s.pitch = 0; s.fl = false; st.speed = 1; A.playbackRate = 1; pills(); ['echo', 'rev', 'wid', 'rot', 'wah'].forEach((n) => { s.k[n] = 0; s.on[n] = false; }); }
     void d; s.pre = JSON.stringify(s.eq) === JSON.stringify(Z12()) && !Object.values(s.on).some(Boolean) && !s.agc && !s.bal && !s.preamp && !s.pitch && !s.fl ? 'flat' : 'custom'; save(); auApply(); auUi(); toast('أُعيد ضبط قسم «' + g('plrAuT').querySelector('.on').textContent + '»');
   };
   function auNote() { const n = g('plrAuN'); if (!n) return; if (st.fx !== true) { n.textContent = 'وضع الأداء مفعّل: الرسم يعمل لكن المؤثرات الصوتية متوقفة. لتفعيلها: الأدوات ← وضع الأداء.'; n.hidden = !tracks[cur]; return; } n.textContent = 'المعالجة متاحة للملفات المرفوعة على منبر فقط.'; n.hidden = !!useLive || !tracks[cur]; }
@@ -1261,7 +1262,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     EQF.forEach((f, i) => { const c = el('div', 'bnd'), v = el('b', ''), lb = el('span', '', fmtF(f)); const sh = () => { v.textContent = (s.eq[i] > 0 ? '+' : '') + (+s.eq[i]).toFixed(1); }; sh();
       const w = sld({ v: true, min: -12, max: 12, step: 0.1, value: s.eq[i], bi: true, def: 0, onInput: (x) => { s.eq[i] = x; sh(); auMod(true); } }); w.sh = sh; AU.bandS[i] = w; c.append(v, w, lb); B.appendChild(c); });
     const KF = g('auKF'); KF.textContent = ''; [['zb', 'تعزيز الجهير'], ['cp', 'الضاغط'], ['zm', 'تعزيز الوسط'], ['zt', 'تعزيز الحدّة']].forEach(([k, n]) => knob(KF, k, n));
-    const KA = g('auKA'); KA.textContent = ''; [['echo', 'الصدى'], ['rev', 'الترديد'], ['wid', 'اتساع المجال'], ['rot', 'الدوران 8D']].forEach(([k, n]) => knob(KA, k, n));
+    const KA = g('auKA'); KA.textContent = ''; [['echo', 'الصدى'], ['rev', 'الترديد'], ['wid', 'اتساع المجال'], ['rot', 'الدوران 8D'], ['wah', 'الواوا (AutoWah)']].forEach(([k, n]) => knob(KA, k, n));
   }
   /* استجابة المرشحات حسابياً (نفس معادلات Web Audio) + تصحيح الكسب حتى يمرّ المنحنى بالنقاط */
   const EQQ = 1.6, FS = 48000;
