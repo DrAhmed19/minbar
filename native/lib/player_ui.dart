@@ -460,9 +460,23 @@ class _PlayerPageState extends State<PlayerPage> {
         ]),
       );
 
+  int _stab = 0, _vcat = -1;
+  static const _vcats = [
+    ('كلاسيكية', ['mihrab', 'ambient', 'cover', 'card', 'dots', 'silk']),
+    ('أجهزة', ['vinyl', 'cassette', 'jog', 'reels', 'knob', 'speaker', 'scope']),
+    ('حيّة', ['wring', 'halo', 'bars', 'blob', 'wave', 'spectrum', 'orbit', 'pulse', 'star', 'dust', 'neon', 'pond', 'strings', 'candles']),
+  ];
+
+  Widget _grp(String s) => Padding(padding: EdgeInsets.only(top: 12, bottom: 8, right: 2), child: Text(s, style: tx(12, c: kA, w: FontWeight.w700)));
+
   void _settingsSheet() {
     final pc = app.player;
     final t = pc.cur!;
+    if (_vcat < 0) {
+      final id = kVizIds[pc.viz % kVizIds.length];
+      _vcat = _vcats.indexWhere((e) => e.$2.contains(id));
+      if (_vcat < 0) _vcat = 0;
+    }
     _sheet((c, ss) {
       void u(VoidCallback f) {
         f();
@@ -470,37 +484,59 @@ class _PlayerPageState extends State<PlayerPage> {
         setState(() {});
       }
 
-      void soon() => snack2('هذه الأداة في التحديث القادم');
-      final spd = [0.75, 1.0, 1.25, 1.5, 2.0];
-      return SizedBox(
-        height: MediaQuery.of(c).size.height * 0.88,
-        child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(14, 10, 14, 24),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Center(child: Container(width: 54, height: 5, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(3)))),
-            SizedBox(height: 10),
-            Row(children: [
-              _box(Ic.x, () => Navigator.pop(c), size: 32, color: Colors.white),
-              SizedBox(width: 10),
-              Text('إعدادات العرض والتشغيل', style: tx(15.5, c: Colors.white, w: FontWeight.w700)),
-            ].reversed.toList()),
-            SizedBox(height: 14),
-            _sc2(Ic.eq, 'قوالب العرض', chip: kVizTitles[pc.viz % kVizTitles.length], SizedBox(
-              height: 62,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: kVizIds.length,
-                separatorBuilder: (_, __) => SizedBox(width: 8),
-                itemBuilder: (_, i) => GestureDetector(
-                  onTap: () => u(() => pc.setPref('viz', i)),
-                  child: Container(
-                    width: 62,
-                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), gradient: RadialGradient(colors: [Color(0xFF14664F), Color(0xFF073D2E)]), border: Border.all(color: pc.viz == i ? kA : Colors.transparent, width: 2.2)),
-                    child: ClipRRect(borderRadius: BorderRadius.circular(14), child: IgnorePointer(child: VizStage(an: null, img: img, viz: i, still: true))),
+      Widget seg(List<String> l, int sel, void Function(int) on, {double fs = 13}) => Container(
+            padding: EdgeInsets.all(3),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), color: Color(0x40000000)),
+            child: Row(children: [
+              for (var i = 0; i < l.length; i++)
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => on(i),
+                    child: AnimatedContainer(
+                      duration: Duration(milliseconds: 180),
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(11), color: sel == i ? kA : Colors.transparent),
+                      child: Center(child: Text(l[i], style: tx(fs, c: sel == i ? Color(0xFF2A2106) : Colors.white70, w: FontWeight.w700))),
+                    ),
                   ),
                 ),
+            ]),
+          );
+
+      final ids = _vcats[_vcat].$2;
+      final view = <Widget>[
+            _sc2(Ic.eq, 'قوالب العرض', chip: kVizTitles[pc.viz % kVizTitles.length], Column(children: [
+              seg([for (final e in _vcats) e.$1], _vcat, (i) => u(() => _vcat = i), fs: 11.5),
+              SizedBox(height: 10),
+              GridView.count(
+                crossAxisCount: 4,
+                shrinkWrap: true,
+                physics: NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 8,
+                childAspectRatio: 0.78,
+                children: [
+                  for (final id in ids)
+                    Builder(builder: (_) {
+                      final i = kVizIds.indexOf(id), on = pc.viz == i;
+                      return GestureDetector(
+                        onTap: () => u(() => pc.setPref('viz', i)),
+                        child: Column(children: [
+                          AspectRatio(
+                            aspectRatio: 1,
+                            child: Container(
+                              decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), gradient: RadialGradient(colors: [Color(0xFF14664F), Color(0xFF073D2E)]), border: Border.all(color: on ? kA : Colors.transparent, width: 2)),
+                              child: ClipRRect(borderRadius: BorderRadius.circular(12), child: IgnorePointer(child: VizStage(an: null, img: img, viz: i, still: true))),
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(kVizTitles[i], maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(10, c: on ? kA : Colors.white60)),
+                        ]),
+                      );
+                    }),
+                ],
               ),
-            )),
+            ])),
             _sc2(Ic.lay, 'ترتيب الواجهة', Row(children: [
               for (var i = 0; i < 3; i++) ...[
                 if (i > 0) SizedBox(width: 10),
@@ -547,7 +583,10 @@ class _PlayerPageState extends State<PlayerPage> {
                 },
               ),
             )),
-            _sc2(Ic.spark, 'أدوات القصيدة', GridView.count(
+      ];
+      final tools = <Widget>[
+            _grp('القصيدة'),
+            GridView.count(
               crossAxisCount: 2,
               shrinkWrap: true,
               physics: NeverScrollableScrollPhysics(),
@@ -555,15 +594,6 @@ class _PlayerPageState extends State<PlayerPage> {
               crossAxisSpacing: 8,
               childAspectRatio: 3.3,
               children: [
-                _tile(Ic.info, 'الإصدار $kBuild', 'اضغط للتحقق من التحديث', () async {
-                  final up = await latestUpdate();
-                  if (!mounted) return;
-                  if (up.build > kBuild) {
-                    launchApk(up.url);
-                  } else {
-                    snack2('أنت على آخر نسخة');
-                  }
-                }),
                 _tile(Ic.info, 'عن القصيدة', 'الرادود والتفاصيل', () {
                   showDialog(
                     context: context,
@@ -595,6 +625,18 @@ class _PlayerPageState extends State<PlayerPage> {
                   pc.seek(pk);
                   if (!pc.p.playing) pc.toggle();
                 }),
+                _tile(Ic.eq, 'الإحصائيات', 'الاستماعات والإعجابات', () => showStatsSheet(context)),
+              ],
+            ),
+            _grp('أوضاع الاستماع'),
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+              childAspectRatio: 3.3,
+              children: [
                 _tile(Ic.users, 'المجلس', majlis.on ? 'مفعّل · ${majlis.code}' : 'استماع مشترك', () {
                   Navigator.pop(c);
                   showMajlisSheet(context);
@@ -607,39 +649,64 @@ class _PlayerPageState extends State<PlayerPage> {
                   Navigator.pop(c);
                   Navigator.push(context, MaterialPageRoute(builder: (_) => const CarPage()));
                 }),
-                _tile(Ic.wave, 'وضع الأداء', pc.perf == 1 ? 'مفعّل — رسوم أخف' : 'للأجهزة الضعيفة', () {
-                  pc.setPref('perf', pc.perf == 1 ? 0 : 1);
-                  ss(() {});
-                  snack2(pc.perf == 1 ? 'وضع الأداء مفعّل: يُطبَّق عند فتح المشغّل من جديد' : 'أُوقف وضع الأداء');
-                }),
-                _tile(Ic.eq, 'الإحصائيات', 'الاستماعات والإعجابات', () => showStatsSheet(context)),
                 _tile(Ic.pulse, 'وضع اللطم', Latm.on ? 'مفعّل — اضغط للإيقاف' : 'اهتزاز مع الإيقاع', () {
                   Latm.toggle();
                   ss(() {});
                   snack2(Latm.on ? 'وضع اللطم مفعّل: يهتز الهاتف مع الإيقاع' : 'أُوقف وضع اللطم');
                 }),
               ],
-            )),
-            _sc2(Ic.speed, 'سرعة التشغيل', Container(
-              padding: EdgeInsets.all(4),
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), color: Color(0x66000000)),
-              child: Row(children: [
-                for (final v in spd)
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => u(() => pc.setSpeed(v)),
-                      child: Container(
-                        padding: EdgeInsets.symmetric(vertical: 13),
-                        decoration: BoxDecoration(borderRadius: BorderRadius.circular(15), color: pc.speed == v ? kA : Colors.transparent),
-                        child: Center(child: Text('${v}x', style: tx(16, c: pc.speed == v ? Color(0xFF2A2106) : Colors.white))),
-                      ),
-                    ),
-                  ),
+            ),
+            _grp('التطبيق'),
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+              childAspectRatio: 3.3,
+              children: [
+                _tile(Ic.wave, 'وضع الأداء', pc.perf == 1 ? 'مفعّل — رسوم أخف' : 'للأجهزة الضعيفة', () {
+                  pc.setPref('perf', pc.perf == 1 ? 0 : 1);
+                  ss(() {});
+                  snack2(pc.perf == 1 ? 'وضع الأداء مفعّل: يُطبَّق عند فتح المشغّل من جديد' : 'أُوقف وضع الأداء');
+                }),
+                _tile(Ic.info, 'الإصدار $kBuild', 'اضغط للتحقق من التحديث', () async {
+                  final up = await latestUpdate();
+                  if (!mounted) return;
+                  if (up.build > kBuild) {
+                    launchApk(up.url);
+                  } else {
+                    snack2('أنت على آخر نسخة');
+                  }
+                }),
               ],
-            ))),
-            _sc2(Ic.text, 'تأخير الكلمات (للسماعات اللاسلكية)', _chips(5, [0.0, 0.2, 0.4, 0.6, 0.8].indexOf(pc.lyOffset), (i) => i == 0 ? 'بدون' : '${[0.0, 0.2, 0.4, 0.6, 0.8][i]} ث', (i) => u(() => pc.setLyOffset([0.0, 0.2, 0.4, 0.6, 0.8][i])))),
-          ]),
-        ),
+            ),
+      ];
+      return SizedBox(
+        height: MediaQuery.of(c).size.height * 0.85,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(14, 10, 14, 0),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Center(child: Container(width: 44, height: 5, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(3)))),
+              SizedBox(height: 10),
+              Row(children: [
+                Text('إعدادات المشغل', style: tx(15.5, c: Colors.white, w: FontWeight.w700)),
+                Spacer(),
+                _box(Ic.x, () => Navigator.pop(c), size: 32, color: Colors.white),
+              ]),
+              SizedBox(height: 12),
+              seg(['العرض', 'الأدوات'], _stab, (i) => u(() => _stab = i)),
+              SizedBox(height: 6),
+            ]),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(14, 6, 14, 24),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _stab == 0 ? view : tools),
+            ),
+          ),
+        ]),
       );
     });
   }
