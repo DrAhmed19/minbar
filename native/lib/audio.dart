@@ -386,7 +386,7 @@ List<Widget> _bands(BuildContext c, StateSetter ss, VoidCallback edited) => [
 
 /// منحنى المعادل مثل الويب: شبكة بالترددات، نقاط النطاقات (تُسحب للأعلى والأسفل)، والطيف الحي خلفه أثناء التشغيل
 const _cl = 30.0, _cb = 20.0;
-double _fx(double hz, double w) => _cl + (w - _cl - 8) * (math.log(hz / 20) / math.log(1000));
+double _gxF(double hz, double w) => _cl + (w - _cl - 8) * (math.log(hz / 20) / math.log(1000));
 double _gy(double g, double h) => (h - _cb) / 2 - g / 12 * ((h - _cb) / 2 - 10);
 
 class EqGraph extends StatefulWidget {
@@ -411,7 +411,7 @@ class _EqGraphState extends State<EqGraph> with SingleTickerProviderStateMixin {
     if (start) {
       var best = 0, bd = 1e9;
       for (var i = 0; i < kEQF.length; i++) {
-        final d = (_fx(kEQF[i].toDouble(), s.width) - o.dx).abs();
+        final d = (_gxF(kEQF[i].toDouble(), s.width) - o.dx).abs();
         if (d < bd) {
           bd = d;
           best = i;
@@ -484,7 +484,7 @@ class _CurvePainter extends CustomPainter {
       tp.paint(x, Offset(0, y - 7));
     }
     for (var i = 0; i < kEQF.length; i++) {
-      final px = _fx(kEQF[i].toDouble(), w);
+      final px = _gxF(kEQF[i].toDouble(), w);
       x.drawLine(Offset(px, 4), Offset(px, h - _cb), g);
       if (i.isEven || i == kEQF.length - 1) {
         final tp = TextPainter(text: TextSpan(text: fmtF(kEQF[i]), style: const TextStyle(fontSize: 10, color: Colors.white54)), textDirection: TextDirection.ltr)..layout();
@@ -494,7 +494,7 @@ class _CurvePainter extends CustomPainter {
     final p = Path();
     for (var i = 0; i <= 100; i++) {
       final hz = 20 * math.pow(1000, i / 100).toDouble();
-      final px = _fx(hz, w), py = _gy(eqAt(hz).clamp(-15.0, 15.0), h);
+      final px = _gxF(hz, w), py = _gy(eqAt(hz).clamp(-15.0, 15.0), h);
       i == 0 ? p.moveTo(px, py) : p.lineTo(px, py);
     }
     x.drawPath(
@@ -504,7 +504,7 @@ class _CurvePainter extends CustomPainter {
           ..strokeWidth = 2.5
           ..color = kGold);
     for (var i = 0; i < kEQF.length; i++) {
-      final c = Offset(_fx(kEQF[i].toDouble(), w), _gy(au.eq[i], h));
+      final c = Offset(_gxF(kEQF[i].toDouble(), w), _gy(au.eq[i], h));
       x.drawCircle(c, hot == i ? 8 : 5.5, Paint()..color = kGold);
       x.drawCircle(c, hot == i ? 8 : 5.5, Paint()
         ..style = PaintingStyle.stroke
