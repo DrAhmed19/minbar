@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
 import 'analysis.dart';
@@ -136,7 +137,7 @@ class _PlayerPageState extends State<PlayerPage> {
                         setState(() {});
                         snack2(kVizTitles[pc.viz]);
                       },
-                      child: SizedBox(height: 52, child: Center(child: Text('${pc.index + 1} من ${pc.queue.length}', style: tx(15, c: Colors.white60)))),
+                      child: SizedBox(height: 36, child: Center(child: Text('${pc.index + 1} من ${pc.queue.length}', style: tx(13, c: Colors.white60)))),
                     ),
                   ),
                   _box(Ic.chat, () => showCommentsSheet(context), label: 'التعليقات'),
@@ -152,6 +153,19 @@ class _PlayerPageState extends State<PlayerPage> {
                   Positioned.fill(child: lyView ? _lyricsView() : _stage(t)),
                   const Positioned.fill(child: CmLayer()),
                   const Positioned(right: 4, bottom: 70, child: RxLayer()),
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: AnimatedOpacity(
+                        opacity: _scrub == null ? 0 : 1,
+                        duration: const Duration(milliseconds: 150),
+                        child: Container(
+                          color: const Color(0xB3000000),
+                          alignment: Alignment.center,
+                          child: Text('${fmt2((_scrub ?? 0) * _scrubDur)} | ${fmt2(_scrubDur)}', textDirection: TextDirection.ltr, style: tx(40, c: Colors.white, w: FontWeight.w300)),
+                        ),
+                      ),
+                    ),
+                  ),
                 ]),
               ),
               _bottom(t),
@@ -168,7 +182,7 @@ class _PlayerPageState extends State<PlayerPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m, style: tx(13, c: Colors.white)), duration: Duration(seconds: 2)));
   }
 
-  Widget _box(String ic, VoidCallback f, {double size = 52, Color? color, String? label}) => Semantics(
+  Widget _box(String ic, VoidCallback f, {double size = 36, Color? color, String? label}) => Semantics(
       label: label,
       button: true,
       child: GestureDetector(
@@ -176,8 +190,8 @@ class _PlayerPageState extends State<PlayerPage> {
         child: Container(
           width: size,
           height: size,
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(15), color: Color(0x14FFFFFF), border: Border.all(color: Color(0x73E8C468), width: 1.3)),
-          child: Center(child: PIcon(ic, color: color ?? kA, size: 24)),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(11), color: Color(0x14FFFFFF), border: Border.all(color: Color(0x73E8C468), width: 1)),
+          child: Center(child: PIcon(ic, color: color ?? kA, size: size * 0.47)),
         ),
       ));
 
@@ -185,8 +199,8 @@ class _PlayerPageState extends State<PlayerPage> {
     final pc = app.player;
     Widget st = Column(children: [
       Expanded(
-        flex: 5,
-        child: Padding(padding: EdgeInsets.only(top: 14), child: VizStage(an: an, img: img, viz: pc.viz, env: env)),
+        flex: 7,
+        child: Padding(padding: EdgeInsets.only(top: 6), child: VizStage(an: an, img: img, viz: pc.viz, env: env)),
       ),
       Expanded(
         flex: 3,
@@ -203,6 +217,8 @@ class _PlayerPageState extends State<PlayerPage> {
     return st;
   }
 
+  double? _scrub;
+  double _scrubDur = 0;
   final _sc = ScrollController();
   int _lastIdx = -2;
 
@@ -214,14 +230,14 @@ class _PlayerPageState extends State<PlayerPage> {
       padding: EdgeInsets.fromLTRB(18, 6, 18, 4),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Row(children: [
-          _box(Ic.moon, _sleepSheet, size: 54, color: pc.sleepAt != null ? kA2 : kA, label: 'مؤقت النوم'),
+          _box(Ic.moon, _sleepSheet, size: 38, color: pc.sleepAt != null ? kA2 : kA, label: 'مؤقت النوم'),
           Expanded(
             child: Column(children: [
-              Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: TextStyle(fontFamily: thx(pc.viz).font, fontFamilyFallback: const ['F0'], fontSize: 24, color: Colors.white, fontWeight: FontWeight.w700, height: 1.4)),
-              FittedBox(fit: BoxFit.scaleDown, child: Text([t.reciter, t.poet].where((e) => e.isNotEmpty).join(' · '), maxLines: 1, textAlign: TextAlign.center, style: tx(16, c: kA))),
+              Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: TextStyle(fontFamily: thx(pc.viz).font, fontFamilyFallback: const ['F0'], fontSize: 18, color: Colors.white, fontWeight: FontWeight.w700, height: 1.4)),
+              FittedBox(fit: BoxFit.scaleDown, child: Text([t.reciter, t.poet].where((e) => e.isNotEmpty).join(' · '), maxLines: 1, textAlign: TextAlign.center, style: tx(13, c: kA))),
             ]),
           ),
-          _box(Ic.more, _settingsSheet, size: 54, label: 'إعدادات المشغل'),
+          _box(Ic.more, _settingsSheet, size: 38, label: 'إعدادات المشغل'),
         ]),
         SizedBox(height: 6),
         StreamBuilder<Duration>(
@@ -232,20 +248,32 @@ class _PlayerPageState extends State<PlayerPage> {
               final dur = (d.data?.inMilliseconds ?? 0) / 1000.0;
               final pos = ((s.data?.inMilliseconds ?? 0) / 1000.0).clamp(0.0, dur > 0 ? dur : 1.0);
               return Column(children: [
-                SizedBox(
-                  height: 44,
-                  child: WaveBar(env: env, progress: dur > 0 ? pos / dur : 0, onSeek: (f) {
+                if (pc.layout == 0) ...[
+                  SizedBox(height: 40, child: SpecBar(an: an)),
+                  ProgLine(pg: thx(pc.viz).pg, p: dur > 0 ? pos / dur : 0, heat: social.rx, dur: dur, onSeek: (f) {
                     if (dur > 0) pc.seek(f * dur);
                   }),
-                ),
-                ProgLine(pg: thx(pc.viz).pg, p: dur > 0 ? pos / dur : 0, heat: social.rx, dur: dur, onSeek: (f) {
-                  if (dur > 0) pc.seek(f * dur);
-                }),
+                ] else
+                  SizedBox(
+                    height: 40,
+                    child: WaveBar(
+                      env: env,
+                      progress: _scrub ?? (dur > 0 ? pos / dur : 0),
+                      onScrub: (f) => setState(() {
+                        _scrub = f;
+                        _scrubDur = dur;
+                      }),
+                      onSeek: (f) {
+                        if (dur > 0) pc.seek(f * dur);
+                      },
+                    ),
+                  ),
+                SizedBox(height: 4),
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 2),
                   child: Row(textDirection: TextDirection.ltr, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                    Text(fmt2(pos), style: tx(14, c: Colors.white60)),
-                    Text(fmt2(dur), style: tx(14, c: Colors.white60)),
+                    Text(fmt2(pos), style: tx(12, c: Colors.white60)),
+                    Text(fmt2(dur), style: tx(12, c: Colors.white60)),
                   ]),
                 ),
               ]);
@@ -256,7 +284,7 @@ class _PlayerPageState extends State<PlayerPage> {
         Directionality(
           textDirection: TextDirection.ltr,
           child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-            HoldSeek(dir: -1, onTap: pc.prev, child: PIcon(Ic.prev, color: thx(pc.viz).btn == 'ring' ? kA : kA, size: 40)),
+            HoldSeek(dir: -1, onTap: pc.prev, child: PIcon(Ic.prev, color: kA, size: 26)),
             StreamBuilder<PlayerState>(
               stream: pc.p.playerStateStream,
               builder: (_, s) {
@@ -267,7 +295,7 @@ class _PlayerPageState extends State<PlayerPage> {
                 var icol = const Color(0xFF2A2106);
                 switch (x.btn) {
                   case 'squ':
-                    dec = BoxDecoration(borderRadius: BorderRadius.circular(25), gradient: LinearGradient(colors: [kA2, kA], begin: Alignment.topLeft, end: Alignment.bottomRight), boxShadow: [BoxShadow(color: kA.withOpacity(0.35), blurRadius: 26)]);
+                    dec = BoxDecoration(borderRadius: BorderRadius.circular(18), gradient: LinearGradient(colors: [kA2, kA], begin: Alignment.topLeft, end: Alignment.bottomRight), boxShadow: [BoxShadow(color: kA.withOpacity(0.35), blurRadius: 26)]);
                   case 'disc':
                     dec = BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(center: const Alignment(-0.3, -0.4), colors: [kA2, kA, const Color(0xFF3B3226)], stops: const [0, 0.42, 1]), border: Border.all(color: const Color(0x40000000), width: 4), boxShadow: [BoxShadow(color: kA.withOpacity(0.35), blurRadius: 30)]);
                   case 'glass':
@@ -279,7 +307,7 @@ class _PlayerPageState extends State<PlayerPage> {
                   case 'circle':
                     dec = BoxDecoration(shape: BoxShape.circle, gradient: LinearGradient(colors: [kA2, kA], begin: Alignment.topLeft, end: Alignment.bottomRight), boxShadow: [BoxShadow(color: kA.withOpacity(0.35), blurRadius: 26)]);
                   default:
-                    dec = BoxDecoration(borderRadius: const BorderRadius.only(topLeft: Radius.circular(46), topRight: Radius.circular(46), bottomLeft: Radius.circular(18), bottomRight: Radius.circular(18)), gradient: LinearGradient(colors: [kA2, kA], begin: Alignment.topLeft, end: Alignment.bottomRight), boxShadow: [BoxShadow(color: kA.withOpacity(0.35), blurRadius: 26)], border: playing ? Border.all(color: kA2.withOpacity(0.6), width: 1.5) : null);
+                    dec = BoxDecoration(borderRadius: const BorderRadius.only(topLeft: Radius.circular(33), topRight: Radius.circular(33), bottomLeft: Radius.circular(13), bottomRight: Radius.circular(13)), gradient: LinearGradient(colors: [kA2, kA], begin: Alignment.topLeft, end: Alignment.bottomRight), boxShadow: [BoxShadow(color: kA.withOpacity(0.35), blurRadius: 26)], border: playing ? Border.all(color: kA2.withOpacity(0.6), width: 1.5) : null);
                 }
                 return Semantics(label: 'تشغيل أو إيقاف', button: true, child: GestureDetector(
                   onTap: pc.toggle,
@@ -287,18 +315,18 @@ class _PlayerPageState extends State<PlayerPage> {
                     scale: x.dock == 'metal' && !playing ? 0.94 : 1,
                     duration: const Duration(milliseconds: 200),
                     child: Container(
-                      width: 94,
-                      height: 94,
+                      width: 66,
+                      height: 66,
                       decoration: dec,
                       child: busy
-                          ? Padding(padding: const EdgeInsets.all(30), child: CircularProgressIndicator(strokeWidth: 3.5, color: icol))
-                          : Center(child: PIcon(playing ? Ic.pause : Ic.play, size: 44, color: icol)),
+                          ? Padding(padding: const EdgeInsets.all(21), child: CircularProgressIndicator(strokeWidth: 3, color: icol))
+                          : Center(child: PIcon(playing ? Ic.pause : Ic.play, size: 30, color: icol)),
                     ),
                   ),
                 ));
               },
             ),
-            HoldSeek(dir: 1, onTap: pc.next, child: PIcon(Ic.next, color: kA, size: 40)),
+            HoldSeek(dir: 1, onTap: pc.next, child: PIcon(Ic.next, color: kA, size: 26)),
           ]),
         ),
       ]),
@@ -313,12 +341,12 @@ class _PlayerPageState extends State<PlayerPage> {
             behavior: HitTestBehavior.opaque,
             child: Container(
               margin: EdgeInsets.symmetric(horizontal: 3),
-              padding: EdgeInsets.symmetric(vertical: 9),
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(22), color: act ? Color(0x14FFFFFF) : Colors.transparent),
+              padding: EdgeInsets.symmetric(vertical: 6),
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: act ? Color(0x14FFFFFF) : Colors.transparent),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                PIcon(ic, color: on ? kA : Color(0xB3E8C468), size: 26),
+                PIcon(ic, color: on ? kA : Color(0xB3E8C468), size: 20),
                 SizedBox(height: 3),
-                Text(s, style: tx(13, c: on ? kA : Color(0xB3E8C468))),
+                Text(s, style: tx(10.5, c: on ? kA : Color(0xB3E8C468))),
               ]),
             ),
           ),
@@ -386,18 +414,18 @@ class _PlayerPageState extends State<PlayerPage> {
       ]);
 
   Widget _sc2(String ic, String title, Widget child, {String? chip}) => Container(
-        margin: EdgeInsets.only(bottom: 12),
-        padding: EdgeInsets.fromLTRB(14, 12, 14, 14),
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(22), color: Color(0x0FFFFFFF), border: Border.all(color: Color(0x2EE8C468))),
+        margin: EdgeInsets.only(bottom: 10),
+        padding: EdgeInsets.fromLTRB(12, 10, 12, 12),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), color: Color(0x0FFFFFFF), border: Border.all(color: Color(0x2EE8C468))),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Container(width: 38, height: 38, decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: Color(0x1FE8C468)), child: Center(child: PIcon(ic, color: kA, size: 21))),
-            SizedBox(width: 10),
-            Text(title, style: tx(16, c: Colors.white)),
+            Container(width: 26, height: 26, decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: Color(0x1FE8C468)), child: Center(child: PIcon(ic, color: kA, size: 14))),
+            SizedBox(width: 8),
+            Text(title, style: tx(13, c: Colors.white)),
             Spacer(),
-            if (chip != null) Container(padding: EdgeInsets.symmetric(horizontal: 14, vertical: 7), decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: Color(0x14FFFFFF)), child: Text(chip, style: tx(13, c: kA))),
+            if (chip != null) Container(padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: Color(0x14FFFFFF)), child: Text(chip, style: tx(10.5, c: kA))),
           ]),
-          SizedBox(height: 12),
+          SizedBox(height: 10),
           child,
         ]),
       );
@@ -406,15 +434,15 @@ class _PlayerPageState extends State<PlayerPage> {
         onTap: f,
         child: Stack(clipBehavior: Clip.none, children: [
           Container(
-            padding: EdgeInsets.all(10),
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), color: Color(0x0FFFFFFF), border: Border.all(color: Color(0x24FFFFFF))),
+            padding: EdgeInsets.fromLTRB(10, 8, 10, 8),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), color: Color(0x0FFFFFFF), border: Border.all(color: Color(0x24FFFFFF))),
             child: Row(children: [
-              Container(width: 44, height: 44, decoration: BoxDecoration(borderRadius: BorderRadius.circular(13), color: Color(0x24E8C468)), child: Center(child: PIcon(ic, color: kA, size: 22))),
-              SizedBox(width: 10),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(t, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(14.5, c: Colors.white)),
-                Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(11.5, c: Colors.white54)),
+                Text(t, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(12.5, c: Colors.white, w: FontWeight.w700)),
+                Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(9.5, c: Colors.white54)),
               ])),
+              SizedBox(width: 6),
+              Container(width: 26, height: 26, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Color(0x40E8C468))), child: Center(child: PIcon(ic, color: kA, size: 14))),
             ]),
           ),
           if (neu) Positioned(top: -8, right: 18, child: Container(padding: EdgeInsets.symmetric(horizontal: 9, vertical: 2), decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), color: kA), child: Text('جديد', style: tx(10.5, c: Color(0xFF2A2106))))),
@@ -441,23 +469,23 @@ class _PlayerPageState extends State<PlayerPage> {
             Center(child: Container(width: 54, height: 5, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(3)))),
             SizedBox(height: 10),
             Row(children: [
-              _box(Ic.x, () => Navigator.pop(c), size: 46, color: Colors.white),
-              SizedBox(width: 12),
-              Text('إعدادات العرض والتشغيل', style: tx(19, c: Colors.white)),
+              _box(Ic.x, () => Navigator.pop(c), size: 32, color: Colors.white),
+              SizedBox(width: 10),
+              Text('إعدادات العرض والتشغيل', style: tx(15.5, c: Colors.white, w: FontWeight.w700)),
             ].reversed.toList()),
             SizedBox(height: 14),
             _sc2(Ic.eq, 'قوالب العرض', chip: kVizTitles[pc.viz % kVizTitles.length], SizedBox(
-              height: 86,
+              height: 62,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: kVizIds.length,
-                separatorBuilder: (_, __) => SizedBox(width: 10),
+                separatorBuilder: (_, __) => SizedBox(width: 8),
                 itemBuilder: (_, i) => GestureDetector(
                   onTap: () => u(() => pc.setPref('viz', i)),
                   child: Container(
-                    width: 86,
-                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), gradient: RadialGradient(colors: [Color(0xFF14664F), Color(0xFF073D2E)]), border: Border.all(color: pc.viz == i ? kA : Colors.transparent, width: 2.2)),
-                    child: ClipRRect(borderRadius: BorderRadius.circular(18), child: IgnorePointer(child: VizStage(an: null, img: img, viz: i, still: true))),
+                    width: 62,
+                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), gradient: RadialGradient(colors: [Color(0xFF14664F), Color(0xFF073D2E)]), border: Border.all(color: pc.viz == i ? kA : Colors.transparent, width: 2.2)),
+                    child: ClipRRect(borderRadius: BorderRadius.circular(14), child: IgnorePointer(child: VizStage(an: null, img: img, viz: i, still: true))),
                   ),
                 ),
               ),
@@ -472,12 +500,12 @@ class _PlayerPageState extends State<PlayerPage> {
                       lyView = i == 2;
                     }),
                     child: Container(
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), color: pc.layout == i ? Color(0x2EE8C468) : Color(0x14FFFFFF), border: Border.all(color: pc.layout == i ? kA : Color(0x24FFFFFF), width: pc.layout == i ? 2 : 1.2)),
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), color: pc.layout == i ? Color(0x2EE8C468) : Color(0x14FFFFFF), border: Border.all(color: pc.layout == i ? kA : Color(0x24FFFFFF), width: pc.layout == i ? 2 : 1.2)),
                       child: Column(children: [
-                        Container(width: 38, height: 54, decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: pc.layout == i ? kA.withOpacity(0.55) : Colors.white24), child: Icon(i == 2 ? Icons.notes : (i == 1 ? Icons.crop_square : Icons.circle), size: 16, color: Colors.white70)),
-                        SizedBox(height: 8),
-                        Text(['غامر', 'كلاسيكي', 'الكلمات أولاً'][i], style: tx(14, c: pc.layout == i ? kA : Colors.white)),
+                        Container(width: 22, height: 32, decoration: BoxDecoration(borderRadius: BorderRadius.circular(6), color: pc.layout == i ? kA.withOpacity(0.55) : Colors.white24), child: Icon(i == 2 ? Icons.notes : (i == 1 ? Icons.crop_square : Icons.circle), size: 11, color: Colors.white70)),
+                        SizedBox(height: 6),
+                        Text(['غامر', 'كلاسيكي', 'الكلمات أولاً'][i], style: tx(11.5, c: pc.layout == i ? kA : Colors.white)),
                       ]),
                     ),
                   ),
@@ -485,19 +513,19 @@ class _PlayerPageState extends State<PlayerPage> {
               ],
             ])),
             _sc2(Ic.color, 'لون الخلفية', chip: kBgTitles[pc.bg % kBgTitles.length], SizedBox(
-              height: 82,
+              height: 62,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: kBgKeys.length,
-                separatorBuilder: (_, __) => SizedBox(width: 12),
+                separatorBuilder: (_, __) => SizedBox(width: 10),
                 itemBuilder: (_, i) {
                   final p = bgPal(i, themeOf(pc.viz), hue);
                   return GestureDetector(
                     onTap: () => u(() => pc.setPref('bg', i)),
                     child: Column(children: [
                       Container(
-                        width: 56,
-                        height: 56,
+                        width: 40,
+                        height: 40,
                         decoration: BoxDecoration(shape: BoxShape.circle, gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [p.b[0], p.b[2]]), border: Border.all(color: pc.bg == i ? kA : Colors.white24, width: pc.bg == i ? 3 : 1)),
                         child: i < 2 ? Center(child: PIcon(i == 0 ? Ic.spark : Ic.lay, color: Colors.white, size: 20)) : null,
                       ),
@@ -512,9 +540,9 @@ class _PlayerPageState extends State<PlayerPage> {
               crossAxisCount: 2,
               shrinkWrap: true,
               physics: NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 10,
-              childAspectRatio: 2.45,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+              childAspectRatio: 3.3,
               children: [
                 _tile(Ic.info, 'الإصدار $kBuild', 'اضغط للتحقق من التحديث', () async {
                   final up = await latestUpdate();
@@ -743,7 +771,8 @@ class WaveBar extends StatelessWidget {
   final List<double> env;
   final double progress;
   final void Function(double) onSeek;
-  const WaveBar({super.key, required this.env, required this.progress, required this.onSeek});
+  final void Function(double?)? onScrub;
+  const WaveBar({super.key, required this.env, required this.progress, required this.onSeek, this.onScrub});
 
   @override
   Widget build(BuildContext context) {
@@ -751,10 +780,20 @@ class WaveBar extends StatelessWidget {
       textDirection: TextDirection.ltr,
       child: LayoutBuilder(builder: (_, c) {
         double f(Offset o) => (o.dx / c.maxWidth).clamp(0.0, 1.0);
+        var last = progress;
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTapDown: (d) => onSeek(f(d.localPosition)),
-          onHorizontalDragUpdate: (d) => onSeek(f(d.localPosition)),
+          onTapUp: (d) => onSeek(f(d.localPosition)),
+          onHorizontalDragStart: (d) => onScrub?.call(f(d.localPosition)),
+          onHorizontalDragUpdate: (d) {
+            last = f(d.localPosition);
+            onScrub == null ? onSeek(last) : onScrub!(last);
+          },
+          onHorizontalDragEnd: (_) {
+            onSeek(last);
+            onScrub?.call(null);
+          },
+          onHorizontalDragCancel: () => onScrub?.call(null),
           child: CustomPaint(size: Size(c.maxWidth, c.maxHeight), painter: _WavePainter(env, progress)),
         );
       }),
@@ -781,8 +820,6 @@ class _WavePainter extends CustomPainter {
       final r = RRect.fromRectAndRadius(Rect.fromLTWH(i * step, mid - h / 2, bw, h), Radius.circular(1.2));
       canvas.drawRRect(r, f <= p ? on : off);
     }
-    final x = (p * size.width).clamp(0.0, size.width);
-    canvas.drawCircle(Offset(x, mid), 5, Paint()..color = kA2);
   }
 
   @override
@@ -966,4 +1003,66 @@ class _PgPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _PgPainter o) => true;
+}
+
+
+/// شكل الصوت الحي (الغامر) — مثل plrspec في الويب
+class SpecBar extends StatefulWidget {
+  final Analysis? an;
+  const SpecBar({super.key, this.an});
+  @override
+  State<SpecBar> createState() => _SpecBarState();
+}
+
+class _SpecBarState extends State<SpecBar> with SingleTickerProviderStateMixin {
+  late final Ticker _t;
+  final _raw = List<double>.filled(22, 0), _v = List<double>.filled(22, 0);
+  @override
+  void initState() {
+    super.initState();
+    _t = createTicker((e) {
+      final pl = app.player.p, sec = pl.position.inMilliseconds / 1000.0, now = e.inMilliseconds / 1000.0;
+      if (pl.playing && widget.an != null) {
+        widget.an!.bandsAt(sec, _raw);
+      } else {
+        for (var k = 0; k < 22; k++) {
+          _raw[k] = pl.playing ? 0.25 + 0.2 * math.sin(now * 6 + k * 0.6).abs() : 0;
+        }
+      }
+      for (var k = 0; k < 22; k++) {
+        _v[k] += (_raw[k] - _v[k]) * (_raw[k] > _v[k] ? 0.5 : 0.15);
+      }
+      setState(() {});
+    })
+      ..start();
+  }
+
+  @override
+  void dispose() {
+    _t.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(size: Size.infinite, painter: _SpecPainter(_v));
+}
+
+class _SpecPainter extends CustomPainter {
+  final List<double> v;
+  _SpecPainter(this.v);
+  @override
+  void paint(Canvas c, Size s) {
+    const step = 5.0, bw = 2.6;
+    final n = (s.width / step).floor(), mid = s.height / 2;
+    for (var i = 0; i < n; i++) {
+      final d = ((i - n / 2).abs() / (n / 2)), k = (d * 21).round().clamp(0, 21);
+      final e = v[k] * (1 - d * 0.35);
+      final h = 2 + e * (s.height - 4);
+      final col = Color.lerp(kA2, kA, d)!.withOpacity(0.45 + e * 0.55);
+      c.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(i * step, mid - h / 2, bw, h), const Radius.circular(1.3)), Paint()..color = col);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SpecPainter o) => true;
 }

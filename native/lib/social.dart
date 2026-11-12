@@ -305,12 +305,12 @@ class _RxLayerState extends State<RxLayer> with SingleTickerProviderStateMixin {
           child: Semantics(label: 'إعجاب', button: true, child: GestureDetector(
             onTap: () => social.sendRx(context),
             child: Container(
-              width: 62,
-              height: 62,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0x33FFFFFF), boxShadow: const [BoxShadow(color: Color(0x40000000), blurRadius: 14)]),
               child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                const PIcon(Ic.heartF, size: 26, color: Colors.white),
-                if (n > 0) Text(n > 999 ? '${(n / 1000).toStringAsFixed(1)}k' : '$n', style: tx(10, c: Colors.white70)),
+                const PIcon(Ic.heartF, size: 19, color: Colors.white),
+                if (n > 0) Text(n > 999 ? '${(n / 1000).toStringAsFixed(1)}k' : '$n', style: tx(8.5, c: Colors.white70)),
               ]),
             ),
           )),

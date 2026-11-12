@@ -383,7 +383,7 @@ class VizPainter extends CustomPainter {
     H = size.height;
     cx = W / 2;
     cy = H / 2;
-    R = math.min(W * 0.31, H * 0.30) * scale;
+    R = math.min(W * 0.33, H * 0.31) * scale;
     if (id == 'mihrab') R = math.min(W / 2.9, H / 2.75) * scale;
     u = math.max(1.0, R / 110);
     switch (id) {
