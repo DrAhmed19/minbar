@@ -433,7 +433,7 @@ Future<({int build, String url})> latestUpdate() async {
   try {
     final d = await FirebaseFirestore.instance.doc('config/app').get().timeout(const Duration(seconds: 8));
     final b = (d.data()?['apkBuild'] as num?)?.toInt() ?? 0;
-    final u = '${d.data()?['apkUrl'] ?? ''}';
+    const u = ''; // النسخ الجديدة تختار الملف حسب المعالج (kApkUrl)؛ apkUrl للنسخ القديمة فقط
     if (b > 0) return (build: b, url: u);
   } catch (_) {}
   return (build: await latestBuild(), url: '');
