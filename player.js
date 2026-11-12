@@ -283,7 +283,7 @@
     if (!pfq || pfq.length !== n) pfq = new Float32Array(n); pfq.set(fqd);
   }
   /* ===== تحليل صوتي مسبق: يُحسب مرة واحدة (بالخلفية عند المالك) ويُقرأ وقت التشغيل بلا أي معالجة صوت — يحرّك الرسم واللطم بدل التحليل الحي ===== */
-  const APPV = '3.73';
+  const APPV = '3.74';
   const ANV = 'v1', ANKEY = (t) => 'n/' + t.id + '-' + ANV + '.bin', ANOK = (t) => /^[A-Za-z0-9_-]{3,64}$/.test((t && t.id) || '');
   let PRE = null; const PF = { dd: new Float32Array(22), vb: { db: 0, peak: 1 }, cb: { db: 0, flat: 0 }, hb: { db: 0 }, lb: { db: 0 }, on: 0 }; let synW = null, synT = 0;
   async function anLoad(t) { PRE = null; if (!t || t.an !== 1 || !ANOK(t)) return; try { const r = await fetch('media/u/' + ANKEY(t)); if (!r.ok) return; const b = new Uint8Array(await r.arrayBuffer()); if (b.length < 12 || b[0] !== 77 || b[1] !== 66 || b[2] !== 65) return; const nf = new DataView(b.buffer).getUint32(8, true); if (tracks[cur] && tracks[cur].id === t.id) PRE = { id: t.id, fps: b[4], nf, W: b[5] + b[6], d: b, o: 12 }; } catch (e) {} }
@@ -1644,8 +1644,10 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     await new Promise((r) => { mr.onstop = r; }); clearInterval(iv); stream.getTracks().forEach((x) => x.stop()); if (stop) return;
     try { const url = URL.createObjectURL(new Blob(chunks, { type: mr.mimeType || 'audio/webm' })); const segs = await window.LYAI.transcribe(url, 'fast', (s) => { const p = document.getElementById('plrRcP'); if (p) p.textContent = s; }, () => stop); URL.revokeObjectURL(url);
       const N = window.LYAI.norm, heard = N(segs.map((s) => s.text).join(' ')).split(/\s+/).filter((x) => x.length > 1); if (heard.length < 2) { w.remove(); return toast('لم يُسمع كلام واضح، حاول مرة أخرى'); }
-      const bg = new Set(); for (let i = 0; i < heard.length - 1; i++) bg.add(heard[i] + ' ' + heard[i + 1]); let best = null;
-      tracks.forEach((t) => { const L = linesOf(t); L.forEach((ln, i) => { const ws = N(ln.l).split(/\s+/).filter((x) => x.length > 1); let s = 0; ws.forEach((x) => { if (heard.includes(x)) s += 1; }); for (let k = 0; k < ws.length - 1; k++) if (bg.has(ws[k] + ' ' + ws[k + 1])) s += 2; if (s >= 3 && (!best || s > best.s)) best = { s, t, ln }; }); });
+      const STM = (w) => { for (const p of ['وال', 'بال', 'فال', 'كال', 'لل', 'ال']) if (w.startsWith(p) && w.length - p.length >= 2) { w = w.slice(p.length); break; } if (w.length > 3 && /^[وفب]/.test(w)) w = w.slice(1); return w; };
+      const NEAR = (a, b) => { if (a === b) return true; if (a.length < 4 || b.length < 4 || Math.abs(a.length - b.length) > 1) return false; let i = 0, j = 0, e = 0; while (i < a.length && j < b.length) { if (a[i] === b[j]) { i++; j++; continue; } if (++e > 1) return false; if (a.length > b.length) i++; else if (b.length > a.length) j++; else { i++; j++; } } return e + (a.length - i) + (b.length - j) <= 1; };
+      const H = heard.map(STM); let best = null;
+      tracks.forEach((t) => { const L = linesOf(t), LS = L.map((ln) => N(ln.l).split(/\s+/).filter((x) => x.length > 1).map(STM)); L.forEach((ln, i) => { const win = [].concat(LS[i] || [], LS[i + 1] || [], LS[i + 2] || []); if (!win.length) return; let hit = 0, run = 0, bonus = 0; H.forEach((w) => { if (win.some((x) => NEAR(w, x))) { hit++; run++; if (run >= 2) bonus++; } else run = 0; }); const s = hit / H.length + bonus * 0.08; if (s >= 0.34 && (!best || s > best.s)) best = { s, t, ln }; }); });
       w.remove(); if (!best) return toast('لم نتعرّف على القصيدة في المكتبة'); qFrom(best.t, tracks); play(tracks.indexOf(best.t), true); const at = best.ln.t; if (isFinite(at)) seekTo(at); toast('تم التعرّف: ' + best.t.title);
     } catch (e) { w.remove(); toast('تعذّر التعرّف. يلزم اتصال بالإنترنت عند الاستخدام الأول'); } }
   /* ---------- 9) مناسبة اليوم (حسب التقويم الهجري) ---------- */
