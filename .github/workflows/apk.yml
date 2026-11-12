@@ -65,6 +65,21 @@ jobs:
           ls -la *.apk
           gh release delete apk-latest --yes --cleanup-tag || true
           gh release create apk-latest minbar.apk minbar-arm32.apk minbar-x64.apk --title "منبر APK" --notes "build:${{ github.run_number }}" --prerelease
+      - name: نشر نسخة عامة في minbar-releases (رابط تحميل للجميع)
+        if: github.ref == 'refs/heads/main'
+        continue-on-error: true
+        env:
+          RK: ${{ secrets.RELEASES_KEY }}
+        run: |
+          [ -z "$RK" ] && { echo "RELEASES_KEY غير مضاف بعد — تخطي"; exit 0; }
+          printf '%s\n' "$RK" > ~/rk && chmod 600 ~/rk
+          export GIT_SSH_COMMAND="ssh -i ~/rk -o StrictHostKeyChecking=accept-new"
+          N=${{ github.run_number }}; D=$(mktemp -d)
+          cp minbar.apk minbar-arm32.apk $D/ && cp .github/deploy/README.md $D/README.md && echo $N > $D/version.txt
+          cd $D && git init -q -b main && git add -A
+          git -c user.name="minbar-ci" -c user.email="ci@minbar" commit -qm "منبر — النسخة $N"
+          git push -f git@github.com:DrAhmed19/minbar-releases.git main
+          rm -f ~/rk
       - name: تسجيل رقم البناء في Firestore (لتنبيه التحديث داخل التطبيق)
         if: github.ref == 'refs/heads/main'
         continue-on-error: true

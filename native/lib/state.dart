@@ -425,7 +425,7 @@ class AuthCtl extends ChangeNotifier {
 /// فحص التحديثات: يقارن رقم البناء المدمج بآخر إصدار منشور على GitHub
 const kBuild = int.fromEnvironment('BUILD', defaultValue: 0);
 void launchApk([String? url]) => launchUrl(Uri.parse(url == null || url.isEmpty ? kApkUrl : url), mode: LaunchMode.externalApplication);
-final kApkUrl = 'https://github.com/DrAhmed19/minbar/releases/download/apk-latest/${Abi.current() == Abi.androidArm ? 'minbar-arm32' : 'minbar'}.apk';
+final kApkUrl = 'https://github.com/DrAhmed19/minbar-releases/raw/main/${Abi.current() == Abi.androidArm ? 'minbar-arm32' : 'minbar'}.apk';
 
 /// آخر نسخة منشورة: من وثيقة config/app (apkBuild, apkUrl) التي يكتبها البناء تلقائياً،
 /// وإن تعذّر فمن إصدار GitHub (يعمل فقط إن كان المستودع عاماً)
@@ -442,13 +442,12 @@ Future<({int build, String url})> latestUpdate() async {
 Future<int> latestBuild() async {
   final c = HttpClient();
   try {
-    final rq = await c.getUrl(Uri.parse('https://api.github.com/repos/DrAhmed19/minbar/releases/tags/apk-latest'));
+    final rq = await c.getUrl(Uri.parse('https://raw.githubusercontent.com/DrAhmed19/minbar-releases/main/version.txt'));
     rq.headers.set('User-Agent', 'minbar-app');
     final r = await rq.close();
     if (r.statusCode != 200) return 0;
     final body = await r.transform(utf8.decoder).join();
-    final m = RegExp(r'build:(\d+)').firstMatch(body);
-    return m == null ? 0 : int.parse(m.group(1)!);
+    return int.tryParse(body.trim()) ?? 0;
   } catch (_) {
     return 0;
   } finally {
