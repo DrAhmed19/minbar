@@ -24,7 +24,8 @@
   const EDK = 'minbar.lyr.edits', SGK = 'minbar.lyr.sugg';
   const jget = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || 'null') || d; } catch (e) { return d; } };
   const load = () => { try { return JSON.parse(localStorage.getItem(LSK) || '{}'); } catch (e) { return {}; } };
-  const st = Object.assign({ fav: [], speed: 1, shuf: false, rep: 0, viz: 'mihrab', lay: 'a', ly: { font: 'F2', color: '#F3D88A', size: 1, tr: 'slide' } }, load());
+  const st = Object.assign({ fav: [], speed: 1, shuf: false, rep: 0, viz: 'mihrab', lay: 'a', ly: { font: 'F2', color: '#E8C468', size: 1, tr: 'slide' } }, load());
+  try { const mp = { '#f3d88a': '#E8C468', '#e6e1d3': '#FFFFFF', '#7fe0b5': '#2FBF8F', '#c0c7cc': '#FFFFFF' }; const c0 = (st.ly.color || '').toLowerCase(); if (mp[c0]) st.ly.color = mp[c0]; } catch (e) {}
   st.ly.size = Math.max(0.85, Math.min(1.2, +st.ly.size || 1));
   const save = () => { try { localStorage.setItem(LSK, JSON.stringify({ fav: st.fav, speed: st.speed, uvol: st.uvol, bg: st.bg, latm: st.latm, shuf: st.shuf, rep: st.rep, viz: st.viz, lay: st.lay, ly: st.ly, au: st.au, cm: st.cm })); } catch (e) {} };
   const fmt = (t) => { t = Math.max(0, t || 0); return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(Math.floor(t % 60)).padStart(2, '0'); };
@@ -282,7 +283,7 @@
     if (!pfq || pfq.length !== n) pfq = new Float32Array(n); pfq.set(fqd);
   }
   /* ===== تحليل صوتي مسبق: يُحسب مرة واحدة (بالخلفية عند المالك) ويُقرأ وقت التشغيل بلا أي معالجة صوت — يحرّك الرسم واللطم بدل التحليل الحي ===== */
-  const APPV = '3.72';
+  const APPV = '3.73';
   const ANV = 'v1', ANKEY = (t) => 'n/' + t.id + '-' + ANV + '.bin', ANOK = (t) => /^[A-Za-z0-9_-]{3,64}$/.test((t && t.id) || '');
   let PRE = null; const PF = { dd: new Float32Array(22), vb: { db: 0, peak: 1 }, cb: { db: 0, flat: 0 }, hb: { db: 0 }, lb: { db: 0 }, on: 0 }; let synW = null, synT = 0;
   async function anLoad(t) { PRE = null; if (!t || t.an !== 1 || !ANOK(t)) return; try { const r = await fetch('media/u/' + ANKEY(t)); if (!r.ok) return; const b = new Uint8Array(await r.arrayBuffer()); if (b.length < 12 || b[0] !== 77 || b[1] !== 66 || b[2] !== 65) return; const nf = new DataView(b.buffer).getUint32(8, true); if (tracks[cur] && tracks[cur].id === t.id) PRE = { id: t.id, fps: b[4], nf, W: b[5] + b[6], d: b, o: 12 }; } catch (e) {} }
@@ -672,7 +673,7 @@
   /* الكلمات */
   const TMK = 'minbar.lyr.times', MYK = 'minbar.lyr.mine', SQK = 'minbar.lyr.subq', GLK = 'minbar.lyr.gly';
   const GLY = Object.assign({}, (function () { try { return JSON.parse(localStorage.getItem('minbar.lyr.gly') || '{}'); } catch (e) { return {}; } })()), GED = {}; let lyrI = -2, demoH = 0;
-  const TRS = [['slide', 'انزلاق', ''], ['scroll', 'تمرير', ''], ['fade', 'تلاشٍ', ''], ['zoom', 'تكبير', ''], ['kar', 'تعبئة', ''], ['blur', 'ضبابي', ''], ['rise', 'صعود', ''], ['flip', 'انقلاب', ''], ['glow', 'توهّج', ''], ['focus', 'تركيز', '']];
+  const TRS = [['slide', 'انزلاق', '⇅'], ['scroll', 'تمرير', '↕'], ['fade', 'تلاشٍ', '◐'], ['zoom', 'تكبير', '⊕'], ['kar', 'تعبئة', '▰'], ['blur', 'ضبابي', '◌'], ['rise', 'صعود', '↑'], ['flip', 'انقلاب', '⟲'], ['glow', 'توهّج', '✦'], ['focus', 'تركيز', '◎']];
   const jset = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
   const r2 = (n) => Math.round(n * 100) / 100;
   const fmt1 = (t) => fmt(t) + '.' + String(Math.floor((t % 1) * 10));
@@ -693,7 +694,7 @@
   /* شريط الكلمات المنزلق: كل الأسطر في عمود يصعد بسلاسة، والحالي في الوسط */
   function lyxSet(box, lines) {
     const tr = box.querySelector('.lyt'), key = lines.join('\u0001'); if (box._k === key) return; box._k = key; box._i = -2; tr.textContent = '';
-    lines.forEach((l) => { const d = document.createElement('div'); d.className = 'll'; d.textContent = l; tr.appendChild(d); }); tr.style.transition = 'none'; tr.style.transform = 'translateY(0)';
+    lines.forEach((l) => { const d = document.createElement('div'); const sep = /^[\s*\-–—_.•~=]+$/.test(l || ''); d.className = 'll' + (sep ? ' sep' : ''); d.textContent = sep ? '۞' : l; tr.appendChild(d); }); tr.style.transition = 'none'; tr.style.transform = 'translateY(0)';
   }
   function lyxGo(box, k, instant) {
     if (box._i === k && !instant) return; const tr = box.querySelector('.lyt'), ch = tr.children; if (!ch.length) return;
@@ -703,7 +704,7 @@
   }
   let lyL = null, lyT = null;
   function splitLong(L) {
-    if (st.ly.split === false) return L; const lim = Math.round(36 / (st.ly.size || 1)), o = [];
+    if (st.ly.split === false) return L; const bw = (g('plrLyr') && g('plrLyr').clientWidth) || Math.min(innerWidth, 480), lim = Math.max(12, Math.min(60, Math.floor((bw - 36) / (26 * (st.ly.size || 1) * 0.5)))), o = [];
     L.forEach((x, i) => { const s = (x.l || '').trim(); if (s.length <= lim || s.indexOf(' ') < 0) { o.push(x); return; } const ws = s.split(' '), half = s.length / 2; let acc = 0, cut = 1, best = 1e9; for (let k = 1; k < ws.length; k++) { acc += ws[k - 1].length + 1; const d = Math.abs(acc - half); if (d < best) { best = d; cut = k; } }
       const a = ws.slice(0, cut).join(' '), b = ws.slice(cut).join(' '), nt = L[i + 1] ? L[i + 1].t : x.t + 5, r = a.length / s.length; o.push(Object.assign({}, x, { l: a })); o.push(Object.assign({}, x, { l: b, t: x.t + Math.min(nt - x.t, 8) * r * 0.95 })); });
     return o;
@@ -761,10 +762,10 @@
     const SP = g('plrLySp'); SP.textContent = ''; [[true, 'تلقائي'], [false, 'إيقاف']].forEach(([v, n]) => { const b = el('button', (st.ly.split !== false) === v ? 'on' : '', n); b.type = 'button'; b.onclick = () => { st.ly.split = v; save(); lyrBuild(); lysStyleBuild(); }; SP.appendChild(b); });
     const F = g('plrLyF'), C = g('plrLyC'), T = g('plrLyTr'); F.textContent = ''; C.textContent = ''; T.textContent = '';
     LF.forEach(([id, n]) => { const b = document.createElement('button'); b.className = 'fp' + (st.ly.font === id ? ' on' : ''); b.innerHTML = '<span></span><small></small>'; b.firstChild.style.fontFamily = `"${id}"`; b.firstChild.style.fontWeight = LF.find((q) => q[0] === id)[2]; b.firstChild.textContent = n; b.lastChild.remove(); b.onclick = () => { st.ly.font = id; save(); lyStyle(); lysStyleBuild(); }; F.appendChild(b); });
-    ['#F3D88A', '#E8C468', '#FFFFFF', '#E6E1D3', '#7FE0B5', '#2FBF8F', '#8EC9FF', '#CDB4FF', '#FF9DB1', '#FF6B6B', '#FFB36B', '#C0C7CC'].forEach((c) => { const b = document.createElement('button'); b.style.background = c; b.className = st.ly.color.toLowerCase() === c.toLowerCase() ? 'on' : ''; b.onclick = () => { st.ly.color = c; save(); lyStyle(); lysStyleBuild(); }; C.appendChild(b); });
-    const ci = document.createElement('input'); ci.type = 'color'; ci.value = st.ly.color.length === 7 ? st.ly.color : '#F3D88A'; ci.oninput = () => { st.ly.color = ci.value; save(); lyStyle(); }; C.appendChild(ci);
+    [['#E8C468', 'ذهبي'], ['#FFFFFF', 'أبيض'], ['#2FBF8F', 'أخضر'], ['#8EC9FF', 'أزرق'], ['#CDB4FF', 'بنفسجي'], ['#FF9DB1', 'وردي'], ['#FF6B6B', 'أحمر'], ['#FFB36B', 'برتقالي']].forEach(([c, cn]) => { const b = document.createElement('button'); b.style.background = c; b.title = cn; b.dataset.n = cn; b.className = st.ly.color.toLowerCase() === c.toLowerCase() ? 'on' : ''; b.onclick = () => { st.ly.color = c; save(); lyStyle(); lysStyleBuild(); }; C.appendChild(b); });
+    
     g('plrLySV').textContent = Math.round(st.ly.size * 100) + '%'; mount('plrLyS', sld({ min: 85, max: 120, step: 1, value: Math.round(st.ly.size * 100), def: 100, onInput: (v) => { st.ly.size = v / 100; g('plrLySV').textContent = v + '%'; save(); lyStyle(); } }));
-    TRS.forEach(([k, n, d]) => { const b = document.createElement('button'); b.className = 'tr' + ((st.ly.tr || 'slide') === k ? ' on' : ''); b.innerHTML = '<b></b><small></small>'; b.firstChild.textContent = n; b.lastChild.textContent = d; b.onclick = () => { st.ly.tr = k; save(); lyStyle(); lysStyleBuild(); demoStart(); lyrBuild(); }; T.appendChild(b); });
+    TRS.forEach(([k, n, d]) => { const b = document.createElement('button'); b.className = 'tr' + ((st.ly.tr || 'slide') === k ? ' on' : ''); b.innerHTML = '<i></i><b></b>'; b.firstChild.textContent = d; b.lastChild.textContent = n; b.onclick = () => { st.ly.tr = k; save(); lyStyle(); lysStyleBuild(); demoStart(); lyrBuild(); }; T.appendChild(b); });
   }
   /* مزامنة مع الخادم (Firestore) — محلياً أولاً، والاعتماد العام بالتصويت أو بموافقة المشرف */
   const fdb = () => { try { return (window.MinbarAuth && window.MinbarAuth.enabled && window.firebase && firebase.firestore) ? firebase.firestore() : null; } catch (e) { return null; } };

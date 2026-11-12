@@ -1318,3 +1318,20 @@ textarea.mdin{resize:none}
 /* نافذة الصوت ثابتة الارتفاع عند التنقل بين التبويبات */
 .plrau,.plrfull .plrau{height:86%!important;max-height:86%!important}
 .plrau .aupn{flex:1;min-height:0}
+/* v3.73 الكلمات: ألوان أساسية بأسماء، انتقالات برموز، فواصل مزخرفة، حجم أكبر */
+.trgrid{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.trgrid .tr{position:static;height:auto;margin:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 2px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14)}
+.trgrid .tr i{font-style:normal;font-size:20px;line-height:1;color:rgba(255,255,255,.75)}
+.trgrid .tr b{font-size:11px;font-weight:400}
+.trgrid .tr.on{border-color:#E8C468;background:rgba(232,196,104,.16)}.trgrid .tr.on i,.trgrid .tr.on b{color:#E8C468}
+#plrLyC{display:flex;flex-wrap:wrap;gap:12px 14px}
+#plrLyC button{position:relative;margin-bottom:16px}
+#plrLyC button::after{content:attr(data-n);position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;font-size:11px;color:rgba(255,255,255,.6);white-space:nowrap}
+#plrLyC button.on::after{color:#E8C468}
+.lyx .ll.sep{color:#E8C468!important}
+.lyx .ll{font-size:calc(21px * var(--lys))}
+.lay-c .lyx .ll{font-size:calc(24px * var(--lys))}
+/* العنوان والرادود أكبر، والصوت بلا مربع */
+.plrtt b{font-size:21px!important}.plrtt small{font-size:14.5px!important}
+.lay-c .plrtt b{font-size:18px!important}
+.plrdock .tg{background:none!important;box-shadow:none!important}
