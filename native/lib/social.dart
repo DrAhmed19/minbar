@@ -422,28 +422,66 @@ void showCommentsSheet(BuildContext context) {
                 ]),
               ),
               Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Text('يظهر تعليقك عائماً للجميع عند هذه اللحظة من القصيدة', style: tx(12, c: Colors.white38))),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-                child: Wrap(spacing: 6, runSpacing: 6, children: [
-                  _chip(app.player.cmOn == 1 ? 'العائمة: تشغيل' : 'العائمة: إيقاف', app.player.cmOn == 1, () {
-                    app.player.setPref('cmOn', app.player.cmOn == 1 ? 0 : 1);
-                    ss(() {});
-                  }),
-                  for (final d in [(1, 'قليلة'), (2, 'متوسطة'), (3, 'كثيرة')])
-                    _chip(d.$2, app.player.cmDens == d.$1, () {
-                      app.player.setPref('cmDens', d.$1);
-                      ss(() {});
-                    }),
-                  _chip('جانبية', app.player.cmView == 0, () {
-                    app.player.setPref('cmView', 0);
-                    ss(() {});
-                  }),
-                  _chip('طائرة', app.player.cmView == 1, () {
-                    app.player.setPref('cmView', 1);
-                    ss(() {});
-                  }),
-                ]),
-              ),
+              Builder(builder: (_) {
+                final pc = app.player, on = pc.cmOn == 1;
+                Widget seg(String label, List<(int, String)> opts, int cur, String key) => Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Row(children: [
+                        SizedBox(width: 62, child: Text(label, style: tx(12.5, c: Colors.white60))),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: const Color(0x14FFFFFF)),
+                            child: Row(children: [
+                              for (final o in opts)
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      pc.setPref(key, o.$1);
+                                      ss(() {});
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 7),
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(9), color: cur == o.$1 ? kGold : Colors.transparent),
+                                      child: Text(o.$2, style: tx(12.5, c: cur == o.$1 ? const Color(0xFF2A2106) : Colors.white70)),
+                                    ),
+                                  ),
+                                ),
+                            ]),
+                          ),
+                        ),
+                      ]),
+                    );
+                return Container(
+                  margin: const EdgeInsets.fromLTRB(14, 10, 14, 4),
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: const Color(0x0AFFFFFF), border: Border.all(color: const Color(0x1FFFFFFF))),
+                  child: Column(children: [
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        pc.setPref('cmOn', on ? 0 : 1);
+                        ss(() {});
+                      },
+                      child: Row(children: [
+                        Expanded(child: Text('إظهار التعليقات عائمةً على المشغل', style: tx(13.5, c: Colors.white))),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          width: 38,
+                          height: 22,
+                          padding: const EdgeInsets.all(2),
+                          alignment: on ? Alignment.centerLeft : Alignment.centerRight,
+                          decoration: BoxDecoration(borderRadius: BorderRadius.circular(11), color: on ? kGold : const Color(0x26FFFFFF)),
+                          child: Container(width: 18, height: 18, decoration: BoxDecoration(shape: BoxShape.circle, color: on ? const Color(0xFF2A2106) : Colors.white70)),
+                        ),
+                      ]),
+                    ),
+                    if (on) seg('الكمية', const [(1, 'قليلة'), (2, 'متوسطة'), (3, 'كثيرة')], pc.cmDens, 'cmDens'),
+                    if (on) seg('الطريقة', const [(0, 'جانبية'), (1, 'طائرة')], pc.cmView, 'cmView'),
+                  ]),
+                );
+              }),
               Expanded(
                 child: l.isEmpty
                     ? Center(child: Text('لا تعليقات بعد — كن أول من يعلّق', style: tx(14, c: Colors.white38)))

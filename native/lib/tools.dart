@@ -5,6 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'analysis.dart';
@@ -295,9 +297,20 @@ void showMajlisSheet(BuildContext context) {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), color: const Color(0x14E8C468), border: Border.all(color: kGold)),
               child: Column(children: [
-                Text(majlis.host ? 'مجلسك' : 'أنت في المجلس', style: tx(14, c: Colors.white70)),
-                Text(majlis.code, style: tx(34, c: kGold)),
-                if (majlis.host) Text('شارك الرمز مع الحضور', style: tx(12, c: Colors.white54)),
+                Text(majlis.host ? 'مجلسك قائم' : 'أنت في المجلس', style: tx(14, c: Colors.white70)),
+                Text(majlis.code, textDirection: TextDirection.ltr, style: tx(34, c: kGold)),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+                  child: QrImageView(data: '${kBase}?mj=${majlis.code}', size: 170, padding: EdgeInsets.zero),
+                ),
+                const SizedBox(height: 8),
+                Text(majlis.host ? 'وجّه كاميرا الحاضر على الرمز، أو شارك الرابط' : 'كل ما يشغّله المضيف يصلك بنفس اللحظة', textAlign: TextAlign.center, style: tx(12, c: Colors.white54)),
+                if (app.player.cur != null) ...[
+                  const SizedBox(height: 10),
+                  Text('يُشغَّل الآن: ${app.player.cur!.title}', maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(13, c: Colors.white)),
+                ],
               ]),
             ),
             const SizedBox(height: 12),
@@ -326,11 +339,17 @@ void showMajlisSheet(BuildContext context) {
                 }),
               const SizedBox(height: 8),
             ],
-            if (majlis.host)
-              GoldButton('نسخ الرمز', () {
-                Clipboard.setData(ClipboardData(text: majlis.code));
-                Navigator.pop(c);
-              }),
+            Row(children: [
+              Expanded(child: GoldButton('مشاركة الرابط', () => Share.share('انضم إلى مجلسي في منبر — نسمع معاً بنفس اللحظة:\n${kBase}?mj=${majlis.code}'), icon: Ic.share)),
+              const SizedBox(width: 10),
+              GestureDetector(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: majlis.code));
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('نُسخ الرمز', style: tx(13, c: Colors.white))));
+                },
+                child: Container(height: 50, padding: const EdgeInsets.symmetric(horizontal: 16), alignment: Alignment.center, decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: const Color(0x14FFFFFF), border: Border.all(color: const Color(0x33FFFFFF))), child: Text('نسخ الرمز', style: tx(14, c: Colors.white))),
+              ),
+            ]),
             const SizedBox(height: 8),
             TextButton(
               onPressed: () {
@@ -340,10 +359,11 @@ void showMajlisSheet(BuildContext context) {
               child: Text(majlis.host ? 'إنهاء المجلس' : 'مغادرة المجلس', style: tx(15, c: const Color(0xFFFF6B6B))),
             ),
           ] else ...[
-            GoldButton('ابدأ مجلساً', () {
-              final code = (1000 + math.Random().nextInt(9000)).toString();
+            GoldButton('ابدأ مجلساً', () async {
+              final code = (100000 + math.Random().nextInt(900000)).toString();
               Navigator.pop(c);
-              majlis.start(context, true, code);
+              await majlis.start(context, true, code);
+              if (context.mounted && majlis.on) showMajlisSheet(context);
             }, icon: Ic.users),
             const SizedBox(height: 16),
             Text('أو انضم برمز', style: tx(13, c: Colors.white54)),
@@ -364,7 +384,9 @@ void showMajlisSheet(BuildContext context) {
                   final code = inp.text.trim();
                   if (code.isEmpty) return;
                   Navigator.pop(c);
-                  majlis.start(context, false, code);
+                  majlis.start(context, false, code).then((_) {
+                    if (context.mounted && majlis.on) showMajlisSheet(context);
+                  });
                 },
                 child: Container(padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16), decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: kGold), child: Text('انضمام', style: tx(15, c: const Color(0xFF2A2106)))),
               ),
@@ -455,7 +477,7 @@ Future<void> recognizePoem(BuildContext context) async {
   }
   app.repo.loadAllLyrics();
   var heardText = '';
-  var sec = 10;
+  var sec = 14;
   final st = ValueNotifier<String>('قرّب الهاتف من الصوت… $sec');
   var cancelled = false;
   final dlg = showDialog(
@@ -486,18 +508,39 @@ Future<void> recognizePoem(BuildContext context) async {
   );
   final wasPlaying = app.player.p.playing;
   if (wasPlaying) app.player.p.pause();
-  final locs = await stt.locales();
-  final loc = locs.where((l) => l.localeId.startsWith('ar_IQ')).firstOrNull ?? locs.where((l) => l.localeId.startsWith('ar')).firstOrNull;
-  await stt.listen(
-    onResult: (r) => heardText = r.recognizedWords,
-    localeId: loc?.localeId,
-    listenFor: const Duration(seconds: 10),
-    pauseFor: const Duration(seconds: 10),
-    listenOptions: SpeechListenOptions(partialResults: true, cancelOnError: false),
-  );
+  // العربية دائماً: لهجة عراقية إن وُجدت، وإلا أي عربية، وإلا نفرض ar-IQ
+  var lid = 'ar-IQ';
+  try {
+    final locs = await stt.locales();
+    final ids = locs.map((l) => l.localeId).toList();
+    lid = ids.firstWhere((x) => x.replaceAll('_', '-').startsWith('ar-IQ'), orElse: () => ids.firstWhere((x) => x.startsWith('ar'), orElse: () => 'ar-IQ'));
+  } catch (_) {}
+  var acc = '', part = '';
+  Future<void> go() => stt.listen(
+        onResult: (r) {
+          part = r.recognizedWords;
+          if (r.finalResult) {
+            acc = '$acc ${r.recognizedWords}';
+            part = '';
+          }
+          heardText = '$acc $part'.trim();
+        },
+        localeId: lid,
+        listenFor: const Duration(seconds: 14),
+        pauseFor: const Duration(seconds: 6),
+        listenOptions: SpeechListenOptions(partialResults: true, cancelOnError: false, listenMode: ListenMode.dictation),
+      );
+  await go();
+  sec = 14;
   while (sec > 0 && !cancelled) {
     await Future.delayed(const Duration(seconds: 1));
     sec--;
+    // أندرويد يوقف الاستماع عند الصمت — نعيد تشغيله لنجمع أكثر
+    if (!stt.isListening && sec > 2 && !cancelled) {
+      try {
+        await go();
+      } catch (_) {}
+    }
     st.value = sec > 0 ? 'قرّب الهاتف من الصوت… $sec\n$heardText' : 'جارٍ التحليل…';
   }
   await stt.stop();
@@ -505,33 +548,43 @@ Future<void> recognizePoem(BuildContext context) async {
   if (cancelled) return;
   if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
   await dlg;
-  final heard = norm(heardText).split(' ').where((x) => x.length > 1).toList();
+  final heard = _stems(heardText);
   if (!context.mounted) return;
   if (heard.length < 2) {
     _toast(context, 'لم يُسمع كلام واضح، حاول مرة أخرى');
     if (wasPlaying) app.player.p.play();
     return;
   }
-  final bg = <String>{for (var i = 0; i < heard.length - 1; i++) '${heard[i]} ${heard[i + 1]}'};
+  // مطابقة ذكية: نافذة من 3 أسطر متتالية، كلمات مجذّرة مع تسامح بحرف واحد، ومكافأة للكلمات المتتالية
   String? bestId;
-  var bestS = 0, bestLine = '';
+  var bestS = 0.0, bestLine = '';
+  final bestBy = <String, double>{};
   app.repo.allLy.forEach((id, txt) {
-    for (final ln in txt.split('\n')) {
-      final ws = norm(ln).split(' ').where((x) => x.length > 1).toList();
-      var s = 0;
-      for (final w in ws) {
-        if (heard.contains(w)) s += 1;
+    final lines = txt.split('\n').where((x) => x.trim().isNotEmpty).toList();
+    final ls = [for (final l in lines) _stems(l)];
+    for (var i = 0; i < ls.length; i++) {
+      final win = [...ls[i], if (i + 1 < ls.length) ...ls[i + 1], if (i + 2 < ls.length) ...ls[i + 2]];
+      if (win.isEmpty) continue;
+      var hit = 0, run = 0, bonus = 0;
+      for (final w in heard) {
+        if (win.any((x) => _near(w, x))) {
+          hit++;
+          run++;
+          if (run >= 2) bonus++;
+        } else {
+          run = 0;
+        }
       }
-      for (var k = 0; k < ws.length - 1; k++) {
-        if (bg.contains('${ws[k]} ${ws[k + 1]}')) s += 2;
-      }
-      if (s >= 3 && s > bestS) {
-        bestS = s;
+      final sc = hit / heard.length + bonus * 0.08;
+      if (sc > (bestBy[id] ?? 0)) bestBy[id] = sc;
+      if (sc > bestS) {
+        bestS = sc;
         bestId = id;
-        bestLine = ln;
+        bestLine = lines[i];
       }
     }
   });
+  if (bestS < 0.34) bestId = null;
   final t = bestId == null ? null : app.repo.byId(bestId!);
   if (t == null) {
     _toast(context, 'لم نتعرّف على القصيدة في المكتبة');
@@ -543,4 +596,42 @@ Future<void> recognizePoem(BuildContext context) async {
   final all = app.repo.tracks;
   app.player.playList(all, all.indexOf(t), pos: Duration(milliseconds: (at * 1000).round()));
   if (context.mounted) _toast(context, 'تم التعرّف: ${t.title}');
+}
+
+
+/// تجذير بسيط للعربية: توحيد الحروف وحذف «و/ال/ب/ف/ل» من البداية
+List<String> _stems(String s) => norm(s).split(' ').where((x) => x.length > 1).map((w) {
+      var x = w;
+      for (final p in ['وال', 'بال', 'فال', 'كال', 'لل', 'ال']) {
+        if (x.startsWith(p) && x.length - p.length >= 2) {
+          x = x.substring(p.length);
+          break;
+        }
+      }
+      if (x.length > 3 && (x.startsWith('و') || x.startsWith('ف') || x.startsWith('ب'))) x = x.substring(1);
+      return x;
+    }).toList();
+
+bool _near(String a, String b) {
+  if (a == b) return true;
+  if (a.length < 4 || b.length < 4 || (a.length - b.length).abs() > 1) return false;
+  // مسافة تحرير ≤ 1
+  var i = 0, j = 0, e = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] == b[j]) {
+      i++;
+      j++;
+      continue;
+    }
+    if (++e > 1) return false;
+    if (a.length > b.length) {
+      i++;
+    } else if (b.length > a.length) {
+      j++;
+    } else {
+      i++;
+      j++;
+    }
+  }
+  return e + (a.length - i) + (b.length - j) <= 1;
 }

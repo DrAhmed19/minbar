@@ -37,6 +37,19 @@ class _HomeShellState extends State<HomeShell> {
 
   /// فتح رابط الموقع داخل التطبيق: ?p=<id>&t=<ثانية>
   Future<void> _link(Uri? u) async {
+    final mj = u?.queryParameters['mj'];
+    if (mj != null && RegExp(r'^\d{4,6}$').hasMatch(mj)) {
+      for (var i = 0; i < 40 && !app.repo.loaded; i++) {
+        await Future.delayed(const Duration(milliseconds: 250));
+      }
+      if (!mounted) return;
+      await majlis.start(context, false, mj);
+      if (mounted && majlis.on) {
+        openPlayer(context);
+        showMajlisSheet(context);
+      }
+      return;
+    }
     final id = u?.queryParameters['p'];
     if (id == null) return;
     for (var i = 0; i < 40 && !app.repo.loaded; i++) {

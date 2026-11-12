@@ -9,8 +9,11 @@ import 'ui.dart';
 
 /// الكلمات — منقولة من player.js (شريط منزلق + انتقالات + مظهر)
 const kLF = [('F0', 'كايرو', 700), ('F1', 'تجوّل', 700), ('F2', 'أميري', 700), ('F8', 'نسخ', 700), ('F13', 'شهرزاد', 700), ('F17', 'لطيف', 700), ('F3', 'رقعة', 700), ('F10', 'رقعة الحبر', 700), ('F12', 'ميرزا', 700), ('F5', 'المسيري', 700), ('F4', 'ريم كوفي', 700), ('F15', 'ريم الحبر', 400), ('F14', 'كوفي', 700), ('F6', 'لالزار', 400), ('F9', 'رقّاص', 400), ('F7', 'كاتبة', 400), ('F16', 'بلاكا', 400), ('F11', 'فايبز', 400)];
-const kLyCols = [Color(0xFFF3D88A), Color(0xFFE8C468), Color(0xFFFFFFFF), Color(0xFFE6E1D3), Color(0xFF7FE0B5), Color(0xFF2FBF8F), Color(0xFF8EC9FF), Color(0xFFCDB4FF), Color(0xFFFF9DB1), Color(0xFFFF6B6B), Color(0xFFFFB36B), Color(0xFFC0C7CC)];
+// ألوان أساسية فقط — لون واحد لكل نوع
+const kLyCols = [Color(0xFFE8C468), Color(0xFFFFFFFF), Color(0xFF2FBF8F), Color(0xFF8EC9FF), Color(0xFFCDB4FF), Color(0xFFFF9DB1), Color(0xFFFF6B6B), Color(0xFFFFB36B)];
+const kLyColN = ['ذهبي', 'أبيض', 'أخضر', 'أزرق', 'بنفسجي', 'وردي', 'أحمر', 'برتقالي'];
 const kTRS = [('slide', 'انزلاق'), ('scroll', 'تمرير'), ('fade', 'تلاشٍ'), ('zoom', 'تكبير'), ('kar', 'تعبئة'), ('blur', 'ضبابي'), ('rise', 'صعود'), ('flip', 'انقلاب'), ('glow', 'توهّج'), ('focus', 'تركيز')];
+const kTRI = [Icons.swap_vert, Icons.unfold_more, Icons.gradient, Icons.zoom_in, Icons.format_color_fill, Icons.blur_on, Icons.north, Icons.flip, Icons.auto_awesome, Icons.center_focus_strong];
 
 Color lyColorNow() => kLyCols[app.player.lyColor % kLyCols.length];
 
@@ -28,9 +31,9 @@ TextStyle lyStyle({double base = 24, Color? color, double? weight}) {
 }
 
 /// تقسيم الأسطر الطويلة (نفس splitLong)
-List<Lyric> splitLong(List<Lyric> L) {
+List<Lyric> splitLong(List<Lyric> L, [int? maxChars]) {
   if (app.player.lySplit == 0) return L;
-  final lim = (36 / app.player.lySize).round(), o = <Lyric>[];
+  final lim = maxChars ?? (36 / app.player.lySize).round(), o = <Lyric>[];
   for (var i = 0; i < L.length; i++) {
     final x = L[i], s = x.l.trim();
     if (s.length <= lim || !s.contains(' ')) {
@@ -88,11 +91,15 @@ class _LyricStripState extends State<LyricStrip> with SingleTickerProviderStateM
     super.dispose();
   }
 
+  double _w = 0;
   void _prep() {
-    final k = '${widget.lines.length}|${widget.lines.isEmpty ? '' : widget.lines.first.l}|${app.player.lySplit}|${app.player.lySize}';
+    // حد التقسيم حسب العرض الفعلي وحجم الخط (لا سطر يلتف على سطرين)
+    final cw = widget.base * app.player.lySize * 0.5;
+    final lim = _w > 0 ? ((_w - 36) / cw).floor().clamp(12, 60) : null;
+    final k = '${widget.lines.length}|${widget.lines.isEmpty ? '' : widget.lines.first.l}|${app.player.lySplit}|${app.player.lySize}|$lim';
     if (k != _key) {
       _key = k;
-      L = splitLong(widget.lines);
+      L = splitLong(widget.lines, lim);
     }
   }
 
@@ -110,9 +117,10 @@ class _LyricStripState extends State<LyricStrip> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    _prep();
-    if (L.isEmpty) return Center(child: Text('لا تتوفر كلمات لهذه القصيدة', style: tx(13, c: Colors.white38)));
+    if (widget.lines.isEmpty) return Center(child: Text('لا تتوفر كلمات لهذه القصيدة', style: tx(13, c: Colors.white38)));
     return LayoutBuilder(builder: (_, c) {
+      _w = c.maxWidth;
+      _prep();
       final w = c.maxWidth - 24, h = c.maxHeight;
       final tr = kTRS[app.player.lyTr % kTRS.length].$1;
       // ارتفاع كل سطر (الحالي بحجم أكبر)
@@ -236,6 +244,10 @@ class _LyricStripState extends State<LyricStrip> with SingleTickerProviderStateM
   /// st: 2 حالي، 1 مجاور، 0 بعيد
   Widget _line(String s, int st, String tr, double kp) {
     final col = lyColorNow();
+    // فواصل المقاطع (***** أو ----) تُعرض كزخرفة
+    if (RegExp(r'^[\s\*\-–—_\.•~=]+$').hasMatch(s)) {
+      return Center(child: Opacity(opacity: st == 2 ? 0.9 : 0.4, child: Text('۞', style: TextStyle(fontSize: widget.base * 0.8, color: kGold))));
+    }
     var op = st == 2 ? 1.0 : (st == 1 ? 0.42 : 0.26);
     var sc = st == 2 ? 1.0 : 0.8;
     double blur = 0, rx = 0, dy = 0;
@@ -351,11 +363,15 @@ void showLyricsSheet(BuildContext context, List<Lyric> lines) {
                   for (var i = 0; i < kLF.length; i++) pill(kLF[i].$2, pc.lyFont == i, () => u('lyFont', i), st: TextStyle(fontFamily: kLF[i].$1, fontFamilyFallback: const ['F0'], fontSize: 17, fontWeight: kLF[i].$3 >= 600 ? FontWeight.w700 : FontWeight.w400, color: pc.lyFont == i ? kGold : Colors.white)),
                 ]),
                 sec('اللون'),
-                Wrap(spacing: 12, runSpacing: 12, children: [
+                Wrap(spacing: 14, runSpacing: 12, children: [
                   for (var i = 0; i < kLyCols.length; i++)
                     GestureDetector(
                       onTap: () => u('lyColor', i),
-                      child: Container(width: 40, height: 40, decoration: BoxDecoration(shape: BoxShape.circle, color: kLyCols[i], border: Border.all(color: pc.lyColor == i ? Colors.white : Colors.transparent, width: 3))),
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        Container(width: 38, height: 38, decoration: BoxDecoration(shape: BoxShape.circle, color: kLyCols[i], border: Border.all(color: pc.lyColor % kLyCols.length == i ? kGold : Colors.transparent, width: 3))),
+                        const SizedBox(height: 4),
+                        Text(kLyColN[i], style: tx(11, c: pc.lyColor % kLyCols.length == i ? kGold : Colors.white60)),
+                      ]),
                     ),
                 ]),
                 sec('الحجم  ${(pc.lySize * 100).round()}%'),
@@ -364,7 +380,28 @@ void showLyricsSheet(BuildContext context, List<Lyric> lines) {
                   child: Slider(value: pc.lySize.clamp(0.85, 1.2), min: 0.85, max: 1.2, divisions: 35, onChanged: (v) => u('lySize', v)),
                 ),
                 sec('الانتقال'),
-                Wrap(spacing: 8, runSpacing: 8, children: [for (var i = 0; i < kTRS.length; i++) pill(kTRS[i].$2, pc.lyTr == i, () => u('lyTr', i))]),
+                GridView.count(
+                  crossAxisCount: 5,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                  childAspectRatio: 0.95,
+                  children: [
+                    for (var i = 0; i < kTRS.length; i++)
+                      GestureDetector(
+                        onTap: () => u('lyTr', i),
+                        child: Container(
+                          decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), color: pc.lyTr == i ? const Color(0x2EE8C468) : const Color(0x12FFFFFF), border: Border.all(color: pc.lyTr == i ? kGold : const Color(0x24FFFFFF), width: pc.lyTr == i ? 1.6 : 1)),
+                          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                            Icon(kTRI[i], size: 22, color: pc.lyTr == i ? kGold : Colors.white70),
+                            const SizedBox(height: 4),
+                            Text(kTRS[i].$2, style: tx(11, c: pc.lyTr == i ? kGold : Colors.white70)),
+                          ]),
+                        ),
+                      ),
+                  ],
+                ),
                 sec('تقسيم الأسطر الطويلة'),
                 Wrap(spacing: 8, children: [pill('تلقائي', pc.lySplit == 1, () => u('lySp', 1)), pill('إيقاف', pc.lySplit == 0, () => u('lySp', 0))]),
                 sec('تأخير الكلمات (للسماعات اللاسلكية)'),

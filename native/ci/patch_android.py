@@ -17,7 +17,9 @@ perms = '''    <uses-permission android:name="android.permission.INTERNET"/>
 if 'FOREGROUND_SERVICE_MEDIA_PLAYBACK' not in s:
     s = s.replace('<application', perms + '    <application', 1)
 s = re.sub(r'android:label="[^"]*"', 'android:label="منبر"', s, count=1)
-s = s.replace('android:name=".MainActivity"', 'android:name="com.ryanheise.audioservice.AudioServiceActivity"')
+# نبقي MainActivity (ترث AudioServiceActivity) لأن فيها قناة المؤثرات والويدجت
+# singleTask: فتح التطبيق بعد التحديث لا يُنشئ نسخة ثانية في قائمة التطبيقات
+s = s.replace('android:launchMode="singleTop"', 'android:launchMode="singleTask"')
 svc = '''        <receiver android:name=".MinbarWidget" android:exported="false">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/minbar_widget_info" />

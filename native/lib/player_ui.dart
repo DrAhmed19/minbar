@@ -212,7 +212,7 @@ class _PlayerPageState extends State<PlayerPage> {
       ),
       Expanded(
         flex: 2,
-        child: LyricStrip(lines: ly, base: 22, onLong: () => showLyricsSheet(context, ly)),
+        child: LyricStrip(lines: ly, base: 25, onLong: () => showLyricsSheet(context, ly)),
       ),
     ]);
     if (pc.layout == 1) {
@@ -242,9 +242,9 @@ class _PlayerPageState extends State<PlayerPage> {
         onTap: () => showCommentsSheet(context),
         child: Padding(padding: const EdgeInsets.all(6), child: PIcon(Ic.chat, color: kA, size: size)),
       );
-  Widget _titleCol(Track t, {TextAlign al = TextAlign.center, double fs = 18}) => Column(crossAxisAlignment: al == TextAlign.center ? CrossAxisAlignment.center : CrossAxisAlignment.start, children: [
+  Widget _titleCol(Track t, {TextAlign al = TextAlign.center, double fs = 22}) => Column(crossAxisAlignment: al == TextAlign.center ? CrossAxisAlignment.center : CrossAxisAlignment.start, children: [
         Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: al, style: TextStyle(fontFamily: thx(app.player.viz).font, fontFamilyFallback: const ['F0'], fontSize: fs, color: Colors.white, fontWeight: FontWeight.w700, height: 1.4)),
-        FittedBox(fit: BoxFit.scaleDown, child: Text([t.reciter, t.poet].where((e) => e.isNotEmpty).join(' · '), maxLines: 1, textAlign: al, style: tx(13, c: kA))),
+        FittedBox(fit: BoxFit.scaleDown, child: Text([t.reciter, t.poet].where((e) => e.isNotEmpty).join(' · '), maxLines: 1, textAlign: al, style: tx(15.5, c: kA))),
       ]);
 
   /// الكلمات أولاً: غلاف صغير + العنوان + القلب، والكلمات تملأ الشاشة
@@ -254,11 +254,11 @@ class _PlayerPageState extends State<PlayerPage> {
           child: Row(children: [
             ClipRRect(borderRadius: BorderRadius.circular(10), child: SizedBox(width: 48, height: 48, child: img != null ? RawImage(image: img, fit: BoxFit.cover) : Container(color: const Color(0x22FFFFFF)))),
             const SizedBox(width: 10),
-            Expanded(child: _titleCol(t, al: TextAlign.start, fs: 16)),
+            Expanded(child: _titleCol(t, al: TextAlign.start, fs: 19)),
             _favBtn(t),
           ]),
         ),
-        Expanded(child: LyricStrip(lines: ly, base: 24, onLong: () => showLyricsSheet(context, ly))),
+        Expanded(child: LyricStrip(lines: ly, base: 28, onLong: () => showLyricsSheet(context, ly))),
       ]);
 
   Widget _bottom(Track t) {
@@ -419,7 +419,7 @@ class _PlayerPageState extends State<PlayerPage> {
       child: Row(children: [
         b(Ic.queue, 'القائمة', false, _queueSheet),
         if (pc.layout == 2) b(Ic.eq, 'القالب', false, _settingsSheet) else b(Ic.text, 'الكلمات', false, () => showLyricsSheet(context, ly)),
-        b(Ic.pulse, 'الصوت', true, () => showAudioSheet(context), act: true),
+        b(Ic.pulse, 'الصوت', false, () => showAudioSheet(context)),
       ]),
     );
   }
@@ -674,7 +674,6 @@ class _PlayerPageState extends State<PlayerPage> {
                   pc.seek(pk);
                   if (!pc.p.playing) pc.toggle();
                 }),
-                _tile(Ic.eq, 'الإحصائيات', 'الاستماعات والإعجابات', () => showStatsSheet(context)),
               ]),
             _grp('أوضاع الاستماع'),
             _list([
