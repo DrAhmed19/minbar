@@ -298,9 +298,19 @@ class _PlayerPageState extends State<PlayerPage> {
               return Column(children: [
                 if (pc.layout == 0) ...[
                   SizedBox(height: 40, child: SpecBar(an: an)),
-                  ProgLine(pg: thx(pc.viz).pg, p: dur > 0 ? pos / dur : 0, heat: social.rx, dur: dur, onSeek: (f) {
-                    if (dur > 0) pc.seek(f * dur);
-                  }),
+                  ProgLine(
+                    pg: thx(pc.viz).pg,
+                    p: _scrub ?? (dur > 0 ? pos / dur : 0),
+                    heat: social.rx,
+                    dur: dur,
+                    onScrub: (f) => setState(() {
+                      _scrub = f;
+                      _scrubDur = dur;
+                    }),
+                    onSeek: (f) {
+                      if (dur > 0) pc.seek(f * dur);
+                    },
+                  ),
                 ] else
                   SizedBox(
                     height: 40,
@@ -363,14 +373,18 @@ class _PlayerPageState extends State<PlayerPage> {
                   child: AnimatedScale(
                     scale: x.dock == 'metal' && !playing ? 0.94 : 1,
                     duration: const Duration(milliseconds: 200),
-                    child: Container(
-                      width: 66,
-                      height: 66,
-                      decoration: dec,
-                      child: busy
-                          ? Padding(padding: const EdgeInsets.all(21), child: CircularProgressIndicator(strokeWidth: 3, color: icol))
-                          : Center(child: PIcon(playing ? Ic.pause : Ic.play, size: 30, color: icol)),
-                    ),
+                    child: Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
+                      // حلقة تتنفّس حول الزر أثناء التشغيل وتختفي عند الإيقاف (مثل الويب)
+                      if (x.btn != 'ring') Positioned(left: -7, top: -7, right: -7, bottom: -7, child: _Breath(on: playing, dec: dec)),
+                      Container(
+                        width: 66,
+                        height: 66,
+                        decoration: dec,
+                        child: busy
+                            ? Padding(padding: const EdgeInsets.all(21), child: CircularProgressIndicator(strokeWidth: 3, color: icol))
+                            : Center(child: PIcon(playing ? Ic.pause : Ic.play, size: 30, color: icol)),
+                      ),
+                    ]),
                   ),
                 ));
               },
@@ -1126,7 +1140,8 @@ class ProgLine extends StatelessWidget {
   final ValueChanged<double> onSeek;
   final List<double> heat;
   final double dur;
-  const ProgLine({super.key, required this.pg, required this.p, required this.onSeek, this.heat = const [], this.dur = 0});
+  final void Function(double?)? onScrub;
+  const ProgLine({super.key, required this.pg, required this.p, required this.onSeek, this.heat = const [], this.dur = 0, this.onScrub});
   /// خريطة الإعجابات (40 خانة) مثل heatUi في الويب
   List<double>? _heat() {
     if (heat.isEmpty || dur <= 0) return null;
@@ -1148,7 +1163,16 @@ class ProgLine extends StatelessWidget {
         builder: (_, c) => GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTapDown: (d) => onSeek((d.localPosition.dx / c.maxWidth).clamp(0.0, 1.0)),
-          onHorizontalDragUpdate: (d) => onSeek((d.localPosition.dx / c.maxWidth).clamp(0.0, 1.0)),
+          onHorizontalDragStart: (d) => onScrub?.call((d.localPosition.dx / c.maxWidth).clamp(0.0, 1.0)),
+          onHorizontalDragUpdate: (d) {
+            final f = (d.localPosition.dx / c.maxWidth).clamp(0.0, 1.0);
+            onScrub == null ? onSeek(f) : onScrub!(f);
+          },
+          onHorizontalDragEnd: (_) {
+            onSeek(p);
+            onScrub?.call(null);
+          },
+          onHorizontalDragCancel: () => onScrub?.call(null),
           child: SizedBox(height: 26, width: c.maxWidth, child: CustomPaint(painter: _PgPainter(pg, p.clamp(0.0, 1.0), kA, kA2, _heat()))),
         ),
       );
@@ -1260,4 +1284,66 @@ class _SpecPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _SpecPainter o) => true;
+}
+
+/// حلقة الزر: تظهر بنعومة عند التشغيل وتتنفّس، وتختفي عند الإيقاف
+class _Breath extends StatefulWidget {
+  final bool on;
+  final BoxDecoration dec;
+  const _Breath({required this.on, required this.dec});
+  @override
+  State<_Breath> createState() => _BreathS();
+}
+
+class _BreathS extends State<_Breath> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 2600));
+  @override
+  void initState() {
+    super.initState();
+    if (widget.on) _c.repeat();
+  }
+
+  @override
+  void didUpdateWidget(_Breath o) {
+    super.didUpdateWidget(o);
+    if (widget.on && !_c.isAnimating) _c.repeat();
+    if (!widget.on && _c.isAnimating) _c.stop();
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final br = widget.dec.borderRadius;
+    final circ = widget.dec.shape == BoxShape.circle;
+    return IgnorePointer(
+      child: AnimatedOpacity(
+        opacity: widget.on ? 1 : 0,
+        duration: const Duration(milliseconds: 350),
+        child: AnimatedBuilder(
+          animation: _c,
+          builder: (_, __) {
+            final w = 0.5 - 0.5 * math.cos(_c.value * 2 * math.pi);
+            return Transform.scale(
+              scale: 1 + 0.08 * w,
+              child: Opacity(
+                opacity: 0.7 - 0.55 * w,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    shape: circ ? BoxShape.circle : BoxShape.rectangle,
+                    borderRadius: circ ? null : (br is BorderRadius ? BorderRadius.only(topLeft: br.topLeft + const Radius.circular(7), topRight: br.topRight + const Radius.circular(7), bottomLeft: br.bottomLeft + const Radius.circular(7), bottomRight: br.bottomRight + const Radius.circular(7)) : BorderRadius.circular(25)),
+                    border: Border.all(color: kA2.withOpacity(0.75), width: 1.5),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
 }

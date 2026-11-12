@@ -7,6 +7,7 @@ import 'package:just_audio_background/just_audio_background.dart';
 import 'pages.dart';
 import 'state.dart';
 import 'audio.dart';
+import 'extras.dart';
 import 'ui.dart';
 
 Future<void> main() async {
@@ -44,6 +45,8 @@ Future<void> _start() async {
   app.auth.init();
   await loadIcons();
   runApp(const MinbarApp());
+  // أندرويد 13+: بدون صلاحية الإشعارات لا تظهر لوحة التحكم بالإشعارات ولا على شاشة القفل
+  Future.delayed(const Duration(seconds: 2), () => notifInit(ask: true));
 }
 
 class MinbarApp extends StatelessWidget {

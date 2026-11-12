@@ -319,8 +319,14 @@ class _VizStageState extends State<VizStage> with SingleTickerProviderStateMixin
                   vs.va += da;
                   Scrub.turn(da);
                 },
-                onPanEnd: (_) => vs.vdrag = false,
-                onPanCancel: () => vs.vdrag = false,
+                onPanEnd: (_) {
+                  vs.vdrag = false;
+                  Scrub.end();
+                },
+                onPanCancel: () {
+                  vs.vdrag = false;
+                  Scrub.end();
+                },
                 onTap: app.player.toggle,
                 child: vp,
               );

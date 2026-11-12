@@ -283,7 +283,7 @@
     if (!pfq || pfq.length !== n) pfq = new Float32Array(n); pfq.set(fqd);
   }
   /* ===== تحليل صوتي مسبق: يُحسب مرة واحدة (بالخلفية عند المالك) ويُقرأ وقت التشغيل بلا أي معالجة صوت — يحرّك الرسم واللطم بدل التحليل الحي ===== */
-  const APPV = '3.75';
+  const APPV = '3.76';
   const ANV = 'v1', ANKEY = (t) => 'n/' + t.id + '-' + ANV + '.bin', ANOK = (t) => /^[A-Za-z0-9_-]{3,64}$/.test((t && t.id) || '');
   let PRE = null; const PF = { dd: new Float32Array(22), vb: { db: 0, peak: 1 }, cb: { db: 0, flat: 0 }, hb: { db: 0 }, lb: { db: 0 }, on: 0 }; let synW = null, synT = 0;
   async function anLoad(t) { PRE = null; if (!t || t.an !== 1 || !ANOK(t)) return; try { const r = await fetch('media/u/' + ANKEY(t)); if (!r.ok) return; const b = new Uint8Array(await r.arrayBuffer()); if (b.length < 12 || b[0] !== 77 || b[1] !== 66 || b[2] !== 65) return; const nf = new DataView(b.buffer).getUint32(8, true); if (tracks[cur] && tracks[cur].id === t.id) PRE = { id: t.id, fps: b[4], nf, W: b[5] + b[6], d: b, o: 12 }; } catch (e) {} }
@@ -500,7 +500,7 @@
       if (w > NAT * 0.1) { A.preservesPitch = false; A.playbackRate = Math.max(0.25, Math.min(4, (w / NAT) * sp)); if (A.paused) A.play().catch(() => {}); dragVol(1); }
       else if (w < -NAT * 0.1 && !sc.fwd) { A.playbackRate = 1; dragVol(0.35); if (A.paused) A.play().catch(() => {}); }
       else { A.playbackRate = 0.25; dragVol(0.0001); } };
-    const scrBegin = (nat, fwd) => { if (cur < 0) return; Object.assign(sc, { on: true, nat: nat || 1.15, fwd: !!fwd, w: A.paused ? 0 : (nat || 1.15), acc: 0, tot: 0, pd: 0, mv: false, t0: performance.now(), lt: performance.now(), play: !A.paused }); if (ac && ac.state === 'suspended') ac.resume().catch(() => {}); cancelAnimationFrame(sc.h); sc.h = requestAnimationFrame(scTick); };
+    const scrBegin = (nat, fwd) => { if (cur < 0) return; Object.assign(sc, { on: true, nat: Math.max(3.49, nat || 1.15), fwd: !!fwd, w: A.paused ? 0 : Math.max(3.49, nat || 1.15), acc: 0, tot: 0, pd: 0, mv: false, t0: performance.now(), lt: performance.now(), play: !A.paused }); if (ac && ac.state === 'suspended') ac.resume().catch(() => {}); cancelAnimationFrame(sc.h); sc.h = requestAnimationFrame(scTick); };
     const scrTurn = (d) => { if (!sc.on) return; if (sc.fwd && d < 0) d = 0; sc.tot += Math.abs(d); if (!sc.mv && sc.tot > 0.06) sc.mv = true; sc.acc += d; const n = performance.now(); if (d < 0) sc.pd += d; if (sc.pd && n - sc.back > 55 && A.duration) { A.currentTime = Math.max(0, A.currentTime + (sc.pd / sc.nat) * (st.speed || 1)); sc.pd = 0; sc.back = n; } };
     const scEnd = () => { if (!sc.on) return false; sc.on = false; cancelAnimationFrame(sc.h); PV() && PV().hold(false); const tap = !sc.mv && performance.now() - sc.t0 < 450; A.preservesPitch = true; A.playbackRate = st.speed || 1; if (tap) { toggle(); return true; } dragVol(1, true); if (!sc.play) fadePause(); return false; };
     /* واجهة التحكم للتصاميم التفاعلية */
@@ -1881,7 +1881,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
       const sd = it.querySelector('.smside'); const sb = (icn, n, f) => { const b = el('button', 'smb'); b.type = 'button'; b.innerHTML = '<i>' + ic(icn, 24) + '</i><span></span>'; b.lastChild.textContent = n; b.onclick = (e) => { e.stopPropagation(); f(b); }; sd.appendChild(b); };
       sb('heart', 'أعجبني', (b) => { b.classList.toggle('on'); const on = b.classList.contains('on'); if (on !== st.fav.includes(t.id)) tog(t.id); if (on) { toast('أُضيفت للمفضلة'); b.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.35)' }, { transform: 'scale(1)' }], { duration: 350 }); } });
       if (st.fav.includes(t.id)) sd.firstChild.classList.add('on');
-      sb('down', 'تنزيل', () => smpRender(t)); sb('share', 'مشاركة', () => shareSheet(t, smpSeg(t).a));
+      sb('down', 'تنزيل', () => smpRender(t)); sb('share', 'مشاركة', () => shareSheet(t, smpSeg(t).a)); sb('more', 'خيارات', () => qMenu(t));
       it.onclick = () => { if (smpIdx !== i) return; const pz = it.querySelector('.smpz'); if (SA.paused) { SA.play().catch(() => {}); pz.hidden = true; } else { SA.pause(); pz.hidden = false; } };
       sc.appendChild(it); });
     smpObs = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting && e.intersectionRatio > 0.6) smpGo(+e.target.dataset.i); }), { root: sc, threshold: [0.6] });

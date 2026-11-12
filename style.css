@@ -1345,3 +1345,5 @@ textarea.mdin{resize:none}
 #plrFav.pop svg{animation:fpop .35s cubic-bezier(.3,1.6,.5,1)}@keyframes fpop{0%{transform:scale(.7)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
 #plrFav .cmb{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);font-style:normal;font-weight:800;font-size:18px;color:#FF4D6D;text-shadow:0 2px 8px rgba(0,0,0,.6);pointer-events:none;white-space:nowrap}
 #plrFav .cmb.go{animation:cmbgo .3s cubic-bezier(.3,1.6,.5,1)}@keyframes cmbgo{0%{transform:translateX(-50%) scale(1.7)}100%{transform:translateX(-50%) scale(1)}}
+/* v3.76: التعبئة بلا لون قبل الامتلاء */
+.plrlyb[data-tr=kar] .lc{filter:drop-shadow(0 2px 6px rgba(0,0,0,.55))!important}

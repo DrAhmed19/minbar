@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -20,22 +21,74 @@ final kc = Kc();
 
 /// التمرير بالدوران (مثل الويب: زاوية ÷ السرعة الطبيعية = ثوانٍ)
 class Scrub {
-  static double nat = 1.15, acc = 0;
-  static int _last = 0;
+  // تدوير يدوي واقعي: لفّة كاملة ≈ 1.8 ث صوت (مثل أسطوانة 33⅓)، والتشغيل يتبع سرعة اليد،
+  // الإمساك بلا حركة يوقف الصوت، والرجوع للخلف يرجّع، وعند الإفلات يعود كما كان
+  static double nat = 3.49, acc = 0, _sp0 = 1, _w = 0;
+  static bool _was = false, _on = false, _eng = false;
+  static int _last = 0, _lt = 0;
+  static Timer? _tm;
+  static int get _now => DateTime.now().millisecondsSinceEpoch;
   static void begin(double n) {
-    nat = n;
+    nat = math.max(n, 3.49);
     acc = 0;
+    _w = 0;
+    _on = true;
+    _eng = false;
+    _lt = _now;
+  }
+
+  static void _engage() {
+    final p = app.player.p;
+    _eng = true;
+    _was = p.playing;
+    _sp0 = p.speed;
+    p.pause();
+    _tm?.cancel();
+    _tm = Timer.periodic(const Duration(milliseconds: 90), (_) {
+      if (_now - _lt > 140) {
+        _w = 0;
+        if (app.player.p.playing) app.player.p.pause();
+      }
+    });
   }
 
   static void turn(double d) {
-    acc += d / nat * kc.speed;
-    final now = DateTime.now().millisecondsSinceEpoch;
-    if (now - _last > 60 && acc.abs() > 0.02) {
-      _last = now;
-      final pl = app.player.p;
-      final t = (pl.position.inMilliseconds / 1000.0 + acc).clamp(0.0, kc.dur > 0 ? kc.dur - 0.2 : 0.0);
+    if (!_on) return;
+    if (!_eng) _engage();
+    final now = _now, dt = math.max(8, now - _lt) / 1000.0;
+    _lt = now;
+    _w += (d / dt - _w) * 0.3;
+    acc += d / nat * _sp0;
+    if (now - _last < 70) return;
+    _last = now;
+    final p = app.player.p, r = _w / nat * _sp0;
+    if (r > 0.12) {
+      p.setSpeed(r.clamp(0.3, 2.5).toDouble());
+      if (!p.playing) p.play();
       acc = 0;
-      app.player.seek(t);
+    } else {
+      if (p.playing) p.pause();
+      if (acc.abs() > 0.03) {
+        final t = (p.position.inMilliseconds / 1000.0 + acc).clamp(0.0, kc.dur > 0 ? kc.dur - 0.2 : 0.0);
+        acc = 0;
+        app.player.seek(t);
+      }
+    }
+  }
+
+  static void end() {
+    if (!_on) return;
+    _on = false;
+    _tm?.cancel();
+    _tm = null;
+    if (!_eng) return;
+    _eng = false;
+    final p = app.player.p;
+    p.setSpeed(_sp0);
+    if (_was) {
+      p.play();
+    } else {
+      p.pause();
     }
   }
 }
@@ -977,6 +1030,7 @@ class DevTouch {
   }
 
   static void up(String id, DevS s) {
+    Scrub.end();
     if ((id == 'cassette' || id == 'jog' || id == 'reels') && s.m['drag'] != null && s.m['sl'] != true && s.g('mv') < 0.05) app.player.toggle();
     switch (id) {
       case 'wring':

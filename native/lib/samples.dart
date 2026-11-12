@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
@@ -160,6 +161,24 @@ class _SamplesPageState extends State<SamplesPage> {
     );
   }
 
+  Widget _sb(String ic, String label, VoidCallback f, {Color c = Colors.white}) => GestureDetector(
+        onTap: f,
+        behavior: HitTestBehavior.opaque,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            ClipOval(
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                child: Container(width: 48, height: 48, color: const Color(0x47000000), alignment: Alignment.center, child: PIcon(ic, color: c, size: 24)),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(label, style: tx(11, c: Colors.white, w: FontWeight.w600).copyWith(shadows: const [Shadow(color: Color(0x99000000), blurRadius: 4)])),
+          ]),
+        ),
+      );
+
   Widget _card(Track t, bool on) {
     final r = app.repo;
     final ly = _ly[t.id] ?? const <Lyric>[];
@@ -173,63 +192,100 @@ class _SamplesPageState extends State<SamplesPage> {
       }
     }
     final prog = on && segEnd > segStart ? ((rel - segStart) / (segEnd - segStart)).clamp(0.0, 1.0) : 0.0;
-    return Stack(fit: StackFit.expand, children: [
-      Cover(t.coverUrl, size: 900, radius: 0),
-      Container(decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x99000000), Color(0xCC000000), Color(0xF2000000)]))),
-      SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(22, 60, 22, 24),
-          child: Column(children: [
-            const Spacer(),
-            Cover(t.coverUrl, size: 150, radius: 22),
-            const SizedBox(height: 18),
-            Text(t.title, textAlign: TextAlign.center, maxLines: 2, style: tx(22, c: Colors.white, w: FontWeight.w800)),
-            const SizedBox(height: 4),
-            Text(t.reciter, style: tx(14, c: kGold, w: FontWeight.w700)),
-            const SizedBox(height: 22),
-            SizedBox(
-              height: 92,
-              child: Center(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 220),
-                  child: Text(
-                    on && ci >= 0 ? ly[ci].l : (on ? '♪' : ''),
-                    key: ValueKey('${t.id}$ci'),
-                    textAlign: TextAlign.center,
-                    maxLines: 3,
-                    style: tx(21, c: Colors.white, w: FontWeight.w700, h: 1.7),
+    final fav = r.isFav(t.id), off = r.offline.contains(t.id);
+    final sub = [t.reciter, t.poet].where((x) => x.trim().isNotEmpty).join(' · ');
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: on ? app.player.toggle : null,
+      child: Stack(fit: StackFit.expand, children: [
+        Cover(t.coverUrl, size: 900, radius: 0),
+        Container(decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x99000000), Color(0xCC000000), Color(0xF2000000)]))),
+        SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 60, 22, 24),
+            child: Column(children: [
+              // شريط تقدم المقطع بالأعلى (مثل الويب)
+              ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(value: prog, minHeight: 3, backgroundColor: Colors.white24, color: Colors.white)),
+              const Spacer(),
+              Cover(t.coverUrl, size: 170, radius: 24),
+              const SizedBox(height: 18),
+              Text(t.title, textAlign: TextAlign.center, maxLines: 2, style: tx(24, c: Colors.white, w: FontWeight.w800)),
+              const SizedBox(height: 4),
+              Text(sub, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(14, c: kGold, w: FontWeight.w700)),
+              const SizedBox(height: 22),
+              Padding(
+                padding: const EdgeInsets.only(right: 56),
+                child: SizedBox(
+                  height: 96,
+                  child: Center(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 260),
+                      child: Text(
+                        on && ci >= 0 ? ly[ci].l : (on ? '♪' : ''),
+                        key: ValueKey('${t.id}$ci'),
+                        textAlign: TextAlign.center,
+                        maxLines: 3,
+                        style: tx(22, c: Colors.white, w: FontWeight.w700, h: 1.7).copyWith(shadows: const [Shadow(color: Color(0xB3000000), blurRadius: 14, offset: Offset(0, 2))]),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const Spacer(),
+              GoldButton('استمع كاملة', () {
+                final pl = app.player;
+                _keep = true;
+                pl.quiet = false;
+                pl.playList(r.tracks, r.tracks.indexWhere((x) => x.id == t.id));
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const PlayerPage()));
+              }, icon: Ic.play),
+            ]),
+          ),
+        ),
+        // أزرار جانبية دائرية زجاجية (مثل الويب) + زر الخيارات
+        Positioned(
+          right: 10,
+          bottom: 120,
+          child: SafeArea(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              _sb(fav ? Ic.heartF : Ic.heart, 'أعجبني', () {
+                setState(() => r.toggleFav(t.id));
+                if (!fav) snack(context, 'أُضيفت للمفضلة');
+              }, c: fav ? const Color(0xFFFF4D6D) : Colors.white),
+              _sb(off ? Ic.check : Ic.down, off ? 'منزّلة' : 'تنزيل', () async {
+                if (off) return snack(context, 'منزّلة مسبقاً — تعمل بدون إنترنت');
+                snack(context, 'جارٍ تنزيل «${t.title}»…');
+                final ok = await r.offSave(t, (_) {});
+                if (mounted) {
+                  setState(() {});
+                  snack(context, ok ? 'نُزّلت — تعمل بدون إنترنت' : 'تعذّر التنزيل');
+                }
+              }),
+              _sb(Ic.share, 'مشاركة', () => shareTrack(context, t, at: segStart.round())),
+              _sb(Ic.more, 'خيارات', () => trackSheet(context, t)),
+            ]),
+          ),
+        ),
+        // زر التشغيل وسط الشاشة عند الإيقاف
+        if (on)
+          IgnorePointer(
+            child: StreamBuilder<bool>(
+              stream: app.player.p.playingStream,
+              builder: (_, s) => AnimatedOpacity(
+                opacity: (s.data ?? true) ? 0 : 1,
+                duration: const Duration(milliseconds: 180),
+                child: Center(
+                  child: Container(
+                    width: 78,
+                    height: 78,
+                    decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0x66000000)),
+                    child: const Center(child: PIcon(Ic.play, color: Colors.white, size: 36)),
                   ),
                 ),
               ),
             ),
-            const Spacer(),
-            ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(value: prog, minHeight: 3, backgroundColor: Colors.white24, color: kGold)),
-            const SizedBox(height: 14),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-              IconButton(
-                onPressed: () => setState(() => r.toggleFav(t.id)),
-                icon: PIcon(r.isFav(t.id) ? Ic.heartF : Ic.heart, color: r.isFav(t.id) ? const Color(0xFFFF6B6B) : Colors.white, size: 28),
-              ),
-              IconButton(
-                onPressed: () {
-                  Clipboard.setData(ClipboardData(text: '${kBase}?p=${t.id}'));
-                  snack(context, 'نُسخ رابط المشاركة');
-                },
-                icon: const PIcon(Ic.share, color: Colors.white, size: 26),
-              ),
-              IconButton(onPressed: () => trackSheet(context, t), icon: const PIcon(Ic.more, color: Colors.white, size: 28)),
-            ]),
-            const SizedBox(height: 8),
-            GoldButton('استمع كاملة', () {
-              final pl = app.player;
-              _keep = true;
-              pl.quiet = false;
-              pl.playList(r.tracks, r.tracks.indexWhere((x) => x.id == t.id));
-              Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const PlayerPage()));
-            }, icon: Ic.play),
-          ]),
-        ),
-      ),
-    ]);
+          ),
+      ]),
+    );
   }
 }

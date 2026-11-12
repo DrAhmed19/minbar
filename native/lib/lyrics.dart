@@ -279,11 +279,13 @@ class _LyricStripState extends State<LyricStrip> with SingleTickerProviderStateM
     }
     Widget t = Text(s, textAlign: TextAlign.center, style: style);
     if (st == 2 && tr == 'kar') {
-      t = ShaderMask(
-        blendMode: BlendMode.srcIn,
-        shaderCallback: (r) => LinearGradient(begin: Alignment.centerRight, end: Alignment.centerLeft, colors: [col, col, Colors.white.withOpacity(0.4), Colors.white.withOpacity(0.4)], stops: [0, kp, (kp + 0.06).clamp(0.0, 1.0), 1]).createShader(r),
-        child: t,
-      );
+      // الجزء غير المعبّأ أبيض باهت بلا أي لون/توهّج، والمعبّأ فقط يأخذ اللون
+      final base = style.copyWith(color: Colors.white.withOpacity(0.38), shadows: const [Shadow(color: Color(0x80000000), blurRadius: 8, offset: Offset(0, 2))]);
+      final fill = style.copyWith(color: col, shadows: const [Shadow(color: Color(0x80000000), blurRadius: 8, offset: Offset(0, 2))]);
+      t = Stack(alignment: Alignment.center, children: [
+        Text(s, textAlign: TextAlign.center, style: base),
+        ClipRect(clipper: _KarClip(kp), child: Text(s, textAlign: TextAlign.center, style: fill)),
+      ]);
     }
     if (blur > 0) t = ImageFiltered(imageFilter: ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur), child: t);
     return AnimatedOpacity(
@@ -423,3 +425,12 @@ void showLyricsSheet(BuildContext context, List<Lyric> lines) {
 
 // للاستعمال لاحقاً
 typedef PlayerStateT = PlayerState;
+
+class _KarClip extends CustomClipper<Rect> {
+  final double p;
+  _KarClip(this.p);
+  @override
+  Rect getClip(Size z) => Rect.fromLTRB(z.width * (1 - p), -30, z.width, z.height + 30);
+  @override
+  bool shouldReclip(_KarClip o) => o.p != p;
+}
