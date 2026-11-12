@@ -480,6 +480,15 @@ class _PlayerPageState extends State<PlayerPage> {
         ),
       );
 
+  int _stab = 0, _vcat = -1;
+  static const _vcats = [
+    ('كلاسيكية', ['mihrab', 'ambient', 'cover', 'card', 'dots', 'silk']),
+    ('أجهزة', ['vinyl', 'cassette', 'jog', 'reels', 'knob', 'speaker', 'scope']),
+    ('حيّة', ['wring', 'halo', 'bars', 'blob', 'wave', 'spectrum', 'orbit', 'pulse', 'star', 'dust', 'neon', 'pond', 'strings', 'candles']),
+  ];
+
+  Widget _grp(String s) => Padding(padding: EdgeInsets.only(top: 12, bottom: 8, right: 2), child: Text(s, style: tx(12, c: kGold, w: FontWeight.w700)));
+
   void _settingsSheet() {
     final pc = app.player;
     final t = pc.cur!;
