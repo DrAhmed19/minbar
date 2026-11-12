@@ -266,8 +266,7 @@ class _PlayerPageState extends State<PlayerPage> {
     final body = Padding(
       padding: EdgeInsets.fromLTRB(18, 6, 18, 4),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        if (pc.layout == 1) Row(children: [_favBtn(t), Expanded(child: _titleCol(t)), _cmBtn()]),
-        if (pc.layout == 0) _titleCol(t),
+        if (pc.layout != 2) Row(children: [_favBtn(t), Expanded(child: _titleCol(t)), _cmBtn()]),
         SizedBox(height: pc.layout == 2 ? 0 : 6),
         StreamBuilder<Duration>(
           stream: pc.p.positionStream,
@@ -302,7 +301,6 @@ class _PlayerPageState extends State<PlayerPage> {
                   padding: EdgeInsets.symmetric(horizontal: 2),
                   child: Row(textDirection: TextDirection.ltr, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                     Text(fmt2(pos), style: tx(12, c: Colors.white60)),
-                    if (pc.layout == 0) ...[_ctl(Ic.shuf, pc.shuffle, pc.toggleShuffle), _ctl(Ic.rep, pc.loop != LoopMode.off, pc.cycleLoop)],
                     Text(fmt2(dur), style: tx(12, c: Colors.white60)),
                   ]),
                 ),
@@ -314,7 +312,7 @@ class _PlayerPageState extends State<PlayerPage> {
         Directionality(
           textDirection: TextDirection.ltr,
           child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-            if (pc.layout == 0) _favBtn(t) else _ctl(Ic.shuf, pc.shuffle, pc.toggleShuffle),
+            _ctl(Ic.shuf, pc.shuffle, pc.toggleShuffle),
             HoldSeek(dir: -1, onTap: pc.prev, child: PIcon(Ic.prev, color: kA, size: 26)),
             StreamBuilder<PlayerState>(
               stream: pc.p.playerStateStream,
@@ -358,7 +356,7 @@ class _PlayerPageState extends State<PlayerPage> {
               },
             ),
             HoldSeek(dir: 1, onTap: pc.next, child: PIcon(Ic.next, color: kA, size: 26)),
-            if (pc.layout == 0) _cmBtn() else _ctl(Ic.rep, pc.loop != LoopMode.off, pc.cycleLoop),
+            _ctl(Ic.rep, pc.loop != LoopMode.off, pc.cycleLoop),
           ]),
         ),
       ]),

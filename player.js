@@ -50,17 +50,19 @@
   <div class="plrfull lay-a" id="plrFull" hidden>
     <div class="plrbgi" id="plrBgI"></div><img class="plrbgf" id="plrBgF" alt="">
     <canvas class="plrviz" id="plrViz"></canvas>
-    <div class="plrfh" id="plrFh"><button class="ib" id="plrClose" aria-label="إغلاق">${ic('down', 24)}</button><span id="plrCount"></span><button class="mjc" id="plrMj" type="button" hidden>${ic('users', 14)}<b></b></button><div class="fhr"><button class="ib" id="plrCmB" aria-label="التعليقات">${ic('chat', 20)}</button><button class="ib" id="plrFav" aria-label="مفضلة">${ic('heart', 20)}</button></div></div>
+    <div class="plrfh" id="plrFh"><button class="ib" id="plrClose" aria-label="إغلاق">${ic('down', 24)}</button><span id="plrCount"></span><button class="mjc" id="plrMj" type="button" hidden>${ic('users', 14)}<b></b></button><div class="fhr"><button class="ib" id="plrMore" aria-label="المزيد">${ic('more', 20)}</button></div></div>
     <div class="plrcml" id="plrCmL"></div><div class="plrrx" id="plrRx"></div><div class="plrscr" id="plrScr" hidden><b></b></div>
     <div class="plrfb">
       <div class="plrstage" id="plrStage"></div>
       <div class="lyx" id="plrLyr"><div class="lyt"></div><div class="lye">لا تتوفر كلمات · اضغط مطوّلاً للإضافة</div></div>
-      <div class="plrtt" id="plrTt"><button class="ib slb" id="plrSlB" aria-label="مؤقت الإيقاف">${ic('moon', 18)}<i id="plrSlV"></i></button><div><b id="plrTitle"></b><small id="plrSub"></small></div><button class="ib" id="plrMore" aria-label="المزيد">${ic('more', 20)}</button></div>
+      <div class="plrgl">
+      <div class="plrtt" id="plrTt"><button class="ib slb" id="plrSlB" aria-label="مؤقت الإيقاف" hidden>${ic('moon', 18)}<i id="plrSlV"></i></button><img class="ttc" id="plrTtC" alt=""><button class="ib tb" id="plrFav" aria-label="مفضلة">${ic('heart', 20)}</button><div><b id="plrTitle"></b><small id="plrSub"></small></div><button class="ib tb" id="plrCmB" aria-label="التعليقات">${ic('chat', 20)}</button></div>
       <canvas class="plrwave" id="plrWave"></canvas><canvas class="plrspec" id="plrSpec"></canvas><div class="plrln" id="plrLn"><div class="lt"><i id="plrLnF"></i><b id="plrLnK"></b></div></div>
       <div class="plrtm"><span id="plrCur">00:00</span><span id="plrDur">00:00</span></div>
-      <div class="plrctl"><button id="plrPrev">${ic('prev', 28)}</button><button class="main" id="plrPlay"></button><button id="plrNext">${ic('next', 28)}</button></div>
+      <div class="plrctl"><button class="sm" id="plrShuf">${ic('shuf', 22)}<span>عشوائي</span></button><button id="plrPrev">${ic('prev', 28)}</button><button class="main" id="plrPlay"></button><button id="plrNext">${ic('next', 28)}</button><button class="sm" id="plrRep">${ic('rep', 22)}<span>تكرار</span></button></div>
+      </div>
     </div>
-    <div class="plrdock"><button id="plrRep">${ic('rep', 22)}<span>تكرار</span></button><button id="plrLyB">${ic('text', 22)}<span>الكلمات</span></button><button class="tg" id="plrTg">${ic('wave', 24)}<span>الصوت</span></button><button id="plrQB">${ic('queue', 22)}<span>القائمة</span></button><button id="plrShuf">${ic('shuf', 22)}<span>عشوائي</span></button></div>
+    <div class="plrdock"><button id="plrQB">${ic('queue', 22)}<span>القائمة</span></button><button id="plrLyB">${ic('text', 22)}<span>الكلمات</span></button><button id="plrVzB">${ic('eq', 22)}<span>القالب</span></button><button class="tg" id="plrTg">${ic('wave', 24)}<span>الصوت</span></button></div>
     <div class="plrsheetbg" id="plrBg" hidden></div>
     <div class="plrtp" id="plrTp" hidden>
       <div class="gr"></div>
@@ -212,7 +214,7 @@
     if (open) openFull();
   }
   function bgSet(t) {
-    const b = g('plrBgI'), u = cov(t), bf = g('plrBgF'); if (u) bf.src = u; else bf.removeAttribute('src'); b.style.backgroundImage = ''; if (!u) return; const im = new Image();
+    const b = g('plrBgI'), u = cov(t), bf = g('plrBgF'), tc = g('plrTtC'); if (u) { bf.src = u; if (tc) tc.src = u; } else { bf.removeAttribute('src'); if (tc) tc.removeAttribute('src'); } b.style.backgroundImage = ''; if (!u) return; const im = new Image();
     im.onload = () => { try { const c = document.createElement('canvas'); c.width = c.height = 40; c.getContext('2d').drawImage(im, 0, 0, 40, 40); b.style.backgroundImage = `url(${c.toDataURL('image/jpeg', 0.7)})`; } catch (e) { b.style.backgroundImage = `url("${u}")`; } }; im.src = u;
   }
   /* تحليل الصوت الحي + عرض مؤثرات التصميم */
@@ -280,7 +282,7 @@
     if (!pfq || pfq.length !== n) pfq = new Float32Array(n); pfq.set(fqd);
   }
   /* ===== تحليل صوتي مسبق: يُحسب مرة واحدة (بالخلفية عند المالك) ويُقرأ وقت التشغيل بلا أي معالجة صوت — يحرّك الرسم واللطم بدل التحليل الحي ===== */
-  const APPV = '3.71';
+  const APPV = '3.72';
   const ANV = 'v1', ANKEY = (t) => 'n/' + t.id + '-' + ANV + '.bin', ANOK = (t) => /^[A-Za-z0-9_-]{3,64}$/.test((t && t.id) || '');
   let PRE = null; const PF = { dd: new Float32Array(22), vb: { db: 0, peak: 1 }, cb: { db: 0, flat: 0 }, hb: { db: 0 }, lb: { db: 0 }, on: 0 }; let synW = null, synT = 0;
   async function anLoad(t) { PRE = null; if (!t || t.an !== 1 || !ANOK(t)) return; try { const r = await fetch('media/u/' + ANKEY(t)); if (!r.ok) return; const b = new Uint8Array(await r.arrayBuffer()); if (b.length < 12 || b[0] !== 77 || b[1] !== 66 || b[2] !== 65) return; const nf = new DataView(b.buffer).getUint32(8, true); if (tracks[cur] && tracks[cur].id === t.id) PRE = { id: t.id, fps: b[4], nf, W: b[5] + b[6], d: b, o: 12 }; } catch (e) {} }
@@ -575,7 +577,8 @@
   A.addEventListener('ended', () => { if (sleepEnd) { sleepEnd = false; sleepT = 0; A.__stop = true; slUi(); } });
   const tp = (on) => { g('plrTp').hidden = !on; g('plrBg').hidden = !on; if (on) { vizPills(); layApply(); toolsUi(); bgUi(); g('plrMore').classList.remove('newdot'); try { localStorage.setItem('minbar.seen.335', '1'); } catch (e) {} } };
   g('plrTpT').querySelectorAll('button').forEach((bt) => bt.onclick = () => { g('plrTpT').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === bt)); const v = bt.dataset.k === 'v'; g('plrTp').querySelectorAll('.tpV').forEach((e) => e.hidden = !v); g('plrTp').querySelectorAll('.tpT').forEach((e) => e.hidden = v); });
-  g('plrMore').onclick = () => tp(g('plrTp').hidden); g('plrTg').onclick = () => au(g('plrAu').hidden); g('plrBg').onclick = () => { tp(false); qs(false); admShow(false); au(false); cmS(false); g('plrCv').hidden = true; }; g('plrTpX').onclick = () => tp(false); g('plrAdmX').onclick = () => admShow(false);
+  g('plrMore').onclick = () => tp(g('plrTp').hidden);
+  g('plrVzB').onclick = () => tp(true); g('plrTg').onclick = () => au(g('plrAu').hidden); g('plrBg').onclick = () => { tp(false); qs(false); admShow(false); au(false); cmS(false); g('plrCv').hidden = true; }; g('plrTpX').onclick = () => tp(false); g('plrAdmX').onclick = () => admShow(false);
   function counter() { const list = view.length ? view : tracks; g('plrCount').textContent = (list.indexOf(tracks[cur]) + 1) + ' من ' + list.length; }
   function dragVol(v, ramp) { if (AU.fade && ac) { const g2 = AU.fade.gain, T = ac.currentTime; g2.cancelScheduledValues(T); if (ramp) { g2.setValueAtTime(Math.max(0.0001, g2.value), T); g2.linearRampToValueAtTime(1, T + 0.25); } else g2.setTargetAtTime(Math.max(0.0001, v), T, 0.03); } else A.volume = Math.max(0, Math.min(1, v)); }
   /* دوّار الأغلفة */
@@ -1991,10 +1994,10 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   g('plrHs').onclick = (e) => { if (e.target.closest('.hsx')) return hsClose(); if (e.target.closest('.hspp')) { toggle(); return; } g('plrHs').classList.toggle('ui'); };
   document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && hsOn) { /* يبقى الوضع، فقط خرج من ملء الشاشة */ } });
   function toolsUi() { const b = g('plrTools'); if (!b) return; b.textContent = ''; const seen = jget('minbar.seen.tools', {});
-    [['ver', 'info', 'الإصدار ' + APPV, 'اضغط للتحقق من التحديث', () => { toast('جارٍ التحقق من التحديث…'); const go = () => setTimeout(() => location.reload(), 1200); try { navigator.serviceWorker.getRegistration().then((r) => (r ? r.update() : 0)).then(go, go); } catch (e) { go(); } }], ['about', 'info', 'عن القصيدة', 'الرادود والتفاصيل', about], ['share', 'share', 'مشاركة اللحظة', 'من الدقيقة الحالية', shareMoment], ['peak', 'flame', 'الذروة', rxList.length ? 'أكثر لحظة إعجاباً' : 'لا إعجابات', () => { const p = peakT(); if (p == null) return toast('لا توجد تفاعلات بعد على هذه القصيدة'); A.currentTime = p; if (A.paused) fadePlay(); tp(false); }],
+    [['sleep', 'moon', 'مؤقت النوم', sleepT ? 'مفعّل — اضغط للتغيير' : 'إيقاف التشغيل بعد مدة', () => { g('plrSlB').click(); toolsUi(); }], ['ver', 'info', 'الإصدار ' + APPV, 'اضغط للتحقق من التحديث', () => { toast('جارٍ التحقق من التحديث…'); const go = () => setTimeout(() => location.reload(), 1200); try { navigator.serviceWorker.getRegistration().then((r) => (r ? r.update() : 0)).then(go, go); } catch (e) { go(); } }], ['about', 'info', 'عن القصيدة', 'الرادود والتفاصيل', about], ['share', 'share', 'مشاركة اللحظة', 'من الدقيقة الحالية', shareMoment], ['peak', 'flame', 'الذروة', rxList.length ? 'أكثر لحظة إعجاباً' : 'لا إعجابات', () => { const p = peakT(); if (p == null) return toast('لا توجد تفاعلات بعد على هذه القصيدة'); A.currentTime = p; if (A.paused) fadePlay(); tp(false); }],
       ['majlis', 'users', 'المجلس', MJ.on ? 'مفعّل · ' + MJ.code : 'استماع مشترك', mjMenu], ['husn', 'text', 'وضع الحسينية', 'كلمات كبيرة للشاشة', () => { tp(false); hsOpen(); }], ...(isOwner() ? [['mig', 'eq', 'نقل الملفات إلى R2', 'نسخ القصائد القديمة من KV', mgRun]] : []), ...(isOwner() ? [['anl', 'pulse', 'تحليل الصوت', anPending().length ? anPending().length + ' قصيدة بانتظار التحليل' : 'كل القصائد محلَّلة', () => anRun(true)]] : []), ['perf', 'eq', 'وضع الأداء', st.fx ? 'معطّل (مؤثرات وتحليل حي)' : 'مفعّل: أخف وأثبت بالخلفية', () => { st.fx = !st.fx; save(); toast(st.fx ? 'سيُعاد تشغيل التطبيق لتفعيل المؤثرات' : 'سيُعاد تشغيل التطبيق لوضع الأداء'); setTimeout(() => location.reload(), 900); }], ['latm', 'pulse', 'وضع اللطم', st.latm ? 'مفعّل' : 'اهتزاز مع الإيقاع', () => { st.latm = !st.latm; save(); toolsUi(); toast(st.latm ? 'وضع اللطم: يهتز الهاتف مع إيقاع اللطم' : 'أُوقف وضع اللطم'); }]].concat(isOwner() ? [['stats', 'eq', 'الإحصائيات', 'الاستماعات والإعجابات', statsPanel]] : []).forEach(([k, icn, n, s, f]) => {
       const t = el('button', 'ptl' + ((k === 'latm' && st.latm) || (k === 'majlis' && MJ.on) ? ' on' : '')); t.type = 'button'; t.innerHTML = '<i class="pci">' + ic(icn, 18) + '</i><span></span><small></small>'; t.children[1].textContent = n; t.children[2].textContent = s; if (!seen[k]) t.appendChild(el('i', 'nb', 'جديد')); t.onclick = () => { const sn = jget('minbar.seen.tools', {}); sn[k] = 1; jset('minbar.seen.tools', sn); f(); toolsUi(); }; t.dataset.k = k; if (k === 'latm' || k === 'perf') t.classList.add('sw'); if (k === 'perf' && !st.fx) t.classList.add('on'); b.appendChild(t); });
-    [['القصيدة', ['about', 'share', 'peak', 'stats']], ['أوضاع الاستماع', ['majlis', 'husn', 'latm']], ['الجهاز', ['perf', 'ver']], ['المالك', ['mig', 'anl']]].forEach(([gn, ks]) => { const items = ks.map((q) => b.querySelector('[data-k="' + q + '"]')).filter(Boolean); if (!items.length) return; b.appendChild(el('h5', 'tgh', gn)); const L2 = el('div', 'tlist'); items.forEach((it) => L2.appendChild(it)); b.appendChild(L2); });
+    [['القصيدة', ['sleep', 'about', 'share', 'peak', 'stats']], ['أوضاع الاستماع', ['majlis', 'husn', 'latm']], ['الجهاز', ['perf', 'ver']], ['المالك', ['mig', 'anl']]].forEach(([gn, ks]) => { const items = ks.map((q) => b.querySelector('[data-k="' + q + '"]')).filter(Boolean); if (!items.length) return; b.appendChild(el('h5', 'tgh', gn)); const L2 = el('div', 'tlist'); items.forEach((it) => L2.appendChild(it)); b.appendChild(L2); });
     [...b.querySelectorAll(':scope > .ptl')].forEach((it) => { const L3 = b.querySelector('.tlist:last-of-type'); if (L3) L3.appendChild(it); }); }
 
   g('plrRecB').onclick = recognize; g('plrMj').onclick = () => mjMenu(); g('plrTitle').onclick = about; g('plrTitle').style.cursor = 'pointer';
