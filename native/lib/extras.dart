@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tzd;
 import 'package:timezone/timezone.dart' as tz;
@@ -198,6 +199,32 @@ Future<void> extrasStart() async {
   unawaited(bgSetup());
   unawaited(syncKnown());
   unawaited(autoDownloadFavs());
+  widgetStart();
+}
+
+/// ويدجت الشاشة الرئيسية — يكتب القصيدة الحالية وحالة التشغيل ثم يطلب تحديث الويدجت
+const _wch = MethodChannel('minbar/fx');
+String _wLast = '';
+void widgetStart() {
+  final p = app.player.p;
+  Future<void> push() async {
+    try {
+      final tag = p.sequenceState?.currentSource?.tag;
+      final m = tag is MediaItem ? tag : null;
+      final title = m?.title ?? 'منبر', artist = m?.artist ?? 'اضغط للاستماع', key = '$title|$artist|${p.playing}';
+      if (key == _wLast) return;
+      _wLast = key;
+      final sp = await SharedPreferences.getInstance();
+      await sp.setString('w_title', title);
+      await sp.setString('w_artist', artist);
+      await sp.setBool('w_playing', p.playing);
+      await _wch.invokeMethod('widget');
+    } catch (_) {}
+  }
+
+  p.playingStream.listen((_) => push());
+  p.sequenceStateStream.listen((_) => push());
+  push();
 }
 
 // ================= صفحة الإعدادات =================

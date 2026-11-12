@@ -18,7 +18,11 @@ if 'FOREGROUND_SERVICE_MEDIA_PLAYBACK' not in s:
     s = s.replace('<application', perms + '    <application', 1)
 s = re.sub(r'android:label="[^"]*"', 'android:label="منبر"', s, count=1)
 s = s.replace('android:name=".MainActivity"', 'android:name="com.ryanheise.audioservice.AudioServiceActivity"')
-svc = '''        <provider android:name="sk.fourq.otaupdate.OtaUpdateFileProvider"
+svc = '''        <receiver android:name=".MinbarWidget" android:exported="false">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/minbar_widget_info" />
+        </receiver>
+        <provider android:name="sk.fourq.otaupdate.OtaUpdateFileProvider"
             android:authorities="${applicationId}.ota_update_provider"
             android:exported="false" android:grantUriPermissions="true">
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/filepaths" />
@@ -126,9 +130,50 @@ class MainActivity : AudioServiceActivity() {
                         dp?.let { it.setInputGainbyChannel(0, l); it.setInputGainbyChannel(1, r); it.enabled = (l != 0f || r != 0f) }
                         result.success(dp != null)
                     }
+                    "widget" -> { MinbarWidget.refresh(this); result.success(true) }
                     else -> result.notImplemented()
                 }
             } catch (e: Exception) { result.success(false) }
+        }
+    }
+}
+"""
+
+WIDGET_KT = """import android.app.PendingIntent
+import android.appwidget.AppWidgetManager
+import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.view.KeyEvent
+import android.widget.RemoteViews
+
+/** ويدجت الشاشة الرئيسية: القصيدة الحالية + سابق/تشغيل/تالي (أزرار وسائط تذهب لجلسة التشغيل) */
+class MinbarWidget : AppWidgetProvider() {
+    override fun onUpdate(ctx: Context, mgr: AppWidgetManager, ids: IntArray) { for (id in ids) draw(ctx, mgr, id) }
+    companion object {
+        private fun media(ctx: Context, code: Int): PendingIntent {
+            val i = Intent(Intent.ACTION_MEDIA_BUTTON).setComponent(ComponentName(ctx, "com.ryanheise.audioservice.MediaButtonReceiver"))
+            i.putExtra(Intent.EXTRA_KEY_EVENT, KeyEvent(KeyEvent.ACTION_DOWN, code))
+            return PendingIntent.getBroadcast(ctx, code, i, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        }
+        fun draw(ctx: Context, mgr: AppWidgetManager, id: Int) {
+            val sp = ctx.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            val v = RemoteViews(ctx.packageName, R.layout.minbar_widget)
+            v.setTextViewText(R.id.w_title, sp.getString("flutter.w_title", "منبر"))
+            v.setTextViewText(R.id.w_artist, sp.getString("flutter.w_artist", "اضغط للاستماع"))
+            v.setImageViewResource(R.id.w_play, if (sp.getBoolean("flutter.w_playing", false)) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play)
+            v.setOnClickPendingIntent(R.id.w_play, media(ctx, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE))
+            v.setOnClickPendingIntent(R.id.w_next, media(ctx, KeyEvent.KEYCODE_MEDIA_NEXT))
+            v.setOnClickPendingIntent(R.id.w_prev, media(ctx, KeyEvent.KEYCODE_MEDIA_PREVIOUS))
+            ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)?.let {
+                v.setOnClickPendingIntent(R.id.w_root, PendingIntent.getActivity(ctx, 1, it, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT))
+            }
+            mgr.updateAppWidget(id, v)
+        }
+        fun refresh(ctx: Context) {
+            val m = AppWidgetManager.getInstance(ctx)
+            for (id in m.getAppWidgetIds(ComponentName(ctx, MinbarWidget::class.java))) draw(ctx, m, id)
         }
     }
 }
@@ -139,6 +184,7 @@ for kt in root.rglob('MainActivity.*'):
     pkg = re.search(r'^package\s+([\w.]+)', kt.read_text(encoding='utf-8'), re.M).group(1)
     if kt.suffix == '.kt':
         kt.write_text(f'package {pkg}\n\n' + FX_KT, encoding='utf-8')
+        (kt.parent / 'MinbarWidget.kt').write_text(f'package {pkg}\n\n' + WIDGET_KT, encoding='utf-8')
 # minSdk 23
 for g in [root / 'app/build.gradle.kts', root / 'app/build.gradle']:
     if g.exists():

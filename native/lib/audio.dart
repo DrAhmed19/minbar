@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:audio_session/audio_session.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'state.dart';
@@ -83,9 +84,14 @@ Future<void> auLoad() async {
     if (d != null) auApply();
   });
   await auApply();
+  unawaited(auDevStart());
 }
 
 Future<void> auSave() async {
+  if (auPerDev) {
+    _auDev[auDevKey] = au.toJson();
+    SharedPreferences.getInstance().then((sp) => sp.setString('auDev', jsonEncode(_auDev)));
+  }
   final sp = await SharedPreferences.getInstance();
   await sp.setString('au', jsonEncode(au.toJson()));
   await sp.setString('auCustom', jsonEncode(auCustom));
@@ -503,6 +509,21 @@ List<Widget> _adv(StateSetter ss, VoidCallback edited) {
       ]));
   final pc = app.player;
   return [
+    _box(GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () async {
+        await auSetPerDev(!auPerDev);
+        ss(() {});
+      },
+      child: Row(children: [
+        PIcon(Ic.power, color: auPerDev ? kGold : Colors.white54, size: 17),
+        const SizedBox(width: 10),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('إعداد خاص لكل جهاز', style: tx(14.5, c: auPerDev ? kGold : Colors.white)),
+          Text('يتذكّر إعداد سماعة الهاتف والسلكية والبلوتوث كلٌّ على حدة — الآن: ${kDevName[auDevKey]}', style: tx(11, c: Colors.white54)),
+        ])),
+      ]),
+    )),
     row('طبقة الصوت', au.pitch.toStringAsFixed(1), '+12', '-12', -au.pitch, -12, 12, (v) {
       au.pitch = -(v * 2).round() / 2;
       ss(() {});
@@ -605,4 +626,53 @@ Future<void> _presetsSheet(BuildContext context) async {
       );
     }),
   );
+}
+
+
+// ================= إعداد صوت خاص لكل جهاز إخراج =================
+bool auPerDev = false;
+String auDevKey = 'spk';
+Map<String, dynamic> _auDev = {};
+const kDevName = {'spk': 'سماعة الهاتف', 'wired': 'سماعة سلكية', 'bt': 'بلوتوث (سماعة/سيارة)'};
+
+String _devKeyOf(Set<AudioDevice> ds) {
+  final t = ds.where((d) => d.isOutput).map((d) => d.type.toString().toLowerCase()).join(',');
+  if (t.contains('bluetooth') || t.contains('ble')) return 'bt';
+  if (t.contains('wired') || t.contains('usb') || t.contains('headset') || t.contains('headphones')) return 'wired';
+  return 'spk';
+}
+
+Future<void> auDevStart() async {
+  try {
+    final sp = await SharedPreferences.getInstance();
+    auPerDev = sp.getBool('auPerDev') ?? false;
+    try {
+      _auDev = Map<String, dynamic>.from(jsonDecode(sp.getString('auDev') ?? '{}') as Map);
+    } catch (_) {}
+    final s = await AudioSession.instance;
+    auDevKey = _devKeyOf(await s.getDevices(includeInputs: false));
+    s.devicesChangedEventStream.listen((_) async {
+      final k = _devKeyOf(await s.getDevices(includeInputs: false));
+      if (k == auDevKey) return;
+      final old = auDevKey;
+      auDevKey = k;
+      if (!auPerDev) return;
+      _auDev[old] = au.toJson();
+      final m = _auDev[k];
+      if (m is Map) au.fromJson(m);
+      await sp.setString('auDev', jsonEncode(_auDev));
+      await auSave();
+      await auApply();
+    });
+  } catch (_) {}
+}
+
+Future<void> auSetPerDev(bool v) async {
+  auPerDev = v;
+  final sp = await SharedPreferences.getInstance();
+  await sp.setBool('auPerDev', v);
+  if (v) {
+    _auDev[auDevKey] = au.toJson();
+    await sp.setString('auDev', jsonEncode(_auDev));
+  }
 }
