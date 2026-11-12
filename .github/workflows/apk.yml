@@ -69,17 +69,14 @@ jobs:
         if: github.ref == 'refs/heads/main'
         continue-on-error: true
         env:
-          RK: ${{ secrets.RELEASES_KEY }}
+          RT: ${{ secrets.RELEASES_TOKEN }}
         run: |
-          [ -z "$RK" ] && { echo "RELEASES_KEY غير مضاف بعد — تخطي"; exit 0; }
-          printf '%s\n' "$RK" > ~/rk && chmod 600 ~/rk
-          export GIT_SSH_COMMAND="ssh -i ~/rk -o StrictHostKeyChecking=accept-new"
+          [ -z "$RT" ] && { echo "RELEASES_TOKEN غير مضاف بعد — تخطي"; exit 0; }
           N=${{ github.run_number }}; D=$(mktemp -d)
           cp minbar.apk minbar-arm32.apk $D/ && cp .github/deploy/README.md $D/README.md && echo $N > $D/version.txt
           cd $D && git init -q -b main && git add -A
           git -c user.name="minbar-ci" -c user.email="ci@minbar" commit -qm "منبر — النسخة $N"
-          git push -f git@github.com:DrAhmed19/minbar-releases.git main
-          rm -f ~/rk
+          git push -f "https://x-access-token:$RT@github.com/DrAhmed19/minbar-releases.git" main
       - name: تسجيل رقم البناء في Firestore (لتنبيه التحديث داخل التطبيق)
         if: github.ref == 'refs/heads/main'
         continue-on-error: true
