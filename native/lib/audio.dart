@@ -407,41 +407,43 @@ class _CurvePainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter o) => true;
 }
 
+Widget _knob(StateSetter ss, VoidCallback edited, String k, String name) {
+  final on = au.on[k] == true;
+  return Expanded(
+    child: _box(Column(children: [
+      GestureDetector(
+        onPanUpdate: (d) {
+          // تدوير حقيقي حول مركز المقبض (60،55)
+          final p = d.localPosition - const Offset(60, 55), q = p - d.delta;
+          var da = math.atan2(p.dy, p.dx) - math.atan2(q.dy, q.dx);
+          if (da > math.pi) da -= 2 * math.pi;
+          if (da < -math.pi) da += 2 * math.pi;
+          au.k[k] = (au.k[k]! + da / (math.pi * 1.5) * 100).clamp(0.0, 100.0);
+          au.on[k] = au.k[k]! > 0;
+          ss(() {});
+        },
+        onPanEnd: (_) => edited(),
+        child: SizedBox(width: 120, height: 110, child: CustomPaint(painter: _KnobPainter(au.k[k]! / 100, on))),
+      ),
+      const SizedBox(height: 8),
+      GestureDetector(
+        onTap: () {
+          au.on[k] = !on;
+          if (au.on[k]! && au.k[k] == 0) au.k[k] = 40;
+          edited();
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), color: on ? const Color(0x2EE8C468) : Colors.transparent, border: Border.all(color: on ? kGold : _line)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [PIcon(Ic.power, color: on ? kGold : Colors.white60, size: 15), const SizedBox(width: 6), Text(name, style: tx(13.5, c: on ? kGold : Colors.white70))]),
+        ),
+      ),
+    ])),
+  );
+}
+
 List<Widget> _effects(StateSetter ss, VoidCallback edited) {
-  Widget knob(String k, String name) {
-    final on = au.on[k] == true;
-    return Expanded(
-      child: _box(Column(children: [
-        GestureDetector(
-          onPanUpdate: (d) {
-            // تدوير حقيقي حول مركز المقبض (60،55)
-            final p = d.localPosition - const Offset(60, 55), q = p - d.delta;
-            var da = math.atan2(p.dy, p.dx) - math.atan2(q.dy, q.dx);
-            if (da > math.pi) da -= 2 * math.pi;
-            if (da < -math.pi) da += 2 * math.pi;
-            au.k[k] = (au.k[k]! + da / (math.pi * 1.5) * 100).clamp(0.0, 100.0);
-            au.on[k] = au.k[k]! > 0;
-            ss(() {});
-          },
-          onPanEnd: (_) => edited(),
-          child: SizedBox(width: 120, height: 110, child: CustomPaint(painter: _KnobPainter(au.k[k]! / 100, on))),
-        ),
-        const SizedBox(height: 8),
-        GestureDetector(
-          onTap: () {
-            au.on[k] = !on;
-            if (au.on[k]! && au.k[k] == 0) au.k[k] = 40;
-            edited();
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), color: on ? const Color(0x2EE8C468) : Colors.transparent, border: Border.all(color: on ? kGold : _line)),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [PIcon(Ic.power, color: on ? kGold : Colors.white60, size: 15), const SizedBox(width: 6), Text(name, style: tx(13.5, c: on ? kGold : Colors.white70))]),
-          ),
-        ),
-      ])),
-    );
-  }
+  Widget knob(String k, String name) => _knob(ss, edited, k, name);
 
   return [
     _box(GestureDetector(
@@ -451,25 +453,23 @@ List<Widget> _effects(StateSetter ss, VoidCallback edited) {
       },
       child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [PIcon(Ic.power, color: au.agc ? kGold : Colors.white60, size: 17), const SizedBox(width: 8), Text('التحكم التلقائي بالمستوى', style: tx(15, c: au.agc ? kGold : Colors.white70))]),
     )),
-    Row(children: [knob('zb', 'تعزيز الجهير'), const SizedBox(width: 10), knob('cp', 'الضاغط')]),
-    Row(children: [knob('zm', 'تعزيز الوسط'), const SizedBox(width: 10), knob('zt', 'تعزيز الحدّة')]),
     _box(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Row(children: [Text('التوازن', style: tx(14, c: Colors.white)), const Spacer(), Text(au.bal == 0 ? 'وسط' : (au.bal < 0 ? 'يسار ${(-au.bal * 100).round()}%' : 'يمين ${(au.bal * 100).round()}%'), style: tx(12.5, c: kGold))]),
+      Row(children: [Text('التوازن', style: tx(14, c: Colors.white)), const Spacer(), Text(au.bal == 0 ? 'الوسط' : (au.bal < 0 ? 'يسار ${(-au.bal * 100).round()}%' : 'يمين ${(au.bal * 100).round()}%'), style: tx(12.5, c: kGold))]),
       Directionality(
         textDirection: TextDirection.ltr,
         child: Row(children: [
-          Text('L', style: tx(12, c: Colors.white54)),
+          Text('يسار', style: tx(12, c: Colors.white54)),
           Expanded(child: Slider(value: au.bal, min: -1, max: 1, activeColor: kGold, inactiveColor: Colors.white12, onChanged: (v) {
             au.bal = (v.abs() < 0.04 ? 0.0 : v);
             ss(() {});
           }, onChangeEnd: (_) => edited())),
-          Text('R', style: tx(12, c: Colors.white54)),
+          Text('يمين', style: tx(12, c: Colors.white54)),
         ]),
       ),
     ])),
-    Row(children: [knob('rev', 'صدى القاعة'), const SizedBox(width: 10), knob('wid', 'توسيع الصوت')]),
-    Row(children: [knob('rot', 'دوران 8D'), const SizedBox(width: 10), const Expanded(child: SizedBox())]),
-    if (!fxOk.every((x) => x)) Text('بعض المؤثرات غير مدعومة على هذا الجهاز.', style: tx(11.5, c: Colors.white38)),
+    Row(children: [knob('zb', 'تعزيز الجهير'), const SizedBox(width: 10), knob('cp', 'الضاغط')]),
+    Row(children: [knob('zm', 'تعزيز الوسط'), const SizedBox(width: 10), knob('zt', 'تعزيز الحدّة')]),
+
   ];
 }
 
@@ -509,6 +509,17 @@ List<Widget> _adv(StateSetter ss, VoidCallback edited) {
       ]));
   final pc = app.player;
   return [
+    row('طبقة الصوت', au.pitch.toStringAsFixed(1), '+12', '-12', -au.pitch, -12, 12, (v) {
+      au.pitch = -(v * 2).round() / 2;
+      ss(() {});
+    }, edited),
+    row('سرعة التشغيل', '×${pc.speed.toStringAsFixed(2)}', '2×', '0.5×', 2.5 - pc.speed, 0.5, 2, (v) {
+      pc.setSpeed(((2.5 - v) * 20).round() / 20);
+      ss(() {});
+    }, () {}),
+    Row(children: [_knob(ss, edited, 'rev', 'الترديد'), const SizedBox(width: 10), _knob(ss, edited, 'wid', 'اتساع المجال')]),
+    Row(children: [_knob(ss, edited, 'rot', 'الدوران 8D'), const SizedBox(width: 10), const Expanded(child: SizedBox())]),
+    if (!fxOk.every((x) => x)) Text('بعض المؤثرات غير مدعومة على هذا الجهاز.', style: tx(11.5, c: Colors.white38)),
     _box(GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () async {
@@ -524,14 +535,6 @@ List<Widget> _adv(StateSetter ss, VoidCallback edited) {
         ])),
       ]),
     )),
-    row('طبقة الصوت', au.pitch.toStringAsFixed(1), '+12', '-12', -au.pitch, -12, 12, (v) {
-      au.pitch = -(v * 2).round() / 2;
-      ss(() {});
-    }, edited),
-    row('سرعة التشغيل', '×${pc.speed.toStringAsFixed(2)}', '2×', '0.5×', 2.5 - pc.speed, 0.5, 2, (v) {
-      pc.setSpeed(((2.5 - v) * 20).round() / 20);
-      ss(() {});
-    }, () {}),
   ];
 }
 

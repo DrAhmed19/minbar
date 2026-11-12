@@ -147,20 +147,18 @@ class _PlayerPageState extends State<PlayerPage> {
                         setState(() {});
                         snack2(kVizTitles[pc.viz]);
                       },
-                      child: SizedBox(height: 36, child: Center(child: Text('${pc.index + 1} من ${pc.queue.length}', style: tx(13, c: Colors.white60)))),
+                      child: SizedBox(height: 36, child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        if (pc.layout == 0) Text('يُشغَّل الآن', style: tx(10.5, c: Colors.white54)),
+                        Text('${pc.index + 1} من ${pc.queue.length}', style: tx(pc.layout == 0 ? 12 : 13, c: Colors.white70)),
+                      ]))),
                     ),
                   ),
-                  _box(Ic.chat, () => showCommentsSheet(context), label: 'التعليقات'),
-                  SizedBox(width: 8),
-                  _box(fav ? Ic.heartF : Ic.heart, () {
-                    app.repo.toggleFav(t.id);
-                    setState(() {});
-                  }),
+                  _box(Ic.more, _settingsSheet, label: 'إعدادات المشغل'),
                 ]),
               )),
               Expanded(
                 child: Stack(children: [
-                  Positioned.fill(child: lyView ? _lyricsView() : _stage(t)),
+                  Positioned.fill(child: pc.layout == 2 ? _lyricsView(t) : _stage(t)),
                   const Positioned.fill(child: CmLayer()),
                   const Positioned(right: 4, bottom: 70, child: RxLayer()),
                   Positioned.fill(
@@ -213,7 +211,7 @@ class _PlayerPageState extends State<PlayerPage> {
         child: Padding(padding: EdgeInsets.only(top: 6), child: VizStage(an: an, img: img, viz: pc.viz, env: env)),
       ),
       Expanded(
-        flex: 3,
+        flex: 2,
         child: LyricStrip(lines: ly, base: 22, onLong: () => showLyricsSheet(context, ly)),
       ),
     ]);
@@ -233,24 +231,44 @@ class _PlayerPageState extends State<PlayerPage> {
   final _sc = ScrollController();
   int _lastIdx = -2;
 
-  Widget _lyricsView() => LyricStrip(lines: ly, base: 27, onLong: () => showLyricsSheet(context, ly));
+  Widget _favBtn(Track t, {double size = 24}) => GestureDetector(
+        onTap: () {
+          app.repo.toggleFav(t.id);
+          setState(() {});
+        },
+        child: Padding(padding: const EdgeInsets.all(6), child: PIcon(app.repo.isFav(t.id) ? Ic.heartF : Ic.heart, color: kA, size: size)),
+      );
+  Widget _cmBtn({double size = 23}) => GestureDetector(
+        onTap: () => showCommentsSheet(context),
+        child: Padding(padding: const EdgeInsets.all(6), child: PIcon(Ic.chat, color: kA, size: size)),
+      );
+  Widget _titleCol(Track t, {TextAlign al = TextAlign.center, double fs = 18}) => Column(crossAxisAlignment: al == TextAlign.center ? CrossAxisAlignment.center : CrossAxisAlignment.start, children: [
+        Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: al, style: TextStyle(fontFamily: thx(app.player.viz).font, fontFamilyFallback: const ['F0'], fontSize: fs, color: Colors.white, fontWeight: FontWeight.w700, height: 1.4)),
+        FittedBox(fit: BoxFit.scaleDown, child: Text([t.reciter, t.poet].where((e) => e.isNotEmpty).join(' · '), maxLines: 1, textAlign: al, style: tx(13, c: kA))),
+      ]);
+
+  /// الكلمات أولاً: غلاف صغير + العنوان + القلب، والكلمات تملأ الشاشة
+  Widget _lyricsView(Track t) => Column(children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 4),
+          child: Row(children: [
+            ClipRRect(borderRadius: BorderRadius.circular(10), child: SizedBox(width: 48, height: 48, child: img != null ? RawImage(image: img, fit: BoxFit.cover) : Container(color: const Color(0x22FFFFFF)))),
+            const SizedBox(width: 10),
+            Expanded(child: _titleCol(t, al: TextAlign.start, fs: 16)),
+            _favBtn(t),
+          ]),
+        ),
+        Expanded(child: LyricStrip(lines: ly, base: 24, onLong: () => showLyricsSheet(context, ly))),
+      ]);
 
   Widget _bottom(Track t) {
     final pc = app.player;
-    return Padding(
+    final body = Padding(
       padding: EdgeInsets.fromLTRB(18, 6, 18, 4),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Row(children: [
-          _box(Ic.moon, _sleepSheet, size: 38, color: pc.sleepAt != null ? kA2 : kA, label: 'مؤقت النوم'),
-          Expanded(
-            child: Column(children: [
-              Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: TextStyle(fontFamily: thx(pc.viz).font, fontFamilyFallback: const ['F0'], fontSize: 18, color: Colors.white, fontWeight: FontWeight.w700, height: 1.4)),
-              FittedBox(fit: BoxFit.scaleDown, child: Text([t.reciter, t.poet].where((e) => e.isNotEmpty).join(' · '), maxLines: 1, textAlign: TextAlign.center, style: tx(13, c: kA))),
-            ]),
-          ),
-          _box(Ic.more, _settingsSheet, size: 38, label: 'إعدادات المشغل'),
-        ]),
-        SizedBox(height: 6),
+        if (pc.layout == 1) Row(children: [_favBtn(t), Expanded(child: _titleCol(t)), _cmBtn()]),
+        if (pc.layout == 0) _titleCol(t),
+        SizedBox(height: pc.layout == 2 ? 0 : 6),
         StreamBuilder<Duration>(
           stream: pc.p.positionStream,
           builder: (_, s) => StreamBuilder<Duration?>(
@@ -284,6 +302,7 @@ class _PlayerPageState extends State<PlayerPage> {
                   padding: EdgeInsets.symmetric(horizontal: 2),
                   child: Row(textDirection: TextDirection.ltr, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                     Text(fmt2(pos), style: tx(12, c: Colors.white60)),
+                    if (pc.layout == 0) ...[_ctl(Ic.shuf, pc.shuffle, pc.toggleShuffle), _ctl(Ic.rep, pc.loop != LoopMode.off, pc.cycleLoop)],
                     Text(fmt2(dur), style: tx(12, c: Colors.white60)),
                   ]),
                 ),
@@ -295,6 +314,7 @@ class _PlayerPageState extends State<PlayerPage> {
         Directionality(
           textDirection: TextDirection.ltr,
           child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
+            if (pc.layout == 0) _favBtn(t) else _ctl(Ic.shuf, pc.shuffle, pc.toggleShuffle),
             HoldSeek(dir: -1, onTap: pc.prev, child: PIcon(Ic.prev, color: kA, size: 26)),
             StreamBuilder<PlayerState>(
               stream: pc.p.playerStateStream,
@@ -338,11 +358,27 @@ class _PlayerPageState extends State<PlayerPage> {
               },
             ),
             HoldSeek(dir: 1, onTap: pc.next, child: PIcon(Ic.next, color: kA, size: 26)),
+            if (pc.layout == 0) _cmBtn() else _ctl(Ic.rep, pc.loop != LoopMode.off, pc.cycleLoop),
           ]),
         ),
       ]),
     );
+    if (pc.layout != 0) return body;
+    // الغامر: كل التحكم داخل لوحة زجاجية واحدة
+    return Container(
+      margin: const EdgeInsets.fromLTRB(10, 4, 10, 4),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(26), color: const Color(0x1AFFFFFF), border: Border.all(color: const Color(0x24FFFFFF))),
+      child: body,
+    );
   }
+
+  Widget _ctl(String ic, bool on, VoidCallback f) => GestureDetector(
+        onTap: () {
+          f();
+          setState(() {});
+        },
+        child: Padding(padding: const EdgeInsets.all(6), child: PIcon(ic, color: on ? kA : kA.withOpacity(0.45), size: 22)),
+      );
 
   Widget _dock() {
     final pc = app.player;
@@ -383,11 +419,9 @@ class _PlayerPageState extends State<PlayerPage> {
       padding: EdgeInsets.fromLTRB(8, 8, 8, 6),
       decoration: dd,
       child: Row(children: [
-        b(Ic.rep, 'تكرار', pc.loop != LoopMode.off, pc.cycleLoop),
-        b(Ic.text, 'الكلمات', false, () => showLyricsSheet(context, ly)),
-        b(Ic.pulse, 'الصوت', true, () => showAudioSheet(context), act: true),
         b(Ic.queue, 'القائمة', false, _queueSheet),
-        b(Ic.shuf, 'عشوائي', pc.shuffle, pc.toggleShuffle),
+        if (pc.layout == 2) b(Ic.eq, 'القالب', false, _settingsSheet) else b(Ic.text, 'الكلمات', false, () => showLyricsSheet(context, ly)),
+        b(Ic.pulse, 'الصوت', true, () => showAudioSheet(context), act: true),
       ]),
     );
   }
@@ -607,6 +641,10 @@ class _PlayerPageState extends State<PlayerPage> {
       final tools = <Widget>[
             _grp('القصيدة'),
             _list([
+                _tile(Ic.moon, 'مؤقت النوم', pc.sleepAt != null ? 'مفعّل — اضغط للتعديل' : 'إيقاف التشغيل بعد مدة', () {
+                  Navigator.pop(c);
+                  _sleepSheet();
+                }),
                 _tile(Ic.info, 'عن القصيدة', 'الرادود والتفاصيل', () {
                   showDialog(
                     context: context,
