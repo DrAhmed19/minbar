@@ -276,7 +276,7 @@ final majlis = Majlis();
 
 void showMajlisSheet(BuildContext context) {
   final inp = TextEditingController();
-  showModalBottomSheet(
+  showMSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: const Color(0xFF1C1612),
@@ -378,7 +378,7 @@ void showMajlisSheet(BuildContext context) {
 
 // ================= الإحصائيات =================
 void showStatsSheet(BuildContext context) {
-  showModalBottomSheet(
+  showMSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: const Color(0xFF1C1612),

@@ -123,8 +123,18 @@ class _PlayerPageState extends State<PlayerPage> {
         body: Stack(children: [
           Positioned.fill(child: _Background(t, hue)),
           SafeArea(
-            child: Column(children: [
-              Padding(
+            child: Transform.translate(offset: Offset(0, _pull), child: Column(children: [
+              GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onVerticalDragUpdate: (d) => setState(() => _pull = (_pull + d.delta.dy).clamp(0.0, 400.0)),
+                onVerticalDragEnd: (d) {
+                  if (_pull > 120 || (d.primaryVelocity ?? 0) > 900) {
+                    Navigator.pop(context);
+                  } else {
+                    setState(() => _pull = 0);
+                  }
+                },
+                child: Padding(
                 padding: EdgeInsets.fromLTRB(14, 6, 14, 0),
                 child: Row(children: [
                   _box(Ic.down, () => Navigator.pop(context), label: 'إغلاق المشغل'),
@@ -147,7 +157,7 @@ class _PlayerPageState extends State<PlayerPage> {
                     setState(() {});
                   }),
                 ]),
-              ),
+              )),
               Expanded(
                 child: Stack(children: [
                   Positioned.fill(child: lyView ? _lyricsView() : _stage(t)),
@@ -170,7 +180,7 @@ class _PlayerPageState extends State<PlayerPage> {
               ),
               _bottom(t),
               _dock(),
-            ]),
+            ])),
           ),
         ]),
       ),
@@ -217,6 +227,7 @@ class _PlayerPageState extends State<PlayerPage> {
     return st;
   }
 
+  double _pull = 0;
   double? _scrub;
   double _scrubDur = 0;
   final _sc = ScrollController();
@@ -383,7 +394,7 @@ class _PlayerPageState extends State<PlayerPage> {
 
   // ---------- الأوراق ----------
   Future<void> _sheet(Widget Function(BuildContext, StateSetter) b, {double h = 0.0}) {
-    return showModalBottomSheet(
+    return showMSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Color(0xFF16100B),
@@ -691,7 +702,7 @@ class _PlayerPageState extends State<PlayerPage> {
 
   void _queueSheet() {
     final pc = app.player;
-    showModalBottomSheet(
+    showMSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Color(0xFF16100B),

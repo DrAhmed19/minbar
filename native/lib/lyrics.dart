@@ -298,7 +298,7 @@ class _LyricStripState extends State<LyricStrip> with SingleTickerProviderStateM
 
 /// ورقة «الكلمات ← المظهر» (مثل الويب)
 void showLyricsSheet(BuildContext context, List<Lyric> lines) {
-  showModalBottomSheet(
+  showMSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: const Color(0xFF1C1612),

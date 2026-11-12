@@ -190,3 +190,39 @@ class PIcon extends StatelessWidget {
     return SizedBox(width: sz, height: sz, child: Opacity(opacity: c.alpha / 255, child: SvgPicture.string(svg)));
   }
 }
+
+
+/// ورقة سفلية تُغلق بالسحب للأسفل حتى لو كان محتواها قابلاً للتمرير
+Future<T?> showMSheet<T>({required BuildContext context, required WidgetBuilder builder, bool isScrollControlled = false, Color? backgroundColor, ShapeBorder? shape}) =>
+    showModalBottomSheet<T>(context: context, isScrollControlled: isScrollControlled, backgroundColor: backgroundColor, shape: shape, builder: (c) => SheetPull(child: builder(c)));
+
+class SheetPull extends StatefulWidget {
+  final Widget child;
+  const SheetPull({super.key, required this.child});
+  @override
+  State<SheetPull> createState() => _SheetPullState();
+}
+
+class _SheetPullState extends State<SheetPull> {
+  double pull = 0;
+  bool done = false;
+  @override
+  Widget build(BuildContext context) => NotificationListener<ScrollNotification>(
+        onNotification: (n) {
+          if (done) return false;
+          if (n is OverscrollNotification && n.overscroll < 0 && n.dragDetails != null && n.metrics.axis == Axis.vertical) {
+            setState(() => pull += -n.overscroll);
+            if (pull > 110) {
+              done = true;
+              Navigator.of(context).maybePop();
+            }
+          } else if (n is ScrollUpdateNotification && pull > 0 && (n.scrollDelta ?? 0) > 0) {
+            setState(() => pull = 0);
+          } else if (n is ScrollEndNotification && pull > 0) {
+            setState(() => pull = 0);
+          }
+          return false;
+        },
+        child: Transform.translate(offset: Offset(0, pull * 0.7), child: widget.child),
+      );
+}

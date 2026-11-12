@@ -397,7 +397,7 @@ class _CmLayerState extends State<CmLayer> {
 
 void showCommentsSheet(BuildContext context) {
   final inp = TextEditingController();
-  showModalBottomSheet(
+  showMSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: const Color(0xFF1C1612),

@@ -373,7 +373,7 @@ class _HomeShellState extends State<HomeShell> {
 
   void _accountSheet() {
     final a = app.auth;
-    showModalBottomSheet(
+    showMSheet(
       context: context,
       backgroundColor: Colors.white,
       builder: (s) => Directionality(
@@ -437,6 +437,9 @@ class _HomeShellState extends State<HomeShell> {
     if (t == null) return const SizedBox.shrink();
     return Semantics(label: 'فتح المشغل', button: true, child: GestureDetector(
       onTap: () => openPlayer(context),
+      onVerticalDragEnd: (d) {
+        if ((d.primaryVelocity ?? 0) < -250) openPlayer(context);
+      },
       child: Container(
         margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: const [BoxShadow(color: Color(0x2E0E5C46), blurRadius: 24, offset: Offset(0, 8))]),
@@ -513,6 +516,7 @@ void openPlayer(BuildContext context) {
   Navigator.push(
     context,
     PageRouteBuilder(
+      opaque: false,
       pageBuilder: (_, __, ___) => const PlayerPage(),
       transitionsBuilder: (_, a, __, c) => SlideTransition(position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)), child: c),
     ),
@@ -814,7 +818,7 @@ Future<String?> askName(BuildContext context) {
 /// ========== قائمة إجراءات القصيدة ==========
 void trackSheet(BuildContext context, Track t) {
   final r = app.repo, pc = app.player;
-  showModalBottomSheet(
+  showMSheet(
     context: context,
     backgroundColor: Colors.white,
     isScrollControlled: true,
@@ -853,7 +857,7 @@ void trackSheet(BuildContext context, Track t) {
             }),
             _a(Ic.plist, 'إضافة إلى قائمة', () async {
               Navigator.pop(sheet);
-              final pick = await showModalBottomSheet<Pl>(
+              final pick = await showMSheet<Pl>(
                 context: context,
                 backgroundColor: Colors.white,
                 builder: (s2) => Directionality(

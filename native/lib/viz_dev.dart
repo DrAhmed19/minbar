@@ -758,6 +758,7 @@ class DevTouch {
           for (final c in [q[0] as Offset, q[1] as Offset]) {
             if (_hyp(px - c.dx, py - c.dy) < (q[2] as double) * 1.1) {
               s.m['drag'] = c;
+              s.m['mv'] = 0.0;
               s.m['la'] = math.atan2(py - c.dy, px - c.dx);
               Scrub.begin(2.4);
               return true;
@@ -779,6 +780,7 @@ class DevTouch {
           }
           if (_hyp(px - cx, py - cy) < R * 1.08) {
             s.m['drag'] = Offset(cx, cy);
+            s.m['mv'] = 0.0;
             s.m['la'] = math.atan2(py - cy, px - cx);
             Scrub.begin(1.2);
             return true;
@@ -791,6 +793,7 @@ class DevTouch {
           for (final c in [q[0] as double, q[1] as double]) {
             if (_hyp(px - c, py - cy) < R) {
               s.m['drag'] = Offset(c, cy);
+              s.m['mv'] = 0.0;
               s.m['la'] = math.atan2(py - cy, px - c);
               Scrub.begin(1.6);
               return true;
@@ -843,7 +846,8 @@ class DevTouch {
             for (var j = 0; j < 2; j++) {
               if (_hyp(px - kg[j][0], py - kg[j][1]) < kg[j][2] * 1.6) {
                 s.m['kd'] = j + 1;
-                s.m['ly'] = py;
+                s.m['kc'] = Offset(kg[j][0], kg[j][1]);
+                s.m['la'] = math.atan2(py - kg[j][1], px - kg[j][0]);
                 return true;
               }
             }
@@ -915,6 +919,7 @@ class DevTouch {
           if (c == null) return;
           var d = _ang(s, px, py, c.dx, c.dy);
           if (id != 'jog' && ((d > 0 && kc.p > 0.997) || (d < 0 && kc.p < 0.003))) d = 0;
+          s.m['mv'] = s.g('mv') + d.abs();
           s.m['a'] = s.g('a') + d;
           Scrub.turn(d);
         }
@@ -938,8 +943,8 @@ class DevTouch {
         {
           final kd = s.m['kd'] as int?;
           if (kd == null || kd == 0) return;
-          final d = (s.g('ly') - py) / 120;
-          s.m['ly'] = py;
+          final c = s.m['kc'] as Offset;
+          final d = _ang(s, px, py, c.dx, c.dy) / (math.pi * 1.5);
           if (kd == 1) {
             s.m['z'] = _cl(s.g('z', 0.5) + d, 0, 1);
           } else {
@@ -972,6 +977,7 @@ class DevTouch {
   }
 
   static void up(String id, DevS s) {
+    if ((id == 'cassette' || id == 'jog' || id == 'reels') && s.m['drag'] != null && s.m['sl'] != true && s.g('mv') < 0.05) app.player.toggle();
     switch (id) {
       case 'wring':
         if (s.m['drag'] == true && kc.dur > 0) app.player.seek(s.g('p') * kc.dur);

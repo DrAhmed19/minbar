@@ -163,7 +163,9 @@ class VizF {
 }
 
 class VizState {
-  double va = 0, vw = 0, arm = 0;
+  double va = 0, vw = 0, arm = 0, ab = 0, av = 0, am = 0;
+  bool vdrag = false;
+  final List<List<double>> aps = [];
   final List<({double t, double a})> rings = [];
   double lastBeat = 0;
   final List<_P> dust = [];
@@ -288,10 +290,43 @@ class _VizStageState extends State<VizStage> with SingleTickerProviderStateMixin
               child: cp,
             );
           }
-          return CustomPaint(
+          final vp = CustomPaint(
             painter: VizPainter(id, f, vs, widget.img, now, dt == 0 ? 0.016 : dt, !app.player.p.playing, widget.scale),
             size: Size.infinite,
           );
+          if (widget.still) return vp;
+          if (id == 'vinyl') {
+            return LayoutBuilder(builder: (_, c) {
+              final o = Offset(c.maxWidth / 2, c.maxHeight / 2);
+              double la = 0, mv = 0;
+              return GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onPanDown: (d) {
+                  la = math.atan2(d.localPosition.dy - o.dy, d.localPosition.dx - o.dx);
+                  mv = 0;
+                },
+                onPanStart: (_) {
+                  vs.vdrag = true;
+                  Scrub.begin(1.15);
+                },
+                onPanUpdate: (d) {
+                  final a = math.atan2(d.localPosition.dy - o.dy, d.localPosition.dx - o.dx);
+                  var da = a - la;
+                  if (da > math.pi) da -= 2 * math.pi;
+                  if (da < -math.pi) da += 2 * math.pi;
+                  la = a;
+                  mv += da.abs();
+                  vs.va += da;
+                  Scrub.turn(da);
+                },
+                onPanEnd: (_) => vs.vdrag = false,
+                onPanCancel: () => vs.vdrag = false,
+                onTap: app.player.toggle,
+                child: vp,
+              );
+            });
+          }
+          return GestureDetector(behavior: HitTestBehavior.translucent, onTap: app.player.toggle, child: vp);
     }
 
     return RepaintBoundary(child: app.player.perf == 1 || widget.still ? frame() : AnimatedBuilder(animation: _c, builder: (_, __) => frame()));
@@ -436,10 +471,7 @@ class VizPainter extends CustomPainter {
       case 'cover':
         cover(cx, cy, R * 1.05, 'r');
       case 'ambient':
-        {
-          glow(cx, cy, R * 0.3, R * (1.6 + F.bass * 0.4), 0.08 + F.vol * 0.25);
-          cover(cx, cy, R * 0.5, 'c');
-        }
+        _ambient();
       default:
         _mihrab();
     }
@@ -632,10 +664,56 @@ class VizPainter extends CustomPainter {
     x.drawRect(Rect.fromLTWH(cx - gap * 2.6, base, gap * 5.2, u * 1.5), fill(ga(0.35)));
   }
 
+  /// أجواء — مثل drawAmbient في الويب: بقع لونية، أشعة دوّارة، هالة تتنفس، جزيئات صاعدة
+  void _ambient() {
+    st.ab += (F.bass - st.ab) * 0.06;
+    st.av += (F.vol - st.av) * 0.06;
+    st.am += (F.mid - st.am) * 0.06;
+    final rr = R * 1.12, L = math.sqrt(W * W + H * H) * 1.3;
+    for (final (i, b) in [(0, [0.2, 0.15, 0.7, 0.27]), (1, [0.85, 0.7, 0.65, 0.21])]) {
+      final bx = W * (b[0] + 0.08 * math.sin(t * b[3] * 0.5 + i * 2)), by = H * (b[1] + 0.06 * math.cos(t * b[3] * 0.4 + i)), rad = math.max(W, H) * b[2];
+      final c = i == 0 ? const Color(0xFF1A8A68) : const Color(0xFF146E54);
+      x.drawCircle(Offset(bx, by), rad, Paint()..shader = ui.Gradient.radial(Offset(bx, by), rad, [c.withOpacity(0.18 + st.av * 0.08), c.withOpacity(0)]));
+    }
+    x.save();
+    x.translate(cx, cy);
+    x.rotate(t * 0.02);
+    final ra = (0.07 + st.am * 0.09).clamp(0.0, 1.0);
+    for (var i = 0; i < 18; i++) {
+      final a0 = i * tau / 18, w = 0.05;
+      final path = Path()
+        ..moveTo(0, 0)
+        ..lineTo(math.cos(a0 - w) * L, math.sin(a0 - w) * L)
+        ..lineTo(math.cos(a0 + w) * L, math.sin(a0 + w) * L)
+        ..close();
+      x.drawPath(path, Paint()..shader = ui.Gradient.linear(Offset.zero, Offset(math.cos(a0) * L * 0.6, math.sin(a0) * L * 0.6), [gold.withOpacity(ra), gold.withOpacity(0)]));
+    }
+    x.restore();
+    final hr = rr * (1.25 + st.ab * 0.18);
+    x.drawCircle(Offset(cx, cy), hr * 1.6, Paint()..shader = ui.Gradient.radial(Offset(cx, cy), hr * 1.6, [ga(0.16 + st.ab * 0.22), ga(0)], [(rr * 0.85 / (hr * 1.6)).clamp(0.0, 1.0), 1]));
+    x.drawCircle(Offset(cx, cy), rr * (1.12 + st.ab * 0.08), stroke(gold2.withOpacity((0.12 + st.ab * 0.3).clamp(0.0, 1.0)), math.max(1.0, u)));
+    final rnd = math.Random();
+    if (st.aps.isEmpty) {
+      for (var i = 0; i < 34; i++) {
+        st.aps.add([rnd.nextDouble(), rnd.nextDouble(), 0.5 + rnd.nextDouble(), i.toDouble()]);
+      }
+    }
+    for (final q in st.aps) {
+      q[1] -= (0.0005 + st.av * 0.0012) * q[2] * (dt / 0.016);
+      if (q[1] < -0.02) {
+        q[1] = 1.02;
+        q[0] = rnd.nextDouble();
+      }
+      final px = (q[0] + 0.02 * math.sin(t * 0.4 + q[3])) * W;
+      x.drawCircle(Offset(px, q[1] * H), (0.7 + q[2] * 1.2) * math.min(W, H) / 300, Paint()..color = gold2.withOpacity((0.1 + 0.22 * q[2] * (0.4 + st.av)).clamp(0.0, 1.0)));
+    }
+    cover(cx, cy, rr, 'c');
+  }
+
   void _vinyl() {
     final on = paused ? 0.0 : 1.0;
     st.vw += (on * 1.15 - st.vw) * math.min(1.0, dt * 1.8);
-    st.va += st.vw * dt;
+    if (!st.vdrag) st.va += st.vw * dt;
     st.arm += (on - st.arm) * math.min(1.0, dt * 2.6);
     final r = R * 1.18, vx = cx - r * 0.06, vy = cy + r * 0.04;
     glow(vx, vy, r * 0.9, r * 1.45, 0.05 + F.bass * 0.22);
