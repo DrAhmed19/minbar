@@ -83,7 +83,7 @@ class MainActivity : AudioServiceActivity() {
     private var rev: PresetReverb? = null
     private var dp: DynamicsProcessing? = null
 
-    private fun release() {
+    private fun fxFree() {
         try { virt?.release() } catch (e: Exception) {}
         try { rev?.release() } catch (e: Exception) {}
         try { dp?.release() } catch (e: Exception) {}
@@ -98,7 +98,7 @@ class MainActivity : AudioServiceActivity() {
                     "attach" -> {
                         val s = (call.argument<Int>("s") ?: -1)
                         if (s > 0 && s != sid) {
-                            release(); sid = s
+                            fxFree(); sid = s
                             try { virt = Virtualizer(0, s) } catch (e: Exception) {}
                             try { rev = PresetReverb(0, s) } catch (e: Exception) {}
                             if (Build.VERSION.SDK_INT >= 28) {
