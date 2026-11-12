@@ -64,14 +64,15 @@
     <div class="plrsheetbg" id="plrBg" hidden></div>
     <div class="plrtp" id="plrTp" hidden>
       <div class="gr"></div>
-      <div class="tph"><b>إعدادات العرض والتشغيل</b><button class="ib" id="plrTpX" aria-label="إغلاق">${ic('x', 20)}</button></div>
-      <div class="tpc tpv"><h4>${ic('eq', 16)}قوالب العرض <b class="vzn" id="plrVizN"></b></h4><div class="vizrow" id="plrVizP"></div></div>
-      <div class="tpc"><h4>${ic('lay', 16)}ترتيب الواجهة</h4><div class="laycards" id="plrLayP"></div></div>
-      <div class="tpc"><h4>${ic('color', 16)}لون الخلفية <b class="vzn" id="plrBgN"></b></h4><div class="bgsw" id="plrBgP"></div></div>
-      <div class="tpc"><h4>${ic('spark', 16)}أدوات القصيدة</h4><div class="tools" id="plrTools"></div></div>
-      <div class="tpc"><h4>${ic('speed', 16)}سرعة التشغيل</h4><div class="seg" id="plrSpeedP"></div></div>
+      <div class="tph"><b>إعدادات العرض</b><button class="ib" id="plrTpX" aria-label="إغلاق">${ic('x', 20)}</button></div>
+      <div class="seg tabs" id="plrTpT"><button data-k="v" class="on" type="button">المظهر</button><button data-k="t" type="button">الأدوات</button></div>
+      <div class="tpc tpv tpV"><h4>${ic('eq', 16)}القالب <b class="vzn" id="plrVizN"></b></h4><div class="seg vzc" id="plrVizC"></div><div class="vizgrid" id="plrVizP"></div></div>
+      <div class="tpc tpV"><h4>${ic('lay', 16)}ترتيب الواجهة</h4><div class="laycards" id="plrLayP"></div></div>
+      <div class="tpc tpV"><h4>${ic('color', 16)}لون الخلفية <b class="vzn" id="plrBgN"></b></h4><div class="bgsw" id="plrBgP"></div></div>
+      <div class="tpc tpT" hidden><div class="tools tgrp" id="plrTools"></div></div>
+      <div hidden><div class="seg" id="plrSpeedP"></div></div>
       <div id="plrSleepP" hidden></div>
-      <div class="tpc"><h4>${ic('cut', 16)}التصميم على مقطع</h4><button class="btn wide" id="plrClip" type="button">اختيار مقطع وتصميمه</button>
+      <div class="tpc tpT" hidden><h4>${ic('cut', 16)}التصميم على مقطع</h4><button class="btn wide" id="plrClip" type="button">اختيار مقطع وتصميمه</button>
       <div class="plrclip" id="plrClipBox" hidden>
         <div class="plrcliph"><b>تحديد المقطع</b><span id="plrClipLen"></span></div>
         <div class="clsug" id="plrClipSug"></div>
@@ -279,7 +280,7 @@
     if (!pfq || pfq.length !== n) pfq = new Float32Array(n); pfq.set(fqd);
   }
   /* ===== تحليل صوتي مسبق: يُحسب مرة واحدة (بالخلفية عند المالك) ويُقرأ وقت التشغيل بلا أي معالجة صوت — يحرّك الرسم واللطم بدل التحليل الحي ===== */
-  const APPV = '3.68';
+  const APPV = '3.70';
   const ANV = 'v1', ANKEY = (t) => 'n/' + t.id + '-' + ANV + '.bin', ANOK = (t) => /^[A-Za-z0-9_-]{3,64}$/.test((t && t.id) || '');
   let PRE = null; const PF = { dd: new Float32Array(22), vb: { db: 0, peak: 1 }, cb: { db: 0, flat: 0 }, hb: { db: 0 }, lb: { db: 0 }, on: 0 }; let synW = null, synT = 0;
   async function anLoad(t) { PRE = null; if (!t || t.an !== 1 || !ANOK(t)) return; try { const r = await fetch('media/u/' + ANKEY(t)); if (!r.ok) return; const b = new Uint8Array(await r.arrayBuffer()); if (b.length < 12 || b[0] !== 77 || b[1] !== 66 || b[2] !== 65) return; const nf = new DataView(b.buffer).getUint32(8, true); if (tracks[cur] && tracks[cur].id === t.id) PRE = { id: t.id, fps: b[4], nf, W: b[5] + b[6], d: b, o: 12 }; } catch (e) {} }
@@ -473,13 +474,17 @@
     const N = 22, vals = new Float32Array(N); for (let i = 0; i < N; i++) vals[i] = 0.3 + 0.5 * Math.abs(Math.sin(i * 0.7 + 1)) * (1 - i / N * 0.4);
     const wave = new Float32Array(256); for (let i = 0; i < 256; i++) wave[i] = 0.25 * Math.sin(i * 0.19) * Math.sin(i * 0.031);
     const F = { vals, vol: 0.5, bass: 0.6, mid: 0.45, hi: 0.35, beat: 0.5, cum: 3, wave };
-    L.forEach(([k, n]) => {
+    const VC = [['كلاسيكية', ['mihrab', 'ambient', 'cover', 'card', 'dots', 'silk']], ['أجهزة', ['vinyl', 'cassette', 'jog', 'reels', 'knob', 'speaker', 'scope']], ['حيّة', ['wring', 'halo', 'bars', 'blob', 'wave', 'spectrum', 'orbit', 'pulse', 'star', 'dust', 'neon', 'pond', 'strings', 'candles']]];
+    if (vizPills.c == null) { vizPills.c = Math.max(0, VC.findIndex((q) => q[1].includes(st.viz))); }
+    const vc = g('plrVizC'); if (vc) { vc.textContent = ''; VC.forEach(([cn], ci) => { const cb = el('button', ci === vizPills.c ? 'on' : '', cn); cb.type = 'button'; cb.onclick = () => { vizPills.c = ci; vizPills(); }; vc.appendChild(cb); }); }
+    const cur0 = L.find((q) => q[0] === st.viz); if (cur0) g('plrVizN').textContent = cur0[1];
+    L.filter(([k]) => VC[vizPills.c][1].includes(k)).forEach(([k, n]) => {
       const b = document.createElement('button'); b.className = 'vz' + (st.viz === k ? ' on' : ''); const c = document.createElement('canvas'), TS = Math.round(200 * Math.min(2, Math.max(1.5, window.devicePixelRatio || 1))); c.width = c.height = TS; const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; const u = TS / 200;
       try {
         if (k === 'cover') { const cc = document.createElement('div'); cc.className = 'plrcov'; if (curImg && curImg.naturalWidth) x.drawImage(curImg, 30 * u, 30 * u, 140 * u, 140 * u); else { x.fillStyle = 'rgba(232,196,104,.5)'; x.fillRect(30 * u, 30 * u, 140 * u, 140 * u); } }
         else if (k === 'ambient') drawAmbient(x, TS, TS, 2, F, { cx: TS / 2, cy: TS / 2, R: 50 * u }); else window.PVZ.draw(x, TS, TS, k, F, curImg, { cx: TS / 2, cy: TS / 2, R: 50 * u }, { t: 1.2, now: 1.2, dt: 0.016 });
       } catch (e) {}
-      b.title = n; b.append(c); b.onclick = () => { st.viz = k; save(); applyViz(); vizPills(); }; box.appendChild(b); if (st.viz === k) { g('plrVizN').textContent = n; requestAnimationFrame(() => { const r = box.getBoundingClientRect(), q = b.getBoundingClientRect(); box.scrollLeft += (q.left + q.width / 2) - (r.left + r.width / 2); }); }
+      b.title = n; b.append(c, el('span', '', n)); b.onclick = () => { st.viz = k; save(); applyViz(); vizPills(); }; box.appendChild(b); if (st.viz === k) { g('plrVizN').textContent = n; requestAnimationFrame(() => { const r = box.getBoundingClientRect(), q = b.getBoundingClientRect(); box.scrollLeft += (q.left + q.width / 2) - (r.left + r.width / 2); }); }
     });
   }
   (function () {
@@ -569,6 +574,7 @@
   g('plrSlB').onclick = () => { const seq = [0, 15, 30, 60, 'end'], i2 = (seq.indexOf(sleepT) + 1) % seq.length, n = seq[i2]; setSleep(n); toast(n === 0 ? 'أُلغي مؤقت الإيقاف' : n === 'end' ? 'سيتوقف التشغيل بنهاية هذه القصيدة' : 'سيتوقف التشغيل بعد ' + n + ' دقيقة'); };
   A.addEventListener('ended', () => { if (sleepEnd) { sleepEnd = false; sleepT = 0; A.__stop = true; slUi(); } });
   const tp = (on) => { g('plrTp').hidden = !on; g('plrBg').hidden = !on; if (on) { vizPills(); layApply(); toolsUi(); bgUi(); g('plrMore').classList.remove('newdot'); try { localStorage.setItem('minbar.seen.335', '1'); } catch (e) {} } };
+  g('plrTpT').querySelectorAll('button').forEach((bt) => bt.onclick = () => { g('plrTpT').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === bt)); const v = bt.dataset.k === 'v'; g('plrTp').querySelectorAll('.tpV').forEach((e) => e.hidden = !v); g('plrTp').querySelectorAll('.tpT').forEach((e) => e.hidden = v); });
   g('plrMore').onclick = () => tp(g('plrTp').hidden); g('plrTg').onclick = () => au(g('plrAu').hidden); g('plrBg').onclick = () => { tp(false); qs(false); admShow(false); au(false); cmS(false); g('plrCv').hidden = true; }; g('plrTpX').onclick = () => tp(false); g('plrAdmX').onclick = () => admShow(false);
   function counter() { const list = view.length ? view : tracks; g('plrCount').textContent = (list.indexOf(tracks[cur]) + 1) + ' من ' + list.length; }
   function dragVol(v, ramp) { if (AU.fade && ac) { const g2 = AU.fade.gain, T = ac.currentTime; g2.cancelScheduledValues(T); if (ramp) { g2.setValueAtTime(Math.max(0.0001, g2.value), T); g2.linearRampToValueAtTime(1, T + 0.25); } else g2.setTargetAtTime(Math.max(0.0001, v), T, 0.03); } else A.volume = Math.max(0, Math.min(1, v)); }
@@ -1986,7 +1992,9 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   function toolsUi() { const b = g('plrTools'); if (!b) return; b.textContent = ''; const seen = jget('minbar.seen.tools', {});
     [['ver', 'info', 'الإصدار ' + APPV, 'اضغط للتحقق من التحديث', () => { toast('جارٍ التحقق من التحديث…'); const go = () => setTimeout(() => location.reload(), 1200); try { navigator.serviceWorker.getRegistration().then((r) => (r ? r.update() : 0)).then(go, go); } catch (e) { go(); } }], ['about', 'info', 'عن القصيدة', 'الرادود والتفاصيل', about], ['share', 'share', 'مشاركة اللحظة', 'من الدقيقة الحالية', shareMoment], ['peak', 'flame', 'الذروة', rxList.length ? 'أكثر لحظة إعجاباً' : 'لا إعجابات', () => { const p = peakT(); if (p == null) return toast('لا توجد تفاعلات بعد على هذه القصيدة'); A.currentTime = p; if (A.paused) fadePlay(); tp(false); }],
       ['majlis', 'users', 'المجلس', MJ.on ? 'مفعّل · ' + MJ.code : 'استماع مشترك', mjMenu], ['husn', 'text', 'وضع الحسينية', 'كلمات كبيرة للشاشة', () => { tp(false); hsOpen(); }], ...(isOwner() ? [['mig', 'eq', 'نقل الملفات إلى R2', 'نسخ القصائد القديمة من KV', mgRun]] : []), ...(isOwner() ? [['anl', 'pulse', 'تحليل الصوت', anPending().length ? anPending().length + ' قصيدة بانتظار التحليل' : 'كل القصائد محلَّلة', () => anRun(true)]] : []), ['perf', 'eq', 'وضع الأداء', st.fx ? 'معطّل (مؤثرات وتحليل حي)' : 'مفعّل: أخف وأثبت بالخلفية', () => { st.fx = !st.fx; save(); toast(st.fx ? 'سيُعاد تشغيل التطبيق لتفعيل المؤثرات' : 'سيُعاد تشغيل التطبيق لوضع الأداء'); setTimeout(() => location.reload(), 900); }], ['latm', 'pulse', 'وضع اللطم', st.latm ? 'مفعّل' : 'اهتزاز مع الإيقاع', () => { st.latm = !st.latm; save(); toolsUi(); toast(st.latm ? 'وضع اللطم: يهتز الهاتف مع إيقاع اللطم' : 'أُوقف وضع اللطم'); }]].concat(isOwner() ? [['stats', 'eq', 'الإحصائيات', 'الاستماعات والإعجابات', statsPanel]] : []).forEach(([k, icn, n, s, f]) => {
-      const t = el('button', 'ptl' + ((k === 'latm' && st.latm) || (k === 'majlis' && MJ.on) ? ' on' : '')); t.type = 'button'; t.innerHTML = '<i class="pci">' + ic(icn, 18) + '</i><span></span><small></small>'; t.children[1].textContent = n; t.children[2].textContent = s; if (!seen[k]) t.appendChild(el('i', 'nb', 'جديد')); t.onclick = () => { const sn = jget('minbar.seen.tools', {}); sn[k] = 1; jset('minbar.seen.tools', sn); f(); toolsUi(); }; b.appendChild(t); }); }
+      const t = el('button', 'ptl' + ((k === 'latm' && st.latm) || (k === 'majlis' && MJ.on) ? ' on' : '')); t.type = 'button'; t.innerHTML = '<i class="pci">' + ic(icn, 18) + '</i><span></span><small></small>'; t.children[1].textContent = n; t.children[2].textContent = s; if (!seen[k]) t.appendChild(el('i', 'nb', 'جديد')); t.onclick = () => { const sn = jget('minbar.seen.tools', {}); sn[k] = 1; jset('minbar.seen.tools', sn); f(); toolsUi(); }; t.dataset.k = k; if (k === 'latm' || k === 'perf') t.classList.add('sw'); if (k === 'perf' && !st.fx) t.classList.add('on'); b.appendChild(t); });
+    [['القصيدة', ['about', 'share', 'peak', 'stats']], ['أوضاع الاستماع', ['majlis', 'husn', 'latm']], ['الجهاز', ['perf', 'ver']], ['المالك', ['mig', 'anl']]].forEach(([gn, ks]) => { const items = ks.map((q) => b.querySelector('[data-k="' + q + '"]')).filter(Boolean); if (!items.length) return; b.appendChild(el('h5', 'tgh', gn)); const L2 = el('div', 'tlist'); items.forEach((it) => L2.appendChild(it)); b.appendChild(L2); });
+    [...b.querySelectorAll(':scope > .ptl')].forEach((it) => { const L3 = b.querySelector('.tlist:last-of-type'); if (L3) L3.appendChild(it); }); }
 
   g('plrRecB').onclick = recognize; g('plrMj').onclick = () => mjMenu(); g('plrTitle').onclick = about; g('plrTitle').style.cursor = 'pointer';
   window.PLR = { open, close: () => { root.hidden = true; }, audio: A, playing: () => !A.paused, back, visible: () => !root.hidden, level: () => { if (!an) return -1; an.getByteFrequencyData(fbuf); let s = 0; for (let i = 0; i < fbuf.length; i++) s += fbuf[i]; return s / fbuf.length; } };
