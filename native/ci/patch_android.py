@@ -67,11 +67,78 @@ if 'minbar-95z.pages.dev' not in s:
     j = s.find('</intent-filter>', i) + len('</intent-filter>')
     s = s[:j] + '\n' + deep + s[j:]
 mf.write_text(s, encoding='utf-8')
+
+# مؤثرات أندرويد الأصلية للصوت: التوازن (DynamicsProcessing) + التوسيع (Virtualizer) + صدى القاعة (PresetReverb)
+FX_KT = """import android.media.audiofx.DynamicsProcessing
+import android.media.audiofx.PresetReverb
+import android.media.audiofx.Virtualizer
+import android.os.Build
+import com.ryanheise.audioservice.AudioServiceActivity
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
+
+class MainActivity : AudioServiceActivity() {
+    private var sid = -1
+    private var virt: Virtualizer? = null
+    private var rev: PresetReverb? = null
+    private var dp: DynamicsProcessing? = null
+
+    private fun release() {
+        try { virt?.release() } catch (e: Exception) {}
+        try { rev?.release() } catch (e: Exception) {}
+        try { dp?.release() } catch (e: Exception) {}
+        virt = null; rev = null; dp = null
+    }
+
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "minbar/fx").setMethodCallHandler { call, result ->
+            try {
+                when (call.method) {
+                    "attach" -> {
+                        val s = (call.argument<Int>("s") ?: -1)
+                        if (s > 0 && s != sid) {
+                            release(); sid = s
+                            try { virt = Virtualizer(0, s) } catch (e: Exception) {}
+                            try { rev = PresetReverb(0, s) } catch (e: Exception) {}
+                            if (Build.VERSION.SDK_INT >= 28) {
+                                try {
+                                    val cfg = DynamicsProcessing.Config.Builder(DynamicsProcessing.VARIANT_FAVOR_FREQUENCY_RESOLUTION, 2, false, 0, false, 0, false, 0, false).build()
+                                    dp = DynamicsProcessing(0, s, cfg)
+                                } catch (e: Exception) {}
+                            }
+                        }
+                        result.success(listOf(virt != null, rev != null, dp != null))
+                    }
+                    "virt" -> {
+                        val v = (call.argument<Int>("v") ?: 0)
+                        virt?.let { if (v > 0) { it.setStrength(v.toShort()); it.enabled = true } else it.enabled = false }
+                        result.success(virt != null)
+                    }
+                    "rev" -> {
+                        val v = (call.argument<Int>("v") ?: 0)
+                        rev?.let { if (v > 0) { it.preset = v.toShort(); it.enabled = true } else it.enabled = false }
+                        result.success(rev != null)
+                    }
+                    "bal" -> {
+                        val l = (call.argument<Double>("l") ?: 0.0).toFloat()
+                        val r = (call.argument<Double>("r") ?: 0.0).toFloat()
+                        dp?.let { it.setInputGainbyChannel(0, l); it.setInputGainbyChannel(1, r); it.enabled = (l != 0f || r != 0f) }
+                        result.success(dp != null)
+                    }
+                    else -> result.notImplemented()
+                }
+            } catch (e: Exception) { result.success(false) }
+        }
+    }
+}
+"""
+
 # MainActivity
 for kt in root.rglob('MainActivity.*'):
     pkg = re.search(r'^package\s+([\w.]+)', kt.read_text(encoding='utf-8'), re.M).group(1)
     if kt.suffix == '.kt':
-        kt.write_text(f'package {pkg}\n\nimport com.ryanheise.audioservice.AudioServiceActivity\n\nclass MainActivity : AudioServiceActivity()\n', encoding='utf-8')
+        kt.write_text(f'package {pkg}\n\n' + FX_KT, encoding='utf-8')
 # minSdk 23
 for g in [root / 'app/build.gradle.kts', root / 'app/build.gradle']:
     if g.exists():

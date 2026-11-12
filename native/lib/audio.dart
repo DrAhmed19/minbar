@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'state.dart';
@@ -26,15 +28,15 @@ const kAUP = [
   AuPreset('vocal', 'وضوح صوت الرادود', [-3, -3, -2, -1, 0, 1, 2.5, 3.5, 4, 3, 1.5, 0], {'cp': 35}),
   AuPreset('bt', 'تعزيز الجهير والحدّة', [5, 4.5, 3.5, 2, 0, -1, -1, 0, 1.5, 3, 4, 4.5]),
   AuPreset('vb', 'الصوت والجهير', [4.5, 4, 3, 1, -0.5, 0, 1.5, 3, 3, 1.5, 0.5, 0]),
-  AuPreset('hall', 'صدى القاعة', [1, 1, 0.5, 0, 0, 0, 0.5, 1, 1.5, 1.5, 1, 0.5], {'cp': 25}),
-  AuPreset('live', 'أداء حي', [2.5, 2.5, 2, 1, 0, 0, 0.5, 1.5, 2, 2, 2, 1.5], {'cp': 40}),
+  AuPreset('hall', 'صدى القاعة', [1, 1, 0.5, 0, 0, 0, 0.5, 1, 1.5, 1.5, 1, 0.5], {'rev': 45, 'cp': 25}),
+  AuPreset('live', 'أداء حي', [2.5, 2.5, 2, 1, 0, 0, 0.5, 1.5, 2, 2, 2, 1.5], {'rev': 22, 'cp': 40, 'wid': 40}),
   AuPreset('speech', 'وضوح الكلام', [-6, -5, -3, -1, 0, 1.5, 3, 4, 3.5, 2, 0, -2], {'cp': 55}, true),
   AuPreset('deep', 'جهير عميق', [7, 6.5, 5, 3, 1, 0, 0, 0, 0, 0.5, 0.5, 0], {'zb': 30}),
   AuPreset('bright', 'حدّة عالية', [0, 0, 0, 0, 0, 0, 1, 2, 3.5, 5, 6, 6], {'zt': 25}),
   AuPreset('night', 'الاستماع الليلي', [-4, -3, -1.5, 0, 0.5, 1, 1, 0.5, 0, -1, -2.5, -4], {'cp': 80}, true),
   AuPreset('radio', 'إذاعي', [-12, -9, -5, -1, 2, 4, 4, 3, 2, 0, -3, -6], {'cp': 70}),
-  AuPreset('head', 'سماعات الرأس', [3, 2.5, 1.5, 0, -1, -1, 0, 1, 2, 2.5, 2, 1]),
-  AuPreset('d8', 'صوت محيطي 8D', [1, 1, 0.5, 0, 0, 0, 0, 0.5, 1, 1, 1, 0.5]),
+  AuPreset('head', 'سماعات الرأس', [3, 2.5, 1.5, 0, -1, -1, 0, 1, 2, 2.5, 2, 1], {'wid': 30}),
+  AuPreset('d8', 'صوت محيطي 8D', [1, 1, 0.5, 0, 0, 0, 0, 0.5, 1, 1, 1, 0.5], {'rev': 15, 'wid': 35, 'rot': 30}),
 ];
 
 class AuState {
@@ -42,16 +44,18 @@ class AuState {
   double pitch = 0, preamp = 0;
   bool lim = true, agc = false;
   List<double> eq = List.filled(12, 0);
-  Map<String, double> k = {'zb': 0, 'zm': 0, 'zt': 0, 'cp': 0};
-  Map<String, bool> on = {'zb': false, 'zm': false, 'zt': false, 'cp': false};
+  double bal = 0;
+  Map<String, double> k = {'zb': 0, 'zm': 0, 'zt': 0, 'cp': 0, 'rev': 0, 'wid': 0, 'rot': 0};
+  Map<String, bool> on = {'zb': false, 'zm': false, 'zt': false, 'cp': false, 'rev': false, 'wid': false, 'rot': false};
 
-  Map<String, dynamic> toJson() => {'pre': pre, 'pitch': pitch, 'preamp': preamp, 'lim': lim, 'agc': agc, 'eq': eq, 'k': k, 'on': on};
+  Map<String, dynamic> toJson() => {'pre': pre, 'pitch': pitch, 'preamp': preamp, 'lim': lim, 'agc': agc, 'bal': bal, 'eq': eq, 'k': k, 'on': on};
   void fromJson(Map m) {
     pre = '${m['pre'] ?? 'flat'}';
     pitch = (m['pitch'] as num?)?.toDouble() ?? 0;
     preamp = (m['preamp'] as num?)?.toDouble() ?? 0;
     lim = m['lim'] != false;
     agc = m['agc'] == true;
+    bal = (m['bal'] as num?)?.toDouble() ?? 0;
     final e = m['eq'];
     if (e is List && e.length == 12) eq = [for (final v in e) (v as num).toDouble()];
     final kk = m['k'];
@@ -72,6 +76,9 @@ Future<void> auLoad() async {
     final c = sp.getString('auCustom');
     if (c != null) auCustom = [for (final x in jsonDecode(c) as List) Map<String, dynamic>.from(x as Map)];
   } catch (_) {}
+  app.player.p.androidAudioSessionIdStream.listen((id) {
+    if (id != null) auFx();
+  });
   app.player.p.durationStream.listen((d) {
     if (d != null) auApply();
   });
@@ -130,6 +137,42 @@ Future<void> auApply() async {
     if (boost > 0.05) await auLoud.setTargetGain(boost);
     await app.player.p.setPitch(math.pow(2, au.pitch / 12).toDouble());
   } catch (_) {}
+  await auFx();
+}
+
+/// مؤثرات أندرويد الأصلية: التوسيع، صدى القاعة، التوازن، والدوران 8D (توازن متحرك)
+const _fx = MethodChannel('minbar/fx');
+List<bool> fxOk = const [true, true, true];
+Timer? _rotT;
+Future<void> auFx() async {
+  try {
+    final s = app.player.p.androidAudioSessionId;
+    if (s == null) return;
+    final r = await _fx.invokeMethod('attach', {'s': s});
+    if (r is List) fxOk = [for (final x in r) x == true];
+    final w = au.on['wid'] == true ? (au.k['wid']! * 10).round() : 0;
+    await _fx.invokeMethod('virt', {'v': w});
+    final rv = au.on['rev'] == true ? au.k['rev']! : 0.0;
+    await _fx.invokeMethod('rev', {'v': rv <= 0 ? 0 : (rv < 25 ? 1 : (rv < 50 ? 2 : (rv < 75 ? 4 : 5)))});
+    _rotT?.cancel();
+    if (au.on['rot'] == true && au.k['rot']! > 0) {
+      final t0 = DateTime.now();
+      _rotT = Timer.periodic(const Duration(milliseconds: 90), (_) {
+        final t = DateTime.now().difference(t0).inMilliseconds / 1000;
+        _bal(au.bal + math.sin(t * 2 * math.pi / 8) * au.k['rot']! / 100);
+      });
+    } else {
+      await _bal(au.bal);
+    }
+  } catch (_) {}
+}
+
+Future<void> _bal(double b) async {
+  b = b.clamp(-1.0, 1.0);
+  double db(double x) => x <= 0.001 ? -60 : 20 * math.log(x) / math.ln10;
+  try {
+    await _fx.invokeMethod('bal', {'l': b > 0 ? db(1 - b) : 0.0, 'r': b < 0 ? db(1 + b) : 0.0});
+  } catch (_) {}
 }
 
 void auPreset(String id) {
@@ -144,6 +187,7 @@ void auPreset(String id) {
     au.eq = List.of(p.eq);
     au.agc = p.agc;
     au.preamp = 0;
+    au.bal = 0;
     for (final key in au.k.keys.toList()) {
       au.k[key] = p.k[key] ?? 0;
       au.on[key] = (p.k[key] ?? 0) > 0;
@@ -363,12 +407,17 @@ List<Widget> _effects(StateSetter ss, VoidCallback edited) {
     return Expanded(
       child: _box(Column(children: [
         GestureDetector(
-          onVerticalDragUpdate: (d) {
-            au.k[k] = (au.k[k]! - d.delta.dy * 0.6).clamp(0.0, 100.0);
+          onPanUpdate: (d) {
+            // تدوير حقيقي حول مركز المقبض (60،55)
+            final p = d.localPosition - const Offset(60, 55), q = p - d.delta;
+            var da = math.atan2(p.dy, p.dx) - math.atan2(q.dy, q.dx);
+            if (da > math.pi) da -= 2 * math.pi;
+            if (da < -math.pi) da += 2 * math.pi;
+            au.k[k] = (au.k[k]! + da / (math.pi * 1.5) * 100).clamp(0.0, 100.0);
             au.on[k] = au.k[k]! > 0;
             ss(() {});
           },
-          onVerticalDragEnd: (_) => edited(),
+          onPanEnd: (_) => edited(),
           child: SizedBox(width: 120, height: 110, child: CustomPaint(painter: _KnobPainter(au.k[k]! / 100, on))),
         ),
         const SizedBox(height: 8),
@@ -398,7 +447,23 @@ List<Widget> _effects(StateSetter ss, VoidCallback edited) {
     )),
     Row(children: [knob('zb', 'تعزيز الجهير'), const SizedBox(width: 10), knob('cp', 'الضاغط')]),
     Row(children: [knob('zm', 'تعزيز الوسط'), const SizedBox(width: 10), knob('zt', 'تعزيز الحدّة')]),
-    Text('الصدى والتوسيع والدوران 8D غير متاحة على أندرويد مباشرة؛ الإعدادات المسبقة تستعمل المعادل والتعزيز فقط.', style: tx(11.5, c: Colors.white38)),
+    _box(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Row(children: [Text('التوازن', style: tx(14, c: Colors.white)), const Spacer(), Text(au.bal == 0 ? 'وسط' : (au.bal < 0 ? 'يسار ${(-au.bal * 100).round()}%' : 'يمين ${(au.bal * 100).round()}%'), style: tx(12.5, c: kGold))]),
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: Row(children: [
+          Text('L', style: tx(12, c: Colors.white54)),
+          Expanded(child: Slider(value: au.bal, min: -1, max: 1, activeColor: kGold, inactiveColor: Colors.white12, onChanged: (v) {
+            au.bal = (v.abs() < 0.04 ? 0.0 : v);
+            ss(() {});
+          }, onChangeEnd: (_) => edited())),
+          Text('R', style: tx(12, c: Colors.white54)),
+        ]),
+      ),
+    ])),
+    Row(children: [knob('rev', 'صدى القاعة'), const SizedBox(width: 10), knob('wid', 'توسيع الصوت')]),
+    Row(children: [knob('rot', 'دوران 8D'), const SizedBox(width: 10), const Expanded(child: SizedBox())]),
+    if (!fxOk.every((x) => x)) Text('بعض المؤثرات غير مدعومة على هذا الجهاز.', style: tx(11.5, c: Colors.white38)),
   ];
 }
 
