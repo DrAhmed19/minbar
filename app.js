@@ -1930,7 +1930,8 @@ document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: fals
 /* حماية الرجوع: مدخلان في السجل يُضافان عند لمسة حقيقية (pointerup/touchend) كي لا يتجاهلهما كروم، فيصير الخروج بضغطتين */
 try { history.replaceState({ m: 'root', n: 0 }, ''); } catch (e) {}
 const gdN = () => (history.state && history.state.n) || 0;
-function armGuard() { try { let n = gdN(); while (n < 2) history.pushState({ m: 'app', n: ++n }, ''); } catch (e) {} }
+/* 6 مداخل تُعبّأ عند كل لمسة حقيقية: كروم يتجاهل المداخل المضافة بلا لمسة، فكانت ضغطات الرجوع المتتالية تُخرج من الموقع */
+function armGuard() { try { let n = gdN(); while (n < 6) history.pushState({ m: 'app', n: ++n }, ''); } catch (e) {} }
 ['pointerup', 'touchend', 'click', 'keydown'].forEach((ev) => document.addEventListener(ev, armGuard, { passive: true, capture: true }));
 function layerClose() {
   if (!$('tplOv').hidden) { $('tplOv').hidden = true; return true; }
@@ -1946,11 +1947,9 @@ function layerClose() {
   return false;
 }
 window.addEventListener('popstate', () => {
-  if (layerClose()) { armGuard(); return; }
-  const now = Date.now();
-  if (IOS) { armGuard(); return; } /* آيفون: لا يوجد خروج من التطبيق، فقط نبقى بالواجهة */
-  if (now - lastBack < 2200) { allowUnload = true; const n = gdN(); history.go(-(n + 1)); setTimeout(() => { try { history.back(); } catch (e) {} }, 400); return; }
-  lastBack = now; toast(window.PLR && window.PLR.playing && window.PLR.playing() ? 'اضغط مرة أخرى للخروج (يتوقف الصوت) — للتشغيل بالخلفية استخدم زر الرئيسية' : 'اضغط مرة أخرى للخروج'); armGuard();
+  /* الرجوع يغلق النافذة المفتوحة فقط ولا يُخرج من الموقع أبداً (للخروج: زر الرئيسية أو إغلاق التبويب) */
+  layerClose();
+  if (gdN() < 1) { try { history.pushState({ m: 'app', n: 1 }, ''); } catch (e) {} }
 });
 window.addEventListener('beforeunload', (e) => { if (allowUnload) return; if (S.busy || (TRIAL && hasContent())) { e.preventDefault(); e.returnValue = ''; } });
 document.addEventListener('contextmenu', (e) => { if (!(e.target.closest && e.target.closest('input,textarea'))) e.preventDefault(); });

@@ -286,7 +286,7 @@
     if (!pfq || pfq.length !== n) pfq = new Float32Array(n); pfq.set(fqd);
   }
   /* ===== تحليل صوتي مسبق: يُحسب مرة واحدة (بالخلفية عند المالك) ويُقرأ وقت التشغيل بلا أي معالجة صوت — يحرّك الرسم واللطم بدل التحليل الحي ===== */
-  const APPV = '3.90';
+  const APPV = '3.91';
   const ANV = 'v1', ANKEY = (t) => 'n/' + t.id + '-' + ANV + '.bin', ANOK = (t) => /^[A-Za-z0-9_-]{3,64}$/.test((t && t.id) || '');
   let PRE = null; const PF = { dd: new Float32Array(22), vb: { db: 0, peak: 1 }, cb: { db: 0, flat: 0 }, hb: { db: 0 }, lb: { db: 0 }, on: 0 }; let synW = null, synT = 0;
   async function anLoad(t) { PRE = null; if (!t || t.an !== 1 || !ANOK(t)) return; try { const r = await fetch('media/u/' + ANKEY(t)); if (!r.ok) return; const b = new Uint8Array(await r.arrayBuffer()); if (b.length < 12 || b[0] !== 77 || b[1] !== 66 || b[2] !== 65) return; const nf = new DataView(b.buffer).getUint32(8, true); if (tracks[cur] && tracks[cur].id === t.id) PRE = { id: t.id, fps: b[4], nf, W: b[5] + b[6], d: b, o: 12 }; } catch (e) {} }
@@ -1486,6 +1486,8 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   function back() {
     if (root.hidden) return false;
     { const md = document.getElementById('plrMd'); if (md) { md.remove(); return true; } }
+    if (hsOn) { hsClose(); return true; }
+    if (smpOn) { smpClose(); return true; }
     if (!g('plrAdm').hidden) { admShow(false); return true; }
     if (!g('plrCv').hidden) { cvClose(); return true; }
     if (!g('plrAuPL').hidden) { g('plrAuPL').hidden = true; return true; }

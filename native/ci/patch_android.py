@@ -149,6 +149,7 @@ class MainActivity : AudioServiceActivity() {
                         result.success(dp != null)
                     }
                     "widget" -> { MinbarWidget.refresh(this); result.success(true) }
+                    "bg" -> { moveTaskToBack(true); result.success(true) }
                     else -> result.notImplemented()
                 }
             } catch (e: Exception) { result.success(false) }

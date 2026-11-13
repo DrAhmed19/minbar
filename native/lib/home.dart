@@ -149,10 +149,11 @@ class _HomeShellState extends State<HomeShell> {
         }
         final now = DateTime.now();
         if (now.difference(_lastBack).inMilliseconds < 2200) {
-          SystemNavigator.pop();
+          // لا نغلق التطبيق: يُخفى فقط (مثل زر الرئيسية) فيرجع بنفس المكان فوراً والصوت مستمر
+          const MethodChannel('minbar/fx').invokeMethod('bg').catchError((_) => SystemNavigator.pop());
         } else {
           _lastBack = now;
-          snack(context, app.player.p.playing ? 'اضغط رجوع مرة ثانية للخروج (الصوت يستمر بالخلفية)' : 'اضغط رجوع مرة ثانية للخروج');
+          snack(context, 'اضغط رجوع مرة ثانية لإخفاء التطبيق');
         }
       },
       child: Directionality(
