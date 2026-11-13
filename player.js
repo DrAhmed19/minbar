@@ -286,7 +286,7 @@
     if (!pfq || pfq.length !== n) pfq = new Float32Array(n); pfq.set(fqd);
   }
   /* ===== تحليل صوتي مسبق: يُحسب مرة واحدة (بالخلفية عند المالك) ويُقرأ وقت التشغيل بلا أي معالجة صوت — يحرّك الرسم واللطم بدل التحليل الحي ===== */
-  const APPV = '3.91';
+  const APPV = '3.92';
   const ANV = 'v1', ANKEY = (t) => 'n/' + t.id + '-' + ANV + '.bin', ANOK = (t) => /^[A-Za-z0-9_-]{3,64}$/.test((t && t.id) || '');
   let PRE = null; const PF = { dd: new Float32Array(22), vb: { db: 0, peak: 1 }, cb: { db: 0, flat: 0 }, hb: { db: 0 }, lb: { db: 0 }, on: 0 }; let synW = null, synT = 0;
   async function anLoad(t) { PRE = null; if (!t || t.an !== 1 || !ANOK(t)) return; try { const r = await fetch('media/u/' + ANKEY(t)); if (!r.ok) return; const b = new Uint8Array(await r.arrayBuffer()); if (b.length < 12 || b[0] !== 77 || b[1] !== 66 || b[2] !== 65) return; const nf = new DataView(b.buffer).getUint32(8, true); if (tracks[cur] && tracks[cur].id === t.id) PRE = { id: t.id, fps: b[4], nf, W: b[5] + b[6], d: b, o: 12 }; } catch (e) {} }
@@ -789,7 +789,7 @@
     const db = fdb(); if (!db || !t) return;
     try {
       const c = await db.doc('config/app').get(); if (c.exists && c.data().lyrThreshold) THR = +c.data().lyrThreshold;
-      const d = await db.doc('lyrApproved/' + t.id).get(); if (d.exists) { try { GLY[t.id] = JSON.parse(d.data().json || '[]'); const c2 = jget(GLK, {}); c2[t.id] = GLY[t.id]; jset(GLK, c2); } catch (e) {} }
+      const d = await db.doc('lyrApproved/' + t.id).get(); if (d.exists) { try { const xd = d.data(), sec = (xd.at && xd.at.seconds) || 0, ak = jget('minbar.lyr.lowAck', {}); if (xd.by === 'auto' && ak[t.id] !== sec) { ak[t.id] = sec; jset('minbar.lyr.lowAck', ak); const lw = jget(LOWK, {}); if (xd.low && xd.low.length) lw[t.id] = xd.low; else delete lw[t.id]; jset(LOWK, lw); } } catch (e) {} try { GLY[t.id] = JSON.parse(d.data().json || '[]'); const c2 = jget(GLK, {}); c2[t.id] = GLY[t.id]; jset(GLK, c2); } catch (e) {} }
       const q = await db.collection('lyrEdits').where('track', '==', t.id).get(), best = {};
       q.forEach((s) => { const x = s.data(), n = (x.voters || []).length; if (n >= THR) { const k = x.line + ':' + x.field; if (!best[k] || n > best[k].n) best[k] = { n, val: x.val }; } });
       GED[t.id] = best; if (tracks[cur] === t) lyrBuild();
@@ -1768,8 +1768,8 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
           try { x.stt.textContent = '…'; const id = 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ext = ((f.name.split('.').pop() || 'mp3').toLowerCase().match(/^(mp3|m4a|aac|ogg|opus|wav)$/) || ['mp3'])[0];
             const r = await upPut('a/' + id + Date.now().toString(36) + '.' + ext, f, f.type || 'audio/mpeg', (p) => setP((i + p * 0.9) / tot, '(' + (i + 1) + '/' + tot + ') ' + nm + ' — ' + Math.round(p * 100) + '%'));
             const o = { title: nm, reciter: Rr, poet: x.po.value.trim(), cat: ca.value, upd: Date.now(), at: base + i, album: alb, audio: r.url.replace(/^\//, ''), size: r.size, dur: await durOf(f) }; let EN = null; try { EN = await energyOf(f); o.sample = bestSegE(EN); } catch (e) {}
-            const lines = x.ly.value.split(/\n+/).map((q) => q.replace(/\s+/g, ' ').trim()).filter(Boolean); if (lines.length) { o.lyrics = estLines(lines, o.dur || 300, EN); o.lyrEst = true; } else o.lyrics = [];
-            await db.collection('tracks').doc(id).set(o, { merge: true }); if (lines.length) aqAdd(id, lines);
+            const lines = x.ly.value.split(/\n+/).map((q) => q.replace(/\s+/g, ' ').trim()).filter(Boolean); if (lines.length) { o.lyrics = estLines(lines, o.dur || 300, EN); o.lyrEst = true; o.lyrRaw = x.ly.value.trim(); o.lyrQ = true; /* يُضبط تلقائياً على الخادم */ } else o.lyrics = [];
+            await db.collection('tracks').doc(id).set(o, { merge: true });
             x.done = true; x.stt.textContent = '✓ تم'; x.r.classList.add('ok'); [x.ti, x.po, x.ly].forEach((q) => { q.disabled = true; }); okN++;
           } catch (e) { x.stt.textContent = '✕ فشل'; x.r.classList.add('bad'); bad++; } }
         setP(1, 'تم رفع ' + okN + (bad ? ' · فشل ' + bad + ' (اضغط الرفع مرة ثانية لإعادة المحاولة)' : '')); toast(bad ? 'اكتمل مع ' + bad + ' فشل' : 'تم رفع الإصدار كاملاً'); go.disabled = false; go.textContent = bad ? 'إعادة رفع الفاشلة' : 'تم'; if (!bad) { close(); fsLoad(); } };
@@ -1790,8 +1790,8 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
       const go = el('button', 'pri', 'حفظ التعديلات'); go.type = 'button'; bx.appendChild(go); const cn = el('button', 'cn', 'إغلاق'); cn.type = 'button'; cn.onclick = close; bx.appendChild(cn);
       go.onclick = async () => { const ch = rows.filter((x) => x.ly.value.trim() && x.ly.value.trim() !== x.orig.trim()), mt = rows.filter((x) => x.ti.value.trim() && (x.ti.value.trim() !== (x.t.title || '') || x.po.value.trim() !== (x.t.poet || ''))); if (!ch.length && !mt.length) return toast('ما اكو تغيير'); const db = fdb(); if (!db) return toast('لا يوجد اتصال'); go.disabled = true; let n = 0, m = 0;
         for (const x of mt) { try { await db.collection('tracks').doc(x.t.id).set({ title: x.ti.value.trim(), poet: x.po.value.trim(), upd: Date.now() }, { merge: true }); m++; } catch (e) {} }
-        for (const x of ch) { try { const lines = x.ly.value.split(/\n+/).map((q) => q.replace(/\s+/g, ' ').trim()).filter(Boolean), est = estLines(lines, x.t.dur || 300, null); await db.collection('tracks').doc(x.t.id).set({ lyrics: est, lyrEst: true, upd: Date.now() }, { merge: true }); try { await applyGlobal(x.t, est, true); } catch (e) {} aqAdd(x.t.id, lines); n++; } catch (e) {} }
-        toast((m ? 'عُدّلت بيانات ' + m + ' قصيدة' : '') + (m && n ? ' · ' : '') + (n ? 'حُفظت كلمات ' + n + ' — تُضبط بالخلفية' : '')); close(); fsLoad(); };
+        for (const x of ch) { try { const lines = x.ly.value.split(/\n+/).map((q) => q.replace(/\s+/g, ' ').trim()).filter(Boolean), est = estLines(lines, x.t.dur || 300, null); await db.collection('tracks').doc(x.t.id).set({ lyrics: est, lyrEst: true, lyrRaw: x.ly.value.trim(), lyrQ: true, upd: Date.now() }, { merge: true }); try { await applyGlobal(x.t, est, true); } catch (e) {} n++; } catch (e) {} }
+        toast((m ? 'عُدّلت بيانات ' + m + ' قصيدة' : '') + (m && n ? ' · ' : '') + (n ? 'حُفظت كلمات ' + n + ' — تُضبط تلقائياً خلال نصف ساعة تقريباً' : '')); close(); fsLoad(); };
     }); }
   function upMenu(t) { if (!isOwner()) return toast('الإضافة متاحة للمالك فقط'); const ed = !!t;
     modal(ed ? 'تعديل القصيدة' : 'إضافة قصيدة', (bx, close) => {
@@ -1829,9 +1829,9 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
           o.album = alb || '';
           if (cf) { setP(0.88, 'رفع الغلاف…'); const b = await coverJpg(cf); const r = await upPut('c/' + id + Date.now().toString(36) + '.jpg', b, 'image/jpeg'); if (ed && keyOf(t.ownCover)) old.push(keyOf(t.ownCover)); o.cover = r.url.replace(/^\//, ''); }
           const lyN = lyT.value.trim(), lyCh = lyN !== lyOrig || (af && lyN); let lyLines = null;
-          if (lyCh && lyN) { lyLines = lyN.split(/\n+/).map((s) => s.replace(/\s+/g, ' ').trim()).filter(Boolean); o.lyrics = estLines(lyLines, o.dur || (t && t.dur) || 300, EN); o.lyrEst = true; } else if (!ed) o.lyrics = [];
+          if (lyCh && lyN) { lyLines = lyN.split(/\n+/).map((s) => s.replace(/\s+/g, ' ').trim()).filter(Boolean); o.lyrics = estLines(lyLines, o.dur || (t && t.dur) || 300, EN); o.lyrEst = true; o.lyrRaw = lyN; o.lyrQ = true; } else if (!ed) o.lyrics = [];
           setP(0.95, 'حفظ البيانات…'); if (!ed) o.at = Date.now(); await db.collection('tracks').doc(id).set(o, { merge: true }); old.forEach(upDelKey);
-          if (lyLines) { if (ed) { try { await applyGlobal(Object.assign({}, t), o.lyrics, true); } catch (e) {} } aqAdd(id, lyLines); }
+          if (lyLines) { if (ed) { try { await applyGlobal(Object.assign({}, t), o.lyrics, true); } catch (e) {} } }
           setP(1, 'تم'); toast(ed ? 'حُفظت التعديلات' : 'أُضيفت القصيدة'); close(); fsLoad(); } catch (e) { go.disabled = false; cn.disabled = false; setP(0, e.message || 'فشل الرفع'); toast(e.message || 'فشل الرفع'); } };
     }); }
   /* أقوى 45 ثانية في القصيدة (طاقة صوتية + بداية بيت) لتكون العينة */

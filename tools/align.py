@@ -11,6 +11,7 @@ ALBUM = os.environ.get('ALBUM', '').strip()
 WRITE = os.environ.get('WRITE', 'false').lower() == 'true'
 LIMIT = int(os.environ.get('LIMIT') or 50)
 MODEL = os.environ.get('MODEL') or 'large-v3-turbo'
+SHARD = int(os.environ.get('SHARD') or 0); SHARDS = int(os.environ.get('SHARDS') or 1)
 
 SEP = re.compile(r'^[\s\*\-–—_\.•~=♪…]+$')
 def norm(s):
@@ -25,7 +26,7 @@ def transcribe(path, hot):
     global _M
     if '_M' not in globals():
         _M = WhisperModel(MODEL, device='cpu', compute_type='int8', cpu_threads=os.cpu_count() or 4)
-    segs, info = _M.transcribe(path, language='ar', beam_size=5, word_timestamps=True, condition_on_previous_text=False,
+    segs, info = _M.transcribe(path, language='ar', beam_size=2, word_timestamps=True, condition_on_previous_text=False,
                                vad_filter=False, hotwords=hot or None, no_speech_threshold=0.8)
     W = []
     for s in segs:
@@ -135,6 +136,7 @@ def main():
         todo = [t for t in tracks if t.get('lyrQ')]
         print('قصائد بانتظار الضبط:', len(todo))
     todo.sort(key=lambda t: t.get('at') or 0)
+    todo = [t for t in todo if t.get('audio') and (t.get('lyrRaw') or t.get('lyrics'))][:LIMIT][SHARD::SHARDS]
     done = 0
     for t in todo[:LIMIT]:
         tid = t['id']; t0 = time.time()

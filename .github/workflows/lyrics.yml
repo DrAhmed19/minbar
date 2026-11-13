@@ -8,11 +8,13 @@ on:
       limit: { description: 'أقصى عدد قصائد', default: '50' }
   schedule:
     - cron: '*/30 * * * *'
-concurrency: { group: lyrics, cancel-in-progress: false }
 jobs:
   align:
     runs-on: ubuntu-latest
     timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix: { shard: [0, 1, 2, 3] }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -25,6 +27,8 @@ jobs:
           ALBUM: ${{ inputs.album }}
           WRITE: ${{ github.event_name == 'schedule' && 'true' || inputs.write }}
           LIMIT: ${{ inputs.limit }}
+          SHARD: ${{ matrix.shard }}
+          SHARDS: 4
         run: |
           echo '${{ secrets.FIREBASE_SA }}' > "$RUNNER_TEMP/sa.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
