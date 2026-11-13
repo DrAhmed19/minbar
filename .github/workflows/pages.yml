@@ -19,7 +19,7 @@ jobs:
       - name: نشر
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT }}
+          CLOUDFLARE_ACCOUNT_ID: 1981a0cd0beaed7d247862f8a9436cce
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ]; then echo "::error::أضف السر CF_TOKEN"; exit 1; fi
           npx -y wrangler@3 pages project list || true
