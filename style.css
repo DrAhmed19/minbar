@@ -1386,3 +1386,4 @@ textarea.mdin{resize:none}
 .mdt em{font:700 10.5px Cairo,sans-serif;font-style:normal;padding:3px 9px;border-radius:20px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.55)}.mdc.on .mdt em{background:#E8C468;color:#2a2106}
 .mdc b{font:800 15px Cairo,sans-serif}.mdc small{font:500 11.5px/1.5 Cairo,sans-serif;color:rgba(255,255,255,.55)}
 .mdc:last-child:nth-child(odd){grid-column:1/-1}
+.adm{z-index:300!important}

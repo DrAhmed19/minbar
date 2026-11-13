@@ -174,6 +174,7 @@
     cb = o; $('gBox').hidden = false; pane('gLoad');
     $('gBtn').onclick = signIn; $('gReg').onclick = register; $('gOut1').onclick = $('gOut2').onclick = () => auth.signOut();
     $('btnAdmin').onclick = () => { if (A.admin) openAdmin(); };
+    A.openAdmin = () => openAdmin();
     $('btnTrialReset').onclick = async () => { if (!A.admin) return; if (!confirm('إعادة فتح الفترة التجريبية لجميع المستخدمين؟ سيحصل كل جهاز على فترة تجريبية جديدة.')) return; try { await db.doc('config/public').set({ trialEpoch: Date.now() }, { merge: true }); say('تمت إعادة فتح الفترة التجريبية للجميع'); } catch (e) { say('فشل التنفيذ: ' + (e.code || e.message)); } };
     auth.onAuthStateChanged(handle);
   };
