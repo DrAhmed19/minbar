@@ -286,7 +286,7 @@
     if (!pfq || pfq.length !== n) pfq = new Float32Array(n); pfq.set(fqd);
   }
   /* ===== تحليل صوتي مسبق: يُحسب مرة واحدة (بالخلفية عند المالك) ويُقرأ وقت التشغيل بلا أي معالجة صوت — يحرّك الرسم واللطم بدل التحليل الحي ===== */
-  const APPV = '3.88';
+  const APPV = '3.89';
   const ANV = 'v1', ANKEY = (t) => 'n/' + t.id + '-' + ANV + '.bin', ANOK = (t) => /^[A-Za-z0-9_-]{3,64}$/.test((t && t.id) || '');
   let PRE = null; const PF = { dd: new Float32Array(22), vb: { db: 0, peak: 1 }, cb: { db: 0, flat: 0 }, hb: { db: 0 }, lb: { db: 0 }, on: 0 }; let synW = null, synT = 0;
   async function anLoad(t) { PRE = null; if (!t || t.an !== 1 || !ANOK(t)) return; try { const r = await fetch('media/u/' + ANKEY(t)); if (!r.ok) return; const b = new Uint8Array(await r.arrayBuffer()); if (b.length < 12 || b[0] !== 77 || b[1] !== 66 || b[2] !== 65) return; const nf = new DataView(b.buffer).getUint32(8, true); if (tracks[cur] && tracks[cur].id === t.id) PRE = { id: t.id, fps: b[4], nf, W: b[5] + b[6], d: b, o: 12 }; } catch (e) {} }
@@ -1574,7 +1574,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   /* ---------- 5) استئناف القصائد الطويلة ---------- */
   const POSK = 'minbar.pos'; let posSv = 0, resumeOk = true;
   A.addEventListener('timeupdate', () => { const n = Date.now(); if (n - posSv < 5000) return; posSv = n; const t = tracks[cur], d = A.duration || 0; if (!t || d < 180) return; const m = jget(POSK, {}); if (A.currentTime > 20 && A.currentTime < d - 20) m[t.id] = Math.floor(A.currentTime); else delete m[t.id]; const ks = Object.keys(m); if (ks.length > 60) delete m[ks[0]]; jset(POSK, m); });
-  A.addEventListener('loadedmetadata', () => { const t = tracks[cur]; if (!t || !resumeOk || deepAt || MJ.on) { resumeOk = true; return; } if (A.__rsm === t.id) return; A.__rsm = t.id; const s = jget(POSK, {})[t.id]; if (MB.want == null && s && s > 15 && s < (A.duration || 0) - 20 && A.currentTime < 2) { if (!A.paused) { A.pause(); A.__rsmPlay = true; const fin = () => { if (!A.__rsmPlay) return; A.__rsmPlay = false; A.play().catch(() => {}); }; A.addEventListener('seeked', fin, { once: true }); setTimeout(fin, 4000); } seekTo(s); snack('استُؤنفت من ' + fmt(s), 'من البداية', () => { A.currentTime = 0; }); } });
+  A.addEventListener('loadedmetadata', () => { const t = tracks[cur]; if (!t || !resumeOk || deepAt || MJ.on) { resumeOk = true; return; } if (A.__rsm === t.id) return; A.__rsm = t.id; const s = jget(POSK, {})[t.id]; if (MB.want == null && s && s > 15 && s < (A.duration || 0) - 20 && A.currentTime < 2) { if (!A.paused) { A.pause(); A.__rsmPlay = true; const fin = () => { if (!A.__rsmPlay) return; A.__rsmPlay = false; A.play().catch(() => {}); }; A.addEventListener('seeked', fin, { once: true }); setTimeout(fin, 4000); } seekTo(Math.max(0, s - 1.5)); /* مثل يوتيوب: يكمل بصمت بلا رسالة */ } });
   /* ---------- 6) وضع اللطم ---------- */
   let ltV = 0; function latmTick() { if (!st.latm || A.paused || !live || !live.stems) return; const on = live.stems.on || 0, n = performance.now(); if (on > 0.3 && n - ltV > 200) { ltV = n; try { navigator.vibrate && navigator.vibrate(Math.round(18 + on * 30)); } catch (e) {} const f = g('plrFull'); f.classList.remove('lpf'); void f.offsetWidth; f.classList.add('lpf'); } }
   /* ---------- 7) وضع المجلس (مزامنة عدة أجهزة) ---------- */

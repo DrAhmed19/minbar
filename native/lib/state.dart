@@ -119,7 +119,7 @@ class PlayerCtl extends ChangeNotifier {
       await p.setAudioSource(
         _cs!,
         initialIndex: start,
-        initialPosition: pos ?? Duration.zero,
+        initialPosition: pos ?? _resumeAt(list[start]),
       );
       await p.setSpeed(speed);
       await p.setLoopMode(loop);
@@ -128,6 +128,13 @@ class PlayerCtl extends ChangeNotifier {
     } catch (e) {
       debugPrint('play error: $e');
     }
+  }
+
+  /// مثل يوتيوب: القصيدة تكمل بصمت من حيث توقفت (إلا إذا كانت بالبداية أو قريبة من النهاية)
+  Duration _resumeAt(Track t) {
+    final ms = repo.posOf(t.id), d = repo.durs[t.id] ?? 0;
+    if (ms < 15000 || (d > 0 && ms > d - 20000)) return Duration.zero;
+    return Duration(milliseconds: ms - 1500);
   }
 
   /// استعادة آخر أثر (متوقفاً) عند فتح التطبيق
