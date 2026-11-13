@@ -1,3 +1,4 @@
 *.bak
 .DS_Store
 _t/
+native/ci/debug.keystore
