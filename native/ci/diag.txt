@@ -1,0 +1,31 @@
+wait 14
+until "الدخول كضيف"
+wait 8
+shot d0-home
+text "الإصدارات"
+wait 3
+text "يسجلني"
+wait 5
+tap 540 640
+wait 16
+shot d1-playing
+sys d-media dumpsys media_session
+sys d-notif dumpsys notification --noredact
+sys d-svc dumpsys activity services com.minbar.minbar_native
+swipe 540 5 540 1300 300
+wait 3
+shot d2-shade
+back
+wait 2
+app
+shot d3-after-shade
+back
+wait 2
+shot d4-back1
+back
+wait 2
+shot d5-back2
+back
+wait 2
+shot d6-back3
+sys d-focus dumpsys window displays

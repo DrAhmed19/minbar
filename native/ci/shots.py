@@ -64,7 +64,7 @@ for _ in range(6):
     if not anr(): break
 adb('logcat', '-c')
 adb('shell', 'monkey', '-p', PKG, '-c', 'android.intent.category.LAUNCHER', '1')
-for ln in open('native/ci/shots.txt', encoding='utf-8'):
+for ln in open(os.environ.get('SHOTS_FILE') or 'native/ci/shots.txt', encoding='utf-8'):
     ln = ln.strip()
     if not ln or ln.startswith('#'): continue
     c = shlex.split(ln)
@@ -86,9 +86,10 @@ for ln in open('native/ci/shots.txt', encoding='utf-8'):
             if not m or PKG not in m.group(0):
                 print('relaunch', flush=True)
                 adb('shell', 'monkey', '-p', PKG, '-c', 'android.intent.category.LAUNCHER', '1'); time.sleep(8)
+        elif c[0] == 'sys': (OUT / (c[1] + '.txt')).write_bytes(adb('shell', *c[2:], out=True))
         elif c[0] == 'dump': (OUT / (c[1] + '.xml')).write_text(dump(), encoding='utf-8')
     except Exception as e:
         print('step err', ln, e, flush=True)
 log = adb('logcat', '-d', '-v', 'brief', out=True).decode('utf-8', 'ignore')
-keep = [l for l in log.splitlines() if 'I/flutter' in l or 'E/flutter' in l or 'FATAL' in l or 'E/AndroidRuntime' in l]
+keep = [l for l in log.splitlines() if 'I/flutter' in l or 'E/flutter' in l or 'FATAL' in l or 'E/AndroidRuntime' in l or re.search(r'(?i)audioservice|ryanheise|MediaSession|ForegroundService|minbar', l)]
 (OUT / 'log.txt').write_text('\n'.join(keep[-1500:]), encoding='utf-8')

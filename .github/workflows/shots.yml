@@ -2,6 +2,10 @@
 name: لقطات من المحاكي
 on:
   workflow_dispatch:
+    inputs:
+      file:
+        description: ملف الخطوات
+        default: native/ci/shots.txt
 permissions:
   contents: write
 jobs:
@@ -22,6 +26,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release download apk-latest -p minbar-x64.apk && mv minbar-x64.apk minbar.apk
       - uses: reactivecircus/android-emulator-runner@v2
+        env:
+          SHOTS_FILE: ${{ inputs.file }}
         with:
           api-level: 33
           target: google_apis
