@@ -8,8 +8,9 @@ on:
       limit: { description: 'أقصى عدد قصائد', default: '50' }
       only: { description: 'قصيدة واحدة بالاسم (اختياري)', default: '' }
       vocals: { description: 'فصل صوت الرادود عن اللطم', default: 'true' }
+      restore: { description: 'إرجاع التوقيت اليدوي السابق', default: 'false' }
   schedule:
-    - cron: '*/30 * * * *'
+    - cron: '*/20 * * * *'
 jobs:
   align:
     runs-on: ubuntu-latest
@@ -35,6 +36,7 @@ jobs:
           LIMIT: ${{ inputs.limit }}
           ONLY: ${{ inputs.only }}
           VOCALS: ${{ inputs.vocals || 'true' }}
+          RESTORE: ${{ inputs.restore }}
           SHARD: ${{ matrix.shard }}
           SHARDS: 4
         run: |

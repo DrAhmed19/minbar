@@ -138,6 +138,16 @@ def main():
         todo = [t for t in tracks if t.get('lyrQ')]
         print('قصائد بانتظار الضبط:', len(todo))
     todo.sort(key=lambda t: t.get('at') or 0)
+    if os.environ.get('RESTORE') == 'true':  # إرجاع التوقيت اليدوي السابق (قبل الضبط التلقائي)
+        for t in todo:
+            if ONLY and ONLY not in (t.get('title') or ''): continue
+            ap = db.collection('lyrApproved').document(t['id']).get()
+            pv = ap.exists and ap.to_dict().get('prev')
+            if pv:
+                db.collection('lyrApproved').document(t['id']).set({'json': pv, 'by': 'restore', 'low': [], 'at': firestore.SERVER_TIMESTAMP}, merge=True)
+                print('↩ أُرجع التوقيت اليدوي:', t.get('title'))
+            else: print('لا توجد نسخة سابقة:', t.get('title'))
+        return
     if ONLY: todo = [t for t in todo if ONLY in (t.get('title') or '')]
     todo = [t for t in todo if t.get('audio') and (t.get('lyrRaw') or t.get('lyrics'))][:LIMIT][SHARD::SHARDS]
     done = 0
