@@ -106,7 +106,7 @@ class _LyricStripState extends State<LyricStrip> with SingleTickerProviderStateM
   String _key = '';
   double _drag = 0;
   bool _dragging = false;
-  int _dk = -1;
+  int _dk = -1, _dk0 = -1;
   late final AnimationController _demo = AnimationController(vsync: this, duration: const Duration(seconds: 13));
 
   @override
@@ -213,6 +213,7 @@ class _LyricStripState extends State<LyricStrip> with SingleTickerProviderStateM
                     final idx = k < 0 ? 0 : k;
                     setState(() {
                       _dragging = true;
+                      _dk0 = idx;
                       _dk = idx;
                       _drag = h / 2 - (tops[idx] + hs[idx] / 2);
                     });
@@ -240,7 +241,8 @@ class _LyricStripState extends State<LyricStrip> with SingleTickerProviderStateM
                     final q = L[_dk.clamp(0, L.length - 1)];
                     final pl = app.player;
                     final dur = (pl.p.duration?.inMilliseconds ?? 0) / 1000.0;
-                    if (dur > 0) {
+                    if (dur > 0 && _dk != _dk0) {
+                      // القفز فقط إذا اختار بيتاً ثاني (لمسة بسيطة ما تقطع الصوت)
                       pl.seek(math.max(0.0, math.min(dur - 0.1, q.t + 0.12)));
                       if (!pl.p.playing) pl.toggle();
                     }

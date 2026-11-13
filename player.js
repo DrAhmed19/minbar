@@ -286,7 +286,7 @@
     if (!pfq || pfq.length !== n) pfq = new Float32Array(n); pfq.set(fqd);
   }
   /* ===== تحليل صوتي مسبق: يُحسب مرة واحدة (بالخلفية عند المالك) ويُقرأ وقت التشغيل بلا أي معالجة صوت — يحرّك الرسم واللطم بدل التحليل الحي ===== */
-  const APPV = '3.84';
+  const APPV = '3.85';
   const ANV = 'v1', ANKEY = (t) => 'n/' + t.id + '-' + ANV + '.bin', ANOK = (t) => /^[A-Za-z0-9_-]{3,64}$/.test((t && t.id) || '');
   let PRE = null; const PF = { dd: new Float32Array(22), vb: { db: 0, peak: 1 }, cb: { db: 0, flat: 0 }, hb: { db: 0 }, lb: { db: 0 }, on: 0 }; let synW = null, synT = 0;
   async function anLoad(t) { PRE = null; if (!t || t.an !== 1 || !ANOK(t)) return; try { const r = await fetch('media/u/' + ANKEY(t)); if (!r.ok) return; const b = new Uint8Array(await r.arrayBuffer()); if (b.length < 12 || b[0] !== 77 || b[1] !== 66 || b[2] !== 65) return; const nf = new DataView(b.buffer).getUint32(8, true); if (tracks[cur] && tracks[cur].id === t.id) PRE = { id: t.id, fps: b[4], nf, W: b[5] + b[6], d: b, o: 12 }; } catch (e) {} }
@@ -738,11 +738,11 @@
   (function () {
     const box = g('plrLyr'); let on = false, y0 = 0, base = 0, drag = false, kk = -1;
     const tyOf = (tr) => { const m = /translateY\((-?[\d.]+)px\)/.exec(tr.style.transform || ''); return m ? +m[1] : 0; };
-    box.addEventListener('pointerdown', (e) => { if (box.classList.contains('empty') || cur < 0) return; on = true; drag = false; y0 = e.clientY; base = tyOf(box.querySelector('.lyt')); kk = box._i; });
+    box.addEventListener('pointerdown', (e) => { if (box.classList.contains('empty') || cur < 0) return; on = true; drag = false; y0 = e.clientY; base = tyOf(box.querySelector('.lyt')); kk = box._i; box._k0 = kk; });
     box.addEventListener('pointermove', (e) => { if (!on) return; const dy = e.clientY - y0, tr = box.querySelector('.lyt'), ch = tr.children; if (!drag) { if (Math.abs(dy) < 8) return; drag = true; try { box.setPointerCapture(e.pointerId); } catch (x) {} box.classList.add('drg'); tr.style.transition = 'none'; }
       const y = base + dy; tr.style.transform = `translateY(${y.toFixed(1)}px)`; const c = box.clientHeight / 2 - y; let best = 0, bd = 1e9; for (let i = 0; i < ch.length; i++) { const m = ch[i].offsetTop + ch[i].offsetHeight / 2, d = Math.abs(m - c); if (d < bd) { bd = d; best = i; } }
       if (best !== kk) { kk = best; for (let i = 0; i < ch.length; i++) { ch[i].classList.toggle('cur', i === kk); ch[i].classList.toggle('nb', i === kk - 1 || i === kk + 1); } try { navigator.vibrate && navigator.vibrate(6); } catch (x) {} } });
-    const end = () => { if (!on) return; on = false; if (!drag) return; box._nc = performance.now(); box.classList.remove('drg'); const L = lyLines(), q = L[kk]; if (q && isFinite(q.t) && A.duration) { A.currentTime = Math.max(0, Math.min(A.duration - 0.1, q.t + 0.12)); if (A.paused) fadePlay(); } box.querySelector('.lyt').style.transition = ''; box._i = -3; lyxGo(box, kk); };
+    const end = () => { if (!on) return; on = false; if (!drag) return; box._nc = performance.now(); box.classList.remove('drg'); const L = lyLines(), q = L[kk]; if (kk !== box._k0 && q && isFinite(q.t) && A.duration) { A.currentTime = Math.max(0, Math.min(A.duration - 0.1, q.t + 0.12)); if (A.paused) fadePlay(); } box.querySelector('.lyt').style.transition = ''; box._i = -3; lyxGo(box, kk); };
     box.addEventListener('pointerup', end); box.addEventListener('pointercancel', end);
   })();
   /* معاينة متحركة للانتقال */
@@ -831,7 +831,7 @@
       const ta = mkTa(ln.l); roTa(ta); const adj = el('div', 'adj'); adj.hidden = true;
       const setT = (v) => {
         v = Math.max(0, r2(v)); const all = jget(TMK, {}); all[t.id] = all[t.id] || {}; if (Math.abs(v - ln.ot) > 0.001) all[t.id][ln.i] = v; else delete all[t.id][ln.i]; jset(TMK, all);
-        ln.t = v; tm.textContent = fmt1(v); r.classList.add('ed'); if (adm) admSoon(t); else if (Math.abs(v - ln.ot) > 0.001) suggest(t.id, ln.i, 't', v); lyrBuild(); A.currentTime = v;
+        ln.t = v; tm.textContent = fmt1(v); r.classList.add('ed'); if (adm) admSoon(t); else if (Math.abs(v - ln.ot) > 0.001) suggest(t.id, ln.i, 't', v); lyrBuild(); /* لا نقفز بالصوت عند تعديل الوقت؛ اضغط الوقت نفسه للاستماع من عنده */
       };
       [['−0.5', -0.5], ['−0.1', -0.1], ['+0.1', 0.1], ['+0.5', 0.5]].forEach(([n, d]) => { const b = el('button', '', n); b.onclick = () => setT(ln.t + d); adj.appendChild(b); });
       const nowB = el('button', 'now', 'الآن'); nowB.onclick = () => setT(A.currentTime); adj.appendChild(nowB);
@@ -845,7 +845,8 @@
       const sp = el('button', 'x sp', '✂'); sp.title = 'تقسيم السطر'; sp.onclick = () => splitLine(t, ln.i, ta);
       const dl = el('button', 'x sp', '✕'); dl.title = 'حذف السطر'; dl.onclick = () => { const arr = plain(linesOf(t)); arr.splice(ln.i, 1); commit(t, arr); lysEditBuild(); toast('حُذف السطر'); };
       const gp = el('button', 'x sp', '♪'); gp.title = 'إدراج فراغ موسيقي بعد هذا السطر'; gp.onclick = () => { const arr = plain(linesOf(t)); arr.splice(ln.i + 1, 0, { t: r2(Math.max(ln.t + 0.5, A.currentTime)), l: '♪' }); arr.sort((a, b) => a.t - b.t); commit(t, arr); lysEditBuild(); toast('أُدرج فراغ'); };
-      top.append(tm, ta, sp, gp, dl); r.append(top, adj); box.appendChild(r); fitTa(ta);
+      const ad = el('button', 'x sp', '＋'); ad.title = 'إضافة سطر جديد بعد هذا السطر'; ad.onclick = () => { const arr = plain(linesOf(t)), nx = arr[ln.i + 1]; arr.splice(ln.i + 1, 0, { t: r2(nx && nx.t > ln.t ? (ln.t + nx.t) / 2 : ln.t + 3), l: '…' }); commit(t, arr); lysEditBuild(); toast('أُضيف سطر — اكتب نصّه واضبط وقته'); setTimeout(() => { const x = box.querySelectorAll('.plrlr .lrt textarea')[ln.i + 1]; if (x) { x.scrollIntoView({ block: 'center' }); x.click(); try { x.select(); } catch (e) {} } }, 80); };
+      top.append(tm, ta, ad, sp, gp, dl); r.append(top, adj); box.appendChild(r); fitTa(ta);
     });
   }
   function splitLine(t, i, ta) {
@@ -929,7 +930,7 @@
   const SYK = (t) => 'minbar.lyr.sync.' + t.id;
   function syncView(box, t, ls, resume) {
     const sv = resume || { ls, st2: [], k: 0 }; ls = sv.ls; const st2 = sv.st2 || []; let k = sv.k || 0, slow = false, raf = 0, seg = null, view = sv.view || 'sync';
-    const N = ls.length, LAT = 0.12;
+    let N = ls.length; const LAT = 0.12;
     const keep = () => { try { localStorage.setItem(SYK(t), JSON.stringify({ ls, st2, k, view })); } catch (e) {} };
     const setRate = () => { A.playbackRate = slow ? 0.75 : (st.speed || 1); };
     const stopLoop = () => { cancelAnimationFrame(raf); raf = 0; clearInterval(seg); seg = null; };
@@ -979,7 +980,9 @@
         const tw = el('div', 'rt'); const mn = el('button', '', '−'), tb = el('b', '', fmt1(st2[i])), pp = el('button', '', '+'); const nd = (d) => { st2[i] = Math.max(i ? st2[i - 1] + 0.1 : 0, r2(st2[i] + d)); tb.textContent = fmt1(st2[i]); keep(); }; mn.onclick = () => nd(-0.1); pp.onclick = () => nd(0.1); tw.append(mn, tb, pp);
         const tx = el('div', 'rx', ls[i]); tx.onclick = () => { const ta = mkTa(ls[i]); ta.className = 'rxe'; tx.replaceWith(ta); ta.focus(); fitTa(ta); const fin = () => { ls[i] = ta.value.trim() || ls[i]; tx.textContent = ls[i]; ta.replaceWith(tx); keep(); }; ta.onblur = fin; ta.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); ta.blur(); } }; };
         const rs = el('button', 'rr'); rs.type = 'button'; rs.innerHTML = ic('reset', 16); rs.title = 'إعادة الضبط من هنا'; rs.onclick = () => { k = i; st2.length = i; A.currentTime = Math.max(0, (i ? st2[i - 1] : 0) - 0.3); fadePlay(); paintSync(); };
-        r.append(pl, tw, tx, rs); list.appendChild(r); }
+        const ad = el('button', 'rr', '＋'); ad.type = 'button'; ad.title = 'إضافة بيت ناقص بعد هذا'; ad.onclick = () => { ls.splice(i + 1, 0, '…'); st2.splice(i + 1, 0, r2(i + 1 < k ? (st2[i] + st2[i + 1]) / 2 : st2[i] + 3)); k++; N = ls.length; keep(); paintRev(); toast('أُضيف بيت — اضغط نصّه لكتابته'); };
+        const dx = el('button', 'rr', '✕'); dx.type = 'button'; dx.title = 'حذف هذا البيت'; dx.onclick = () => { ls.splice(i, 1); st2.splice(i, 1); k--; N = ls.length; keep(); paintRev(); };
+        const ra = el('div', 'rra'); ra.append(rs, ad, dx); r.append(pl, tw, tx, ra); list.appendChild(r); }
       if (k < N) { const mr = el('div', 'rvm', 'باقي ' + (N - k) + ' بيت لم يُضبط بعد'); mr.onclick = () => { A.currentTime = Math.max(0, st2[k - 1] - 1); fadePlay(); paintSync(); }; list.appendChild(mr); }
       w.appendChild(list);
       const mk = () => ls.slice(0, k).map((x, i) => ({ t: r2(st2[i]), l: x })), clr = () => { try { localStorage.removeItem(SYK(t)); } catch (e) {} };
@@ -1715,9 +1718,67 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
       bx.appendChild(btn('wide', 'إلغاء', close));
     });
   }
+  /* ================= رفع إصدار كامل: الرادود والتصنيف والغلاف مشتركة، ولكل قصيدة اسمها وشاعرها وكلماتها ================= */
+  function albumUp() { if (!isOwner()) return toast('الإضافة متاحة للمالك فقط');
+    modal('رفع إصدار كامل', (bx, close) => {
+      bx.appendChild(el('p', 'hint', 'اختر كل ملفات الإصدار مرة واحدة. الرادود والتصنيف والغلاف مشتركة، وتعدّل لكل قصيدة اسمها وشاعرها وكلماتها فقط.'));
+      const inp = (ph, v) => { const i = el('input', 'mdin'); i.placeholder = ph; i.value = v || ''; bx.appendChild(i); return i; };
+      const als = Object.values(ALB).sort((a, b) => (b.at || 0) - (a.at || 0)); const ab = el('select', 'mdin'); const opt = (v, n) => { const o = el('option', '', n); o.value = v; ab.appendChild(o); };
+      opt('+', '＋ إصدار جديد'); als.forEach((a) => opt(a.id, 'إضافة إلى: ' + a.name)); bx.appendChild(ab);
+      const anw = inp('اسم الإصدار *'); ab.onchange = () => { anw.hidden = ab.value !== '+'; };
+      const cnt = {}; tracks.forEach((x) => { if (x.reciter) cnt[x.reciter] = (cnt[x.reciter] || 0) + 1; }); const topR = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0] || '';
+      const re = inp('الرادود *', topR), po0 = inp('الشاعر (لكل القصائد التي لا تكتب لها شاعراً)');
+      const cats = [...new Set(CATS0.concat(tracks.map((x) => x.cat).filter(Boolean)))]; const ca = el('select', 'mdin'); cats.forEach((c) => { const o = el('option', '', c); o.value = c; ca.appendChild(o); }); bx.appendChild(ca);
+      const fl = (lbl, acc, multi) => { const w = el('label', 'upf'); const i = el('input'); i.type = 'file'; i.accept = acc; i.multiple = !!multi; const sp = el('span', '', lbl); w.append(i, sp); bx.appendChild(w); return i; };
+      const cv = fl('غلاف الإصدار', 'image/*'); cv.onchange = () => { cv.nextSibling.textContent = cv.files[0] ? cv.files[0].name : 'غلاف الإصدار'; cv.parentNode.classList.toggle('on', !!cv.files[0]); };
+      const au = fl('ملفات الصوت * (اختر الكل مرة واحدة)', 'audio/*', true);
+      const list = el('div', 'abl'); bx.appendChild(list); let rows = [];
+      au.onchange = () => { const fs = [...au.files].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })); au.nextSibling.textContent = fs.length ? fs.length + ' ملف صوت' : 'ملفات الصوت *'; au.parentNode.classList.toggle('on', !!fs.length); list.textContent = ''; rows = fs.map((f, i) => {
+          const r = el('div', 'abr'), hd = el('div', 'abh'); hd.append(el('b', '', String(i + 1)), el('span', '', f.name + ' · ' + (f.size / 1048576).toFixed(1) + ' م.ب')); const stt = el('em', '', ''); hd.appendChild(stt);
+          const ti = el('input', 'mdin'); ti.placeholder = 'اسم القصيدة *'; ti.value = f.name.replace(/\.[^.]+$/, '').replace(/^[\d\s._\-–—]+/, '').replace(/[_]+/g, ' ').trim();
+          const po = el('input', 'mdin'); po.placeholder = 'الشاعر (إذا يختلف)';
+          const lb = el('button', 'abk', 'كلمات هذه القصيدة ＋'); lb.type = 'button'; const ly = el('textarea', 'mdin lyta'); ly.rows = 5; ly.hidden = true; ly.placeholder = 'الصق كلمات القصيدة — كل بيت بسطر (اختياري)'; lb.onclick = () => { ly.hidden = !ly.hidden; if (!ly.hidden) ly.focus(); }; ly.oninput = () => { const n = ly.value.split(/\n+/).filter((x) => x.trim()).length; lb.textContent = n ? 'الكلمات ✓ (' + n + ' بيت)' : 'كلمات هذه القصيدة ＋'; lb.classList.toggle('on', !!n); };
+          r.append(hd, ti, po, lb, ly); list.appendChild(r); return { f, ti, po, ly, stt, r, done: false }; }); };
+      const pr = el('div', 'upp'); pr.innerHTML = '<i></i><span></span>'; pr.hidden = true; bx.appendChild(pr); const setP = (f, m) => { pr.hidden = false; pr.firstChild.style.width = Math.round(f * 100) + '%'; pr.lastChild.textContent = m; };
+      const go = el('button', 'pri', 'رفع الإصدار'); go.type = 'button'; bx.appendChild(go); const cn = el('button', 'cn', 'إغلاق'); cn.type = 'button'; cn.onclick = () => { close(); fsLoad(); }; bx.appendChild(cn);
+      let alb = '';
+      go.onclick = async () => { const Rr = re.value.trim(); if (!Rr) return toast('اكتب اسم الرادود'); const todo = rows.filter((x) => !x.done); if (!todo.length) return toast('اختر ملفات الصوت'); if (todo.some((x) => !x.ti.value.trim())) return toast('اكتب اسم كل قصيدة');
+        const db = fdb(); if (!db) return toast('لا يوجد اتصال'); go.disabled = true; let okN = 0, bad = 0;
+        try { if (!alb) { if (ab.value === '+') { const n = anw.value.trim(); if (!n) throw new Error('اكتب اسم الإصدار'); alb = 'al' + Date.now().toString(36); await db.collection('albums').doc(alb).set({ name: n, reciter: Rr, at: Date.now() }); ALB[alb] = { id: alb, name: n, reciter: Rr }; } else alb = ab.value; }
+          if (cv.files[0] && !cv._up) { setP(0, 'رفع غلاف الإصدار…'); const b = await coverJpg(cv.files[0]); const r = await upPut('c/' + alb + Date.now().toString(36) + '.jpg', b, 'image/jpeg'); await db.collection('albums').doc(alb).set({ cover: r.url.replace(/^\//, '') }, { merge: true }); cv._up = true; }
+        } catch (e) { go.disabled = false; setP(0, e.message || 'فشل'); return toast(e.message || 'فشل'); }
+        const base = Date.now();
+        for (let i = 0; i < rows.length; i++) { const x = rows[i]; if (x.done) continue; const f = x.f, nm = x.ti.value.trim(), tot = rows.length;
+          if (f.size > 24 * 1048576) { x.stt.textContent = '✕ أكبر من 24 م.ب'; x.r.classList.add('bad'); bad++; continue; }
+          try { x.stt.textContent = '…'; const id = 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ext = ((f.name.split('.').pop() || 'mp3').toLowerCase().match(/^(mp3|m4a|aac|ogg|opus|wav)$/) || ['mp3'])[0];
+            const r = await upPut('a/' + id + Date.now().toString(36) + '.' + ext, f, f.type || 'audio/mpeg', (p) => setP((i + p * 0.9) / tot, '(' + (i + 1) + '/' + tot + ') ' + nm + ' — ' + Math.round(p * 100) + '%'));
+            const o = { title: nm, reciter: Rr, poet: x.po.value.trim() || po0.value.trim(), cat: ca.value, upd: Date.now(), at: base + i, album: alb, audio: r.url.replace(/^\//, ''), size: r.size, dur: await durOf(f) }; let EN = null; try { EN = await energyOf(f); o.sample = bestSegE(EN); } catch (e) {}
+            const lines = x.ly.value.split(/\n+/).map((q) => q.replace(/\s+/g, ' ').trim()).filter(Boolean); if (lines.length) { o.lyrics = estLines(lines, o.dur || 300, EN); o.lyrEst = true; } else o.lyrics = [];
+            await db.collection('tracks').doc(id).set(o, { merge: true }); if (lines.length) aqAdd(id, lines);
+            x.done = true; x.stt.textContent = '✓ تم'; x.r.classList.add('ok'); [x.ti, x.po, x.ly].forEach((q) => { q.disabled = true; }); okN++;
+          } catch (e) { x.stt.textContent = '✕ فشل'; x.r.classList.add('bad'); bad++; } }
+        setP(1, 'تم رفع ' + okN + (bad ? ' · فشل ' + bad + ' (اضغط الرفع مرة ثانية لإعادة المحاولة)' : '')); toast(bad ? 'اكتمل مع ' + bad + ' فشل' : 'تم رفع الإصدار كاملاً'); go.disabled = false; go.textContent = bad ? 'إعادة رفع الفاشلة' : 'تم'; if (!bad) { close(); fsLoad(); } };
+    }); }
+  /* كلمات إصدار: كل قصائد الإصدار بمكان واحد، تلصق كلمات كل وحدة وتُضبط تلقائياً بالخلفية */
+  function albumLyrics() { if (!isOwner()) return toast('متاح للمالك فقط');
+    modal('كلمات الإصدار', (bx, close) => {
+      const als = Object.values(ALB).sort((a, b) => (b.at || 0) - (a.at || 0)); if (!als.length) { bx.appendChild(el('p', 'hint', 'لا توجد إصدارات بعد.')); bx.appendChild(btn('wide', 'إغلاق', close)); return; }
+      const ab = el('select', 'mdin'); als.forEach((a) => { const o = el('option', '', a.name); o.value = a.id; ab.appendChild(o); }); bx.appendChild(ab);
+      bx.appendChild(el('p', 'hint', 'افتح القصيدة والصق كلماتها (كل بيت بسطر). تظهر فوراً بتوقيت تقريبي ثم تُضبط تلقائياً بالخلفية.'));
+      const list = el('div', 'abl'); bx.appendChild(list); let rows = [];
+      const draw = () => { list.textContent = ''; rows = tracks.filter((x) => x.album === ab.value).sort((a, b) => (a.at || 0) - (b.at || 0)).map((t, i) => { const cu = linesOf(t), orig = cu.map((x) => x.l).join('\n');
+          const r = el('div', 'abr'), hd = el('div', 'abh'); hd.append(el('b', '', String(i + 1)), el('span', '', t.title + (t.poet ? ' · ' + t.poet : ''))); const stt = el('em', '', cu.length ? '✓ ' + cu.length + ' بيت' : 'بدون كلمات'); hd.appendChild(stt); if (!cu.length) r.classList.add('bad');
+          const ly = el('textarea', 'mdin lyta'); ly.rows = 6; ly.hidden = true; ly.value = orig; ly.placeholder = 'الصق كلمات القصيدة — كل بيت بسطر'; hd.onclick = () => { ly.hidden = !ly.hidden; if (!ly.hidden) ly.focus(); }; ly.oninput = () => { stt.textContent = ly.value.trim() !== orig.trim() ? '● معدّلة' : (cu.length ? '✓ ' + cu.length + ' بيت' : 'بدون كلمات'); };
+          r.append(hd, ly); list.appendChild(r); return { t, ly, orig }; }); if (!rows.length) list.appendChild(el('p', 'hint', 'لا توجد قصائد بهذا الإصدار.')); };
+      ab.onchange = draw; draw();
+      const go = el('button', 'pri', 'حفظ الكلمات'); go.type = 'button'; bx.appendChild(go); const cn = el('button', 'cn', 'إغلاق'); cn.type = 'button'; cn.onclick = close; bx.appendChild(cn);
+      go.onclick = async () => { const ch = rows.filter((x) => x.ly.value.trim() && x.ly.value.trim() !== x.orig.trim()); if (!ch.length) return toast('ما اكو تغيير'); const db = fdb(); if (!db) return toast('لا يوجد اتصال'); go.disabled = true; let n = 0;
+        for (const x of ch) { try { const lines = x.ly.value.split(/\n+/).map((q) => q.replace(/\s+/g, ' ').trim()).filter(Boolean), est = estLines(lines, x.t.dur || 300, null); await db.collection('tracks').doc(x.t.id).set({ lyrics: est, lyrEst: true, upd: Date.now() }, { merge: true }); try { await applyGlobal(x.t, est, true); } catch (e) {} aqAdd(x.t.id, lines); n++; } catch (e) {} }
+        toast('حُفظت كلمات ' + n + ' قصيدة — تُضبط بالخلفية'); close(); fsLoad(); };
+    }); }
   function upMenu(t) { if (!isOwner()) return toast('الإضافة متاحة للمالك فقط'); const ed = !!t;
     modal(ed ? 'تعديل القصيدة' : 'إضافة قصيدة', (bx, close) => {
-      if (!ed) { const bk = btn('wide', 'كلمات جماعية لعدة قصائد', () => { close(); bulkLyrics(); }); bx.appendChild(bk); }
+      if (!ed) { bx.appendChild(btn('wide primary', 'رفع إصدار كامل (عدة قصائد مرة واحدة)', () => { close(); albumUp(); })); bx.appendChild(btn('wide', 'كلمات إصدار (كل قصائده بمكان واحد)', () => { close(); albumLyrics(); })); const bk = btn('wide', 'كلمات جماعية لعدة قصائد', () => { close(); bulkLyrics(); }); bx.appendChild(bk); }
       const inp = (ph, v) => { const i = el('input', 'mdin'); i.placeholder = ph; i.value = v || ''; bx.appendChild(i); return i; };
       /* اختيار من القائمة (الرواديد/الشعراء السابقين) مع إمكانية كتابة اسم جديد */
       const pick = (ph, v, k) => { const w = el('div', 'pkw'), i = el('input', 'mdin'); i.placeholder = ph + ' — اختر أو اكتب اسماً جديداً'; i.value = v || ''; const ch = el('div', 'pkc'); w.append(i, ch); bx.appendChild(w);
