@@ -37,6 +37,35 @@ def transcribe(path, hot):
                 W.append((part, float(w.start), float(w.end)))
     return W
 
+def clean_ar(l):
+    l = re.sub(r'[\u064B-\u065F\u0670\u0640]', '', l)
+    l = re.sub(r'[^\u0621-\u064A\s]', ' ', l)
+    return [w for w in l.split() if w]
+
+def forced_align(wav, seq_lines):
+    """محاذاة إجبارية (MMS): يأخذ النص الصحيح بترتيب الإنشاد ويحدد وقت كل كلمة على الصوت."""
+    import torch
+    from ctc_forced_aligner import load_audio, load_alignment_model, generate_emissions, preprocess_text, get_alignments, get_spans, postprocess_results
+    global _FA
+    if '_FA' not in globals(): _FA = load_alignment_model('cpu', dtype=torch.float32)
+    model, tok = _FA
+    words = [clean_ar(l) or ['ا'] for l in seq_lines]
+    text = ' '.join(' '.join(w) for w in words)
+    audio = load_audio(wav, model.dtype, model.device)
+    em, stride = generate_emissions(model, audio, batch_size=4)
+    tokens, starred = preprocess_text(text, romanize=True, language='ara')
+    segs, scores, blank = get_alignments(em, tokens, tok)
+    spans = get_spans(tokens, segs, blank)
+    res = [r for r in postprocess_results(starred, spans, stride, scores) if '<star>' not in r['text']]
+    n = sum(len(w) for w in words)
+    if len(res) != n:
+        print(f'  تنبيه: عدد كلمات المحاذاة {len(res)} ≠ {n}'); return None
+    out, k = [], 0
+    for w in words:
+        part = res[k:k + len(w)]; k += len(w)
+        out.append((float(part[0]['start']), float(part[-1]['end']), sum(float(x.get('score', 0)) for x in part) / len(part)))
+    return out
+
 def align(lines, W, R):
     """lines: الأبيات (مطبّعة)، W: كلمات المسموع، R: عدد أبيات المستهل (أول مقطع).
     يرجع قائمة (فهرس البيت، وقت البداية أو None، الثقة) بترتيب الإنشاد مع التكرارات."""
@@ -130,7 +159,8 @@ def main():
     db = firestore.Client(project='minbar-8f037')
     albums = {d.id: d.to_dict() for d in db.collection('albums').stream()}
     tracks = [dict(d.to_dict(), id=d.id) for d in db.collection('tracks').stream()]
-    if ALBUM:
+    if ONLY and not ALBUM: todo = tracks
+    elif ALBUM:
         ids = [k for k, a in albums.items() if ALBUM in (a.get('name') or '')]
         todo = [t for t in tracks if t.get('album') in ids]
         print('الإصدار:', [albums[i].get('name') for i in ids], '— قصائد:', len(todo))
@@ -192,11 +222,22 @@ def main():
             dur = float(subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', wav], capture_output=True, text=True).stdout.strip() or 0)
             hot = ' '.join(dict.fromkeys(' '.join(lines).split()))[:900]
             W = transcribe(wav, hot)
+            import shutil; keep = os.path.join(tempfile.gettempdir(), tid + '.wav'); shutil.copy(wav, keep)
         print(f'  مدة {dur:.0f}ث — كلمات مسموعة {len(W)} — زمن السماع {time.time() - t0:.0f}ث', flush=True)
         if len(W) < 5: print('  تخطّي: ما انسمع كلام'); continue
         nl = [norm(l) or 'ا' for l in lines]
         seq = align(nl, W, R)
-        ts = fix_times(seq, dur)
+        ts = fix_times(seq, dur); ts_w = list(ts); fa = None
+        if os.environ.get('FA', 'true') == 'true':
+            try:
+                tf = time.time(); fa = forced_align(keep, [lines[i] for i, _, _ in seq])
+                if fa:
+                    ts = [round(a, 2) for a, _, _ in fa]
+                    for k in range(1, len(ts)): ts[k] = max(ts[k], ts[k - 1])
+                    print(f'  محاذاة إجبارية ({time.time() - tf:.0f}ث)')
+            except Exception as e: print('  فشلت المحاذاة الإجبارية:', repr(e)[:300])
+        try: os.remove(keep)
+        except Exception: pass
         arr = [{'t': ts[k], 'l': lines[i]} for k, (i, _, _) in enumerate(seq)]
         low = [k for k, (_, tt, c) in enumerate(seq) if tt is None or c < 0.45]
         conf = sum(c for _, _, c in seq) / max(1, len(seq))
@@ -212,7 +253,7 @@ def main():
             if ds:
                 ds.sort(); print(f'  مقارنة بالسابق: وسيط الفرق {ds[len(ds) // 2]:.1f}ث — ضمن ثانية {sum(d <= 1 for d in ds) * 100 // len(ds)}% — ضمن 3ث {sum(d <= 3 for d in ds) * 100 // len(ds)}%')
         for k, x in enumerate(arr[:400]):
-            print(f"   {x['t']:7.2f} {'⚠' if k in low else ' '} {x['l']}")
+            print(f"   {x['t']:7.2f} (سماع {ts_w[k]:7.2f}{f' ثقة {fa[k][2]:.2f}' if fa else ''}) {'⚠' if k in low else ' '} {x['l']}")
         if WRITE:
             doc = {'json': json.dumps(arr, ensure_ascii=False), 'title': t.get('title') or '', 'by': 'auto', 'at': firestore.SERVER_TIMESTAMP, 'low': low}
             if ap.exists and ap.to_dict().get('json') and ap.to_dict().get('by') != 'auto': doc['prev'] = ap.to_dict().get('json')
