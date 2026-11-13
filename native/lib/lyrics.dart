@@ -158,7 +158,7 @@ class _LyricStripState extends State<LyricStrip> with SingleTickerProviderStateM
       // ارتفاع كل سطر (الحالي بحجم أكبر)
       final hs = <double>[];
       for (final l in L) {
-        final tp = TextPainter(text: TextSpan(text: l.l, style: lyStyle(base: widget.base)), textDirection: TextDirection.rtl, textAlign: TextAlign.center, textScaler: MediaQuery.textScalerOf(context))..layout(maxWidth: w);
+        final tp = TextPainter(text: TextSpan(text: l.l, style: lyStyle(base: widget.base)), textDirection: TextDirection.rtl, textAlign: TextAlign.center, maxLines: app.player.lySplit != 0 ? 1 : null, textScaler: MediaQuery.textScalerOf(context))..layout(maxWidth: app.player.lySplit != 0 ? double.infinity : w);
         hs.add(tp.height + 4);
       }
       final tops = <double>[];
@@ -186,6 +186,7 @@ class _LyricStripState extends State<LyricStrip> with SingleTickerProviderStateM
                 for (var i = 0; i < L.length; i++)
                   if (tops[i] + yy + hs[i] > -40 && tops[i] + yy < h + 40)
                     Positioned(
+                      key: ValueKey(i), // كل سطر يحتفظ بحالة حركته (بدونها تنتقل الحركة لسطر ثاني عند دخول/خروج الأسطر)
                       top: tops[i] + yy,
                       left: 12,
                       right: 12,
@@ -310,14 +311,15 @@ class _LyricStripState extends State<LyricStrip> with SingleTickerProviderStateM
     } else if (st == 2) {
       style = style.copyWith(shadows: [const Shadow(color: Color(0xE6000000), blurRadius: 14, offset: Offset(0, 2)), Shadow(color: kGold.withOpacity(0.4), blurRadius: 8)]);
     }
-    Widget t = Text(s, textAlign: TextAlign.center, style: style);
+    final one = app.player.lySplit != 0; // سطر واحد دائماً عند تفعيل التقسيم
+    Widget t = Text(s, textAlign: TextAlign.center, style: style, maxLines: one ? 1 : null, softWrap: !one);
     if (st == 2 && tr == 'kar') {
       // التلوين يصير بفرشاة النص نفسه (foreground shader) بدل قناع الطبقة،
       // فأطراف الحروف النازلة (ي، ع، ج…) تتلوّن صح ولا يطلع أي أثر أبيض تحت الكتابة بأي خط
       final plain = style.copyWith(shadows: const []);
       Widget fillAt(double p) => LayoutBuilder(builder: (_, c) {
-            final tp = TextPainter(text: TextSpan(text: s, style: plain), textDirection: TextDirection.rtl, textAlign: TextAlign.center, textScaler: MediaQuery.textScalerOf(context))..layout(maxWidth: c.maxWidth);
-            final tw = tp.width, bw = math.max(c.minWidth, tw), ox = (bw - tw) / 2;
+            final tp = TextPainter(text: TextSpan(text: s, style: plain), textDirection: TextDirection.rtl, textAlign: TextAlign.center, maxLines: one ? 1 : null, textScaler: MediaQuery.textScalerOf(context))..layout(maxWidth: c.maxWidth);
+            final tw = tp.width, bw = c.maxWidth.isFinite ? math.max(c.minWidth, tw) : tw, ox = (bw - tw) / 2;
             final sh = LinearGradient(
               begin: Alignment.centerRight,
               end: Alignment.centerLeft,
@@ -329,6 +331,8 @@ class _LyricStripState extends State<LyricStrip> with SingleTickerProviderStateM
             return RepaintBoundary(child: Text(
               s,
               textAlign: TextAlign.center,
+              maxLines: one ? 1 : null,
+              softWrap: !one,
               style: TextStyle(
                 fontFamily: plain.fontFamily,
                 fontFamilyFallback: plain.fontFamilyFallback,
@@ -360,7 +364,7 @@ class _LyricStripState extends State<LyricStrip> with SingleTickerProviderStateM
             ..setEntry(3, 2, rx == 0 ? 0 : 0.0016)
             ..rotateX(rx)
             ..scale(sc),
-          child: Center(child: t),
+          child: Center(child: one ? FittedBox(fit: BoxFit.scaleDown, child: t) : t),
         ),
       ),
     );
