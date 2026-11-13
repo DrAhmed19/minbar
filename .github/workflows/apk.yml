@@ -26,7 +26,7 @@ jobs:
         env: { KS_PASS: '${{ secrets.KS_PASS }}' }
         run: |
           if [ -z "$KS_PASS" ]; then echo "::error::أضف السر KS_PASS في إعدادات المستودع"; exit 1; fi
-          mkdir -p ~/.android && openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in native/ci/ks.enc -out ~/.android/debug.keystore -pass env:KS_PASS
+          mkdir -p ~/.android && openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in native/ci/ks.enc -out native/ci/debug.keystore -pass env:KS_PASS && cp native/ci/debug.keystore ~/.android/debug.keystore
       - name: الحزم
         working-directory: native
         run: flutter pub get
