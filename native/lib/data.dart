@@ -46,7 +46,7 @@ class Lyric {
           .whereType<Map>()
           .map((e) => Lyric(((e['t'] ?? 0) as num).toDouble(), (e['l'] ?? '').toString(), e['gap'] == true))
           .toList();
-      out.sort((a, b) => a.t.compareTo(b.t));
+      // بدون ترتيب حسب الوقت: نفس ترتيب الملف مثل الويب (الترتيب كان يخلط الأبيات المكررة ويقفز للخلف)
       return out;
     } catch (_) {
       return [];

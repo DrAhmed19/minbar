@@ -286,7 +286,7 @@
     if (!pfq || pfq.length !== n) pfq = new Float32Array(n); pfq.set(fqd);
   }
   /* ===== تحليل صوتي مسبق: يُحسب مرة واحدة (بالخلفية عند المالك) ويُقرأ وقت التشغيل بلا أي معالجة صوت — يحرّك الرسم واللطم بدل التحليل الحي ===== */
-  const APPV = '3.83';
+  const APPV = '3.84';
   const ANV = 'v1', ANKEY = (t) => 'n/' + t.id + '-' + ANV + '.bin', ANOK = (t) => /^[A-Za-z0-9_-]{3,64}$/.test((t && t.id) || '');
   let PRE = null; const PF = { dd: new Float32Array(22), vb: { db: 0, peak: 1 }, cb: { db: 0, flat: 0 }, hb: { db: 0 }, lb: { db: 0 }, on: 0 }; let synW = null, synT = 0;
   async function anLoad(t) { PRE = null; if (!t || t.an !== 1 || !ANOK(t)) return; try { const r = await fetch('media/u/' + ANKEY(t)); if (!r.ok) return; const b = new Uint8Array(await r.arrayBuffer()); if (b.length < 12 || b[0] !== 77 || b[1] !== 66 || b[2] !== 65) return; const nf = new DataView(b.buffer).getUint32(8, true); if (tracks[cur] && tracks[cur].id === t.id) PRE = { id: t.id, fps: b[4], nf, W: b[5] + b[6], d: b, o: 12 }; } catch (e) {} }
@@ -717,7 +717,7 @@
     if (st.ly.split === false) return L; const bw = (g('plrLyr') && g('plrLyr').clientWidth) || Math.min(innerWidth, 480), lim = Math.max(12, Math.min(60, Math.floor((bw - 36) / (26 * (st.ly.size || 1) * 0.5)))), o = [];
     L.forEach((x, i) => { const s = (x.l || '').trim(); if (s.length <= lim || s.indexOf(' ') < 0) { o.push(x); return; } const ws = s.split(' '), n = Math.min(ws.length, Math.max(2, Math.min(6, Math.ceil(s.length / lim)))), cum = [0]; ws.forEach((w) => cum.push(cum[cum.length - 1] + w.length + 1)); const cuts = [0];
       for (let j = 1; j < n; j++) { const tg = s.length * j / n; let bk = cuts[cuts.length - 1] + 1, bd = 1e9; for (let k = cuts[cuts.length - 1] + 1; k <= ws.length - (n - j); k++) { const d = Math.abs(cum[k] - tg); if (d < bd) { bd = d; bk = k; } } cuts.push(bk); } cuts.push(ws.length);
-      const nt = L[i + 1] ? L[i + 1].t : x.t + 5, span = nt - x.t; /* وقت البيت يتوزّع بالتساوي على أجزائه */ for (let j = 0; j < n; j++) o.push(Object.assign({}, x, { l: ws.slice(cuts[j], cuts[j + 1]).join(' '), t: x.t + span * j / n })); });
+      const nt = L[i + 1] ? L[i + 1].t : x.t + 5, span = nt - x.t > 0 ? nt - x.t : n * 2.5; /* وقت البيت يتوزّع بالتساوي على أجزائه */ for (let j = 0; j < n; j++) o.push(Object.assign({}, x, { l: ws.slice(cuts[j], cuts[j + 1]).join(' '), t: x.t + span * j / n })); });
     return o;
   }
   function lyLines() { const t = tracks[cur]; if (!t) return []; if (lyT !== t) { lyT = t; lyL = splitLong(linesOf(t)); } return lyL; }

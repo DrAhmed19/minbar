@@ -62,7 +62,7 @@ List<Lyric> splitLong(List<Lyric> L, [int? maxChars]) {
       cuts.add(best);
     }
     cuts.add(ws.length);
-    final nt = i + 1 < L.length ? L[i + 1].t : x.t + 5, span = nt - x.t;
+    final nt = i + 1 < L.length ? L[i + 1].t : x.t + 5, span = (nt - x.t) > 0 ? nt - x.t : n * 2.5;
     for (var j = 0; j < n; j++) {
       o.add(Lyric(x.t + span * j / n, ws.sublist(cuts[j], cuts[j + 1]).join(' '), x.gap));
     }
