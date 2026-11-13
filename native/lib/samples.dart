@@ -204,8 +204,6 @@ class _SamplesPageState extends State<SamplesPage> {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(22, 60, 22, 24),
             child: Column(children: [
-              // شريط تقدم المقطع بالأعلى (مثل الويب)
-              ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(value: prog, minHeight: 3, backgroundColor: Colors.white24, color: Colors.white)),
               const Spacer(),
               Cover(t.coverUrl, size: 170, radius: 24),
               const SizedBox(height: 18),
@@ -214,7 +212,7 @@ class _SamplesPageState extends State<SamplesPage> {
               Text(sub, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(14, c: kGold, w: FontWeight.w700)),
               const SizedBox(height: 22),
               Padding(
-                padding: const EdgeInsets.only(right: 56),
+                padding: const EdgeInsets.symmetric(horizontal: 52),
                 child: SizedBox(
                   height: 96,
                   child: Center(
@@ -232,6 +230,8 @@ class _SamplesPageState extends State<SamplesPage> {
                 ),
               ),
               const Spacer(),
+              if (on) _TkBar(p: prog, a: segStart, b: segEnd),
+              const SizedBox(height: 14),
               GoldButton('استمع كاملة', () {
                 final pl = app.player;
                 _keep = true;
@@ -252,7 +252,7 @@ class _SamplesPageState extends State<SamplesPage> {
                 setState(() => r.toggleFav(t.id));
                 if (!fav) snack(context, 'أُضيفت للمفضلة');
               }, c: fav ? const Color(0xFFFF4D6D) : Colors.white),
-              _sb(off ? Ic.check : Ic.down, off ? 'منزّلة' : 'تنزيل', () async {
+              _sb(off ? Ic.check : Ic.dl, off ? 'منزّلة' : 'تنزيل', () async {
                 if (off) return snack(context, 'منزّلة مسبقاً — تعمل بدون إنترنت');
                 snack(context, 'جارٍ تنزيل «${t.title}»…');
                 final ok = await r.offSave(t, (_) {});
@@ -287,5 +287,76 @@ class _SamplesPageState extends State<SamplesPage> {
           ),
       ]),
     );
+  }
+}
+
+/// شريط تقدم مثل تيك توك: خط رفيع يتضخّم عند اللمس، والسحب يقدّم ويعرض الوقت
+class _TkBar extends StatefulWidget {
+  final double p, a, b;
+  const _TkBar({required this.p, required this.a, required this.b});
+  @override
+  State<_TkBar> createState() => _TkBarS();
+}
+
+class _TkBarS extends State<_TkBar> {
+  double? _d;
+  String _f(double s) => '${(s ~/ 60).toString().padLeft(2, '0')}:${(s.round() % 60).toString().padLeft(2, '0')}';
+  @override
+  Widget build(BuildContext context) {
+    final len = math.max(1.0, widget.b - widget.a);
+    final v = (_d ?? widget.p).clamp(0.0, 1.0);
+    final big = _d != null;
+    return LayoutBuilder(builder: (_, c) {
+      double f(double x) => (x / c.maxWidth).clamp(0.0, 1.0);
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onHorizontalDragStart: (d) => setState(() => _d = f(d.localPosition.dx)),
+        onHorizontalDragUpdate: (d) => setState(() => _d = f(d.localPosition.dx)),
+        onHorizontalDragEnd: (_) {
+          app.player.seek(widget.a + (_d ?? 0) * len);
+          setState(() => _d = null);
+        },
+        onHorizontalDragCancel: () => setState(() => _d = null),
+        onTapUp: (d) => app.player.seek(widget.a + f(d.localPosition.dx) * len),
+        child: SizedBox(
+          height: 44,
+          child: Stack(clipBehavior: Clip.none, alignment: Alignment.bottomCenter, children: [
+            if (big)
+              Positioned(
+                bottom: 18,
+                child: Text('${_f(v * len)} / ${_f(len)}', style: tx(20, c: Colors.white, w: FontWeight.w800).copyWith(shadows: const [Shadow(color: Color(0xAA000000), blurRadius: 8)])),
+              ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 4,
+              child: Directionality(
+                textDirection: TextDirection.ltr,
+                child: Stack(clipBehavior: Clip.none, alignment: Alignment.centerLeft, children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    height: big ? 6 : 2.5,
+                    decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(4)),
+                  ),
+                  FractionallySizedBox(
+                    widthFactor: v,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      height: big ? 6 : 2.5,
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4)),
+                    ),
+                  ),
+                  if (big)
+                    Positioned(
+                      left: v * c.maxWidth - 7,
+                      child: Container(width: 14, height: 14, decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white)),
+                    ),
+                ]),
+              ),
+            ),
+          ]),
+        ),
+      );
+    });
   }
 }

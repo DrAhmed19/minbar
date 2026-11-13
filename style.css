@@ -1347,3 +1347,10 @@ textarea.mdin{resize:none}
 #plrFav .cmb.go{animation:cmbgo .3s cubic-bezier(.3,1.6,.5,1)}@keyframes cmbgo{0%{transform:translateX(-50%) scale(1.7)}100%{transform:translateX(-50%) scale(1)}}
 /* v3.76: التعبئة بلا لون قبل الامتلاء */
 .plrlyb[data-tr=kar] .lc{filter:drop-shadow(0 2px 6px rgba(0,0,0,.55))!important}
+/* v3.77: أزرار العينات الجانبية مثل التطبيق */
+.smside{right:8px!important;bottom:calc(190px + env(safe-area-inset-bottom))!important;gap:14px!important;z-index:3}
+.smb{gap:6px!important;font:700 12px Cairo,sans-serif!important;color:#fff!important}
+.smb i{width:52px!important;height:52px!important;background:rgba(0,0,0,.32)!important;-webkit-backdrop-filter:blur(10px)!important;backdrop-filter:blur(10px)!important}
+.smb .pi{width:26px!important;height:26px!important}
+.smb.on i{color:#ff4d6d}.smb.on i .pi{fill:#ff4d6d}
+.smly{left:64px!important;right:64px!important}
