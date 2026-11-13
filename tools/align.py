@@ -139,13 +139,17 @@ def main():
         print('قصائد بانتظار الضبط:', len(todo))
     todo.sort(key=lambda t: t.get('at') or 0)
     if os.environ.get('RESTORE') == 'true':  # إرجاع التوقيت اليدوي السابق (قبل الضبط التلقائي)
-        for t in todo:
+        for t in (todo if SHARD == 0 else []):
             if ONLY and ONLY not in (t.get('title') or ''): continue
             ap = db.collection('lyrApproved').document(t['id']).get()
             pv = ap.exists and ap.to_dict().get('prev')
             if pv:
                 db.collection('lyrApproved').document(t['id']).set({'json': pv, 'by': 'restore', 'low': [], 'at': firestore.SERVER_TIMESTAMP}, merge=True)
                 print('↩ أُرجع التوقيت اليدوي:', t.get('title'))
+            elif isinstance(t.get('lyrics'), list) and len(t['lyrics']) > 3:
+                L = t['lyrics']; print('نسخة القصيدة الأصلية:', t.get('title'), 'lyrEst=', t.get('lyrEst'), [(x.get('t'), (x.get('l') or '')[:20]) for x in L[:6]])
+                db.collection('lyrApproved').document(t['id']).set({'json': json.dumps([{'t': x.get('t'), 'l': x.get('l')} for x in L], ensure_ascii=False), 'by': 'restore', 'low': [], 'at': firestore.SERVER_TIMESTAMP}, merge=True)
+                print('↩ أُرجعت من نسخة القصيدة الأصلية')
             else: print('لا توجد نسخة سابقة:', t.get('title'))
         return
     if ONLY: todo = [t for t in todo if ONLY in (t.get('title') or '')]
