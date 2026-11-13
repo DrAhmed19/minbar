@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
 import 'data.dart';
@@ -158,7 +159,7 @@ class _LyricStripState extends State<LyricStrip> with SingleTickerProviderStateM
                       left: 12,
                       right: 12,
                       height: hs[i],
-                      child: _line(L[i].l, i == kk ? 2 : ((i - kk).abs() == 1 ? 1 : 0), tr, i == kk ? p : 0),
+                      child: _line(L[i].l, i == kk ? 2 : ((i - kk).abs() == 1 ? 1 : 0), tr, i == kk ? p : 0, ab: (i == kk && tr == 'kar' && !widget.demo) ? [L[i].t, i + 1 < L.length ? L[i + 1].t : L[i].t + 4] : null),
                     ),
               ]),
             ),
@@ -242,7 +243,7 @@ class _LyricStripState extends State<LyricStrip> with SingleTickerProviderStateM
   }
 
   /// st: 2 حالي، 1 مجاور، 0 بعيد
-  Widget _line(String s, int st, String tr, double kp) {
+  Widget _line(String s, int st, String tr, double kp, {List<double>? ab}) {
     final col = lyColorNow();
     // فواصل المقاطع (***** أو ----) تُعرض كزخرفة
     if (RegExp(r'^[\s\*\-–—_\.•~=]+$').hasMatch(s)) {
@@ -279,13 +280,24 @@ class _LyricStripState extends State<LyricStrip> with SingleTickerProviderStateM
     }
     Widget t = Text(s, textAlign: TextAlign.center, style: style);
     if (st == 2 && tr == 'kar') {
-      // الجزء غير المعبّأ أبيض باهت بلا أي لون/توهّج، والمعبّأ فقط يأخذ اللون
-      final base = style.copyWith(color: Colors.white.withOpacity(0.38), shadows: const [Shadow(color: Color(0x80000000), blurRadius: 8, offset: Offset(0, 2))]);
-      final fill = style.copyWith(color: col, shadows: const [Shadow(color: Color(0x80000000), blurRadius: 8, offset: Offset(0, 2))]);
-      t = Stack(alignment: Alignment.center, children: [
-        Text(s, textAlign: TextAlign.center, style: base),
-        ClipRect(clipper: _KarClip(kp), child: Text(s, textAlign: TextAlign.center, style: fill)),
-      ]);
+      // طبقة ظل منفصلة + نص واحد بتدرّج لوني ناعم (بلا نصّين فوق بعض فلا تظهر نقاط)،
+      // والتعبئة تتحدّث كل إطار لتكون سلسة
+      final shadow = style.copyWith(color: Colors.transparent, shadows: const [Shadow(color: Color(0x8C000000), blurRadius: 10, offset: Offset(0, 2))]);
+      final plain = style.copyWith(color: Colors.white, shadows: const []);
+      Widget fillAt(double p) => Stack(alignment: Alignment.center, children: [
+            Text(s, textAlign: TextAlign.center, style: shadow),
+            ShaderMask(
+              blendMode: BlendMode.srcIn,
+              shaderCallback: (r) => LinearGradient(
+                begin: Alignment.centerRight,
+                end: Alignment.centerLeft,
+                colors: [col, col, Colors.white.withOpacity(0.38), Colors.white.withOpacity(0.38)],
+                stops: [0, (p - 0.025).clamp(0.0, 1.0), (p + 0.025).clamp(0.0, 1.0), 1],
+              ).createShader(r),
+              child: Text(s, textAlign: TextAlign.center, style: plain),
+            ),
+          ]);
+      t = ab == null ? fillAt(kp) : _KarTick(a: ab[0], b: ab[1], build: fillAt);
     }
     if (blur > 0) t = ImageFiltered(imageFilter: ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur), child: t);
     return AnimatedOpacity(
@@ -426,11 +438,34 @@ void showLyricsSheet(BuildContext context, List<Lyric> lines) {
 // للاستعمال لاحقاً
 typedef PlayerStateT = PlayerState;
 
-class _KarClip extends CustomClipper<Rect> {
-  final double p;
-  _KarClip(this.p);
+class _KarTick extends StatefulWidget {
+  final double a, b;
+  final Widget Function(double) build;
+  const _KarTick({required this.a, required this.b, required this.build});
   @override
-  Rect getClip(Size z) => Rect.fromLTRB(z.width * (1 - p), -30, z.width, z.height + 30);
+  State<_KarTick> createState() => _KarTickS();
+}
+
+class _KarTickS extends State<_KarTick> with SingleTickerProviderStateMixin {
+  late final Ticker _t = createTicker((_) {
+    if (mounted) setState(() {});
+  });
   @override
-  bool shouldReclip(_KarClip o) => o.p != p;
+  void initState() {
+    super.initState();
+    _t.start();
+  }
+
+  @override
+  void dispose() {
+    _t.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pl = app.player;
+    final t = pl.p.position.inMilliseconds / 1000.0 + pl.lyOffset;
+    return widget.build(((t - widget.a) / math.max(0.4, widget.b - widget.a)).clamp(0.0, 1.0));
+  }
 }

@@ -283,7 +283,7 @@
     if (!pfq || pfq.length !== n) pfq = new Float32Array(n); pfq.set(fqd);
   }
   /* ===== تحليل صوتي مسبق: يُحسب مرة واحدة (بالخلفية عند المالك) ويُقرأ وقت التشغيل بلا أي معالجة صوت — يحرّك الرسم واللطم بدل التحليل الحي ===== */
-  const APPV = '3.77';
+  const APPV = '3.78';
   const ANV = 'v1', ANKEY = (t) => 'n/' + t.id + '-' + ANV + '.bin', ANOK = (t) => /^[A-Za-z0-9_-]{3,64}$/.test((t && t.id) || '');
   let PRE = null; const PF = { dd: new Float32Array(22), vb: { db: 0, peak: 1 }, cb: { db: 0, flat: 0 }, hb: { db: 0 }, lb: { db: 0 }, on: 0 }; let synW = null, synT = 0;
   async function anLoad(t) { PRE = null; if (!t || t.an !== 1 || !ANOK(t)) return; try { const r = await fetch('media/u/' + ANKEY(t)); if (!r.ok) return; const b = new Uint8Array(await r.arrayBuffer()); if (b.length < 12 || b[0] !== 77 || b[1] !== 66 || b[2] !== 65) return; const nf = new DataView(b.buffer).getUint32(8, true); if (tracks[cur] && tracks[cur].id === t.id) PRE = { id: t.id, fps: b[4], nf, W: b[5] + b[6], d: b, o: 12 }; } catch (e) {} }
@@ -1873,11 +1873,17 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   const SMF = 'F10';
   function smpOpen() { if (smpOn) return; const L = tracks.filter((t) => t.audio); if (!L.length) return toast('لا توجد قصائد بعد'); if (!A.paused) fadePause(); smpOn = true; try { document.fonts.load('700 40px ' + SMF, 'قصيدة'); } catch (e) {}
     smpList = L.slice().sort((a, b) => (b.at || 0) - (a.at || 0)); const w = g('plrSmp'); w.hidden = false; const sc = g('plrSmpL'); sc.textContent = '';
-    smpList.forEach((t, i) => { const it = el('section', 'smi'); it.dataset.i = i; it.innerHTML = '<div class="smbg"></div><div class="smgr"></div><div class="smtop"><i></i></div><div class="smly"></div><div class="smside"></div><div class="smft"><div class="smpi"><div class="plrcov"></div><div class="trm"><b></b><small></small></div><button class="smgo" type="button"></button></div></div><div class="smpz" hidden></div>';
+    smpList.forEach((t, i) => { const it = el('section', 'smi'); it.dataset.i = i; it.innerHTML = '<div class="smbg"></div><div class="smgr"></div><div class="smcol"><div class="plrcov"></div><b class="smt"></b><small class="sms"></small><div class="smly"></div></div><div class="smside"></div><div class="smft"><div class="smtop"><i></i><b class="smtt"></b></div><button class="smgo" type="button"></button></div><div class="smpz" hidden></div>';
       const bg = it.querySelector('.smbg'), cu = cov(t); if (cu) bg.style.backgroundImage = 'url("' + cu + '")'; else { const c = gOf(t); bg.style.background = `radial-gradient(120% 90% at 30% 20%,${c[0]},${c[1]})`; }
       it.style.setProperty('--smh', String(hash(t.id) % 360));
-      coverEl(t, it.querySelector('.smpi .plrcov')); it.querySelector('.smpi .trm b').textContent = t.title; it.querySelector('.smpi .trm small').textContent = [t.reciter, t.poet].filter(Boolean).join(' · ');
-      const go = it.querySelector('.smgo'); go.innerHTML = '<span>استمع كاملة</span>' + ic('fwd', 14); go.onclick = (e) => { e.stopPropagation(); smpClose(); qFrom(t, tracks); play(tracks.indexOf(t), true); };
+      coverEl(t, it.querySelector('.smcol .plrcov')); it.querySelector('.smt').textContent = t.title; it.querySelector('.sms').textContent = [t.reciter, t.poet].filter(Boolean).join(' · ');
+      const bar = it.querySelector('.smtop'), tt = bar.querySelector('.smtt'), mm = (x) => { x = Math.max(0, Math.round(x)); return String(Math.floor(x / 60)).padStart(2, '0') + ':' + String(x % 60).padStart(2, '0'); };
+      const bf = (e) => { const r = bar.getBoundingClientRect(); return Math.max(0, Math.min(1, (e.clientX - r.left) / (r.width || 1))); };
+      bar.onclick = (e) => e.stopPropagation();
+      bar.onpointerdown = (e) => { if (smpIdx !== i) return; e.stopPropagation(); bar.setPointerCapture(e.pointerId); bar.classList.add('drag'); bar._f = bf(e); const sg = smpSeg(t); tt.textContent = mm(bar._f * sg.d) + ' / ' + mm(sg.d); bar.firstChild.style.transform = 'scaleX(' + bar._f + ')'; };
+      bar.onpointermove = (e) => { if (!bar.classList.contains('drag')) return; bar._f = bf(e); const sg = smpSeg(t); tt.textContent = mm(bar._f * sg.d) + ' / ' + mm(sg.d); bar.firstChild.style.transform = 'scaleX(' + bar._f + ')'; };
+      bar.onpointerup = bar.onpointercancel = () => { if (!bar.classList.contains('drag')) return; bar.classList.remove('drag'); const sg = smpSeg(t); try { SA.currentTime = sg.a + bar._f * sg.d; } catch (e) {} };
+      const go = it.querySelector('.smgo'); go.innerHTML = ic('play', 18) + '<span>استمع كاملة</span>'; go.onclick = (e) => { e.stopPropagation(); smpClose(); qFrom(t, tracks); play(tracks.indexOf(t), true); };
       const sd = it.querySelector('.smside'); const sb = (icn, n, f) => { const b = el('button', 'smb'); b.type = 'button'; b.innerHTML = '<i>' + ic(icn, 24) + '</i><span></span>'; b.lastChild.textContent = n; b.onclick = (e) => { e.stopPropagation(); f(b); }; sd.appendChild(b); };
       sb('heart', 'أعجبني', (b) => { b.classList.toggle('on'); const on = b.classList.contains('on'); if (on !== st.fav.includes(t.id)) tog(t.id); if (on) { toast('أُضيفت للمفضلة'); b.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.35)' }, { transform: 'scale(1)' }], { duration: 350 }); } });
       if (st.fav.includes(t.id)) sd.firstChild.classList.add('on');
@@ -1896,7 +1902,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     envLoad(t); const nx = smpList[i + 1]; if (nx) { const l = document.createElement('link'); l.rel = 'prefetch'; l.href = nx.audio; document.head.appendChild(l); } }
   function smpLoop() { cancelAnimationFrame(smpRaf); if (!smpOn) return; smpRaf = requestAnimationFrame(smpLoop); const t = SA.__t, sg = SA.__seg; if (!t || !sg) return; const it = g('plrSmpL').children[smpIdx]; if (!it) return;
     const p = (SA.currentTime - sg.a) / sg.d; if (SA.currentTime >= sg.a + sg.d || SA.currentTime < sg.a - 1) { try { SA.currentTime = sg.a; } catch (e) {} }
-    it.querySelector('.smtop i').style.transform = 'scaleX(' + Math.max(0, Math.min(1, p)).toFixed(4) + ')';
+    if (!it.querySelector('.smtop').classList.contains('drag')) it.querySelector('.smtop i').style.transform = 'scaleX(' + Math.max(0, Math.min(1, p)).toFixed(4) + ')';
     const L = linesOf(t), now = SA.currentTime; let k = -1; for (let j = 0; j < L.length; j++) { if (L[j].t <= now + 0.12) k = j; else break; }
     if (it._k !== k) { it._k = k; it._ln = smpLine(it.querySelector('.smly'), k >= 0 ? L[k].l : ''); }
     const ln = it._ln; if (ln && k >= 0) { const end = L[k + 1] ? L[k + 1].t : L[k].t + 5, f = Math.max(0, Math.min(1, (now - L[k].t) / Math.max(0.8, (end - L[k].t) * 0.85))), ws = ln.querySelectorAll('span'), n = Math.ceil(f * ws.length);

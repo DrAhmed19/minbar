@@ -1354,3 +1354,22 @@ textarea.mdin{resize:none}
 .smb .pi{width:26px!important;height:26px!important}
 .smb.on i{color:#ff4d6d}.smb.on i .pi{fill:#ff4d6d}
 .smly{left:64px!important;right:64px!important}
+/* v3.78: العينات بنفس شكل التطبيق */
+.smbg{filter:brightness(.42) saturate(1.05)!important}
+.smgr{background:linear-gradient(180deg,rgba(0,0,0,.5),rgba(0,0,0,.7) 50%,rgba(0,0,0,.94))!important}.smgr::after{display:none}
+.smcol{position:absolute;left:0;right:0;top:calc(70px + env(safe-area-inset-top));bottom:calc(130px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 22px;text-align:center;pointer-events:none}
+.smcol .plrcov{width:min(44vw,24vh);aspect-ratio:1;border-radius:24px;overflow:hidden;flex:none;box-shadow:0 20px 50px rgba(0,0,0,.6);transform:scale(.94);transition:transform .6s cubic-bezier(.2,.8,.2,1)}.smi.act .smcol .plrcov{transform:none}
+.smt{display:block;margin-top:18px;font:800 24px/1.4 Cairo,sans-serif;color:#fff}
+.sms{display:block;margin-top:4px;font:700 14px Cairo,sans-serif;color:#E8C468}
+.smcol .smly{position:relative!important;left:auto!important;right:auto!important;bottom:auto!important;top:auto!important;width:calc(100% - 104px);margin-top:22px;min-height:112px}
+.smly .sl{font-size:clamp(22px,6.2vw,28px)!important}
+.smft{padding:0 22px calc(18px + env(safe-area-inset-bottom))!important;z-index:3}
+.smtop{position:relative!important;top:auto!important;left:auto!important;right:auto!important;height:3px!important;margin:0 0 16px!important;overflow:visible!important;touch-action:none;cursor:pointer;transition:height .15s}
+.smtop::before{content:'';position:absolute;left:0;right:0;top:-16px;bottom:-12px}
+.smtop i{transform-origin:left!important;border-radius:3px;pointer-events:none}
+.smtop.drag{height:6px!important}
+.smtt{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);font:800 20px Cairo,sans-serif;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.8);white-space:nowrap;display:none;pointer-events:none;direction:ltr}
+.smtop.drag .smtt{display:block}
+.smgo{width:100%;justify-content:center;padding:15px!important;border-radius:22px!important;font:800 16px Cairo,sans-serif!important;background:linear-gradient(90deg,#F4D88A,#E0B04A)!important;color:#2a2106!important;gap:10px!important}
+.smgo .pi{width:18px;height:18px;fill:currentColor}
+.smside{bottom:calc(190px + env(safe-area-inset-bottom))!important}

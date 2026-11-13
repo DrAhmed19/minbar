@@ -79,6 +79,8 @@ FX_KT = """import android.media.audiofx.DynamicsProcessing
 import android.media.audiofx.PresetReverb
 import android.media.audiofx.Virtualizer
 import android.os.Build
+import android.os.Bundle
+import android.app.ActivityManager
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -94,6 +96,20 @@ class MainActivity : AudioServiceActivity() {
         try { rev?.release() } catch (e: Exception) {}
         try { dp?.release() } catch (e: Exception) {}
         virt = null; rev = null; dp = null
+    }
+
+    // بعد التحديث من داخل التطبيق تبقى مهمة قديمة بالتطبيقات الأخيرة: نزيل أي مهمة غير الحالية
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        try {
+            val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+            for (t in am.appTasks) {
+                try {
+                    @Suppress("DEPRECATION")
+                    if (t.taskInfo.id != taskId) t.finishAndRemoveTask()
+                } catch (e: Exception) {}
+            }
+        } catch (e: Exception) {}
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {

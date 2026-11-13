@@ -1,4 +1,4 @@
-const V = 'minbar-v3.77';
+const V = 'minbar-v3.78';
 const FILES = ['./', 'index.html', 'style.css', 'app.js', 'audiofx.js','player.js','cmfilter.js','plrviz.js','plrdev.js','lyrai.js','catalog.json', 'manifest.webmanifest', 'lib/mp4-muxer.js', 'lib/mp4box.all.min.js', 'lib/firebase-app-compat.js', 'lib/firebase-auth-compat.js', 'lib/firebase-firestore-compat.js', 'firebase-config.js', 'auth.js',  'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/brand-mark.png', 'icons/favicon.png', 'icons/apple-touch-icon.png',
   'fonts/cairo.woff2', 'fonts/cairo-latin.woff2', 'fonts/tajawal.woff2', 'fonts/amiri.woff2', 'fonts/aref-ruqaa.woff2', 'fonts/reem-kufi.woff2', 'fonts/el-messiri.woff2', 'fonts/lalezar.woff2', 'fonts/katibeh.woff2', 'fonts/noto-naskh-arabic.woff2', 'fonts/rakkas.woff2', 'fonts/aref-ruqaa-ink.woff2', 'fonts/vibes.woff2', 'fonts/mirza.woff2', 'fonts/scheherazade-new.woff2', 'fonts/noto-kufi-arabic.woff2', 'fonts/reem-kufi-ink.woff2', 'fonts/blaka-ink.woff2', 'fonts/lateef.woff2'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(V).then((c) => c.addAll(FILES)).then(() => self.skipWaiting())); });
