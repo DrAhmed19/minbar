@@ -1,3 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- أيقونات أزرار الإشعار (audio_service_*) تُطلب بالاسم؛ بدون إبقائها يحذفها تقليص الموارد فلا تظهر لوحة التحكم -->
 <resources xmlns:tools="http://schemas.android.com/tools"
-    tools:keep="@drawable/ic_stat_minbar" />
+    tools:keep="@drawable/ic_stat_minbar,@drawable/audio_service_*,@drawable/*" />
