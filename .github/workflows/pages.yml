@@ -1,0 +1,26 @@
+# ينشر موقع منبر على Cloudflare Pages مباشرة من GitHub (بدل النشر التلقائي من Cloudflare)
+name: نشر الموقع
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['native/**', '.github/workflows/apk.yml', '.github/workflows/shots.yml']
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: تجهيز ملفات الموقع
+        run: |
+          mkdir -p /tmp/site
+          rsync -a --exclude .git --exclude .github --exclude native --exclude functions --exclude srv \
+            --exclude '*.rules' --exclude '*.rules.txt' --exclude firebase.json --exclude .firebaserc --exclude .gitignore ./ /tmp/site/
+          rm -rf site && mv /tmp/site site && ls site | head -50
+      - name: نشر
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then echo "::error::أضف السر CF_TOKEN"; exit 1; fi
+          npx -y wrangler@3 pages project list || true
+          npx -y wrangler@3 pages deploy site --project-name=minbar --branch=main --commit-dirty=true
