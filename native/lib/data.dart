@@ -259,7 +259,8 @@ class Repo extends ChangeNotifier {
 
   /// الكلمات المعتمدة للجميع (lyrApproved) ثم كلمات القصيدة نفسها
   Future<List<Lyric>> lyricsFor(Track t) async {
-    if (_ly.containsKey(t.id)) return _ly[t.id]!;
+    // بدون ذاكرة دائمة بالجلسة: كل فتح للقصيدة يجيب آخر تعديل (التعديلات من الويب تظهر فوراً)
+    if (_ly.containsKey(t.id) && offline.contains(t.id)) return _ly[t.id]!;
     List<Lyric> r = [];
     final cached = _p?.getString('ly.${t.id}');
     if (cached != null) r = Lyric.parse(cached);

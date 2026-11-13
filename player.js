@@ -286,7 +286,7 @@
     if (!pfq || pfq.length !== n) pfq = new Float32Array(n); pfq.set(fqd);
   }
   /* ===== تحليل صوتي مسبق: يُحسب مرة واحدة (بالخلفية عند المالك) ويُقرأ وقت التشغيل بلا أي معالجة صوت — يحرّك الرسم واللطم بدل التحليل الحي ===== */
-  const APPV = '3.92';
+  const APPV = '3.93';
   const ANV = 'v1', ANKEY = (t) => 'n/' + t.id + '-' + ANV + '.bin', ANOK = (t) => /^[A-Za-z0-9_-]{3,64}$/.test((t && t.id) || '');
   let PRE = null; const PF = { dd: new Float32Array(22), vb: { db: 0, peak: 1 }, cb: { db: 0, flat: 0 }, hb: { db: 0 }, lb: { db: 0 }, on: 0 }; let synW = null, synT = 0;
   async function anLoad(t) { PRE = null; if (!t || t.an !== 1 || !ANOK(t)) return; try { const r = await fetch('media/u/' + ANKEY(t)); if (!r.ok) return; const b = new Uint8Array(await r.arrayBuffer()); if (b.length < 12 || b[0] !== 77 || b[1] !== 66 || b[2] !== 65) return; const nf = new DataView(b.buffer).getUint32(8, true); if (tracks[cur] && tracks[cur].id === t.id) PRE = { id: t.id, fps: b[4], nf, W: b[5] + b[6], d: b, o: 12 }; } catch (e) {} }
@@ -820,7 +820,7 @@
   function commit(t, arr) { if (isAdm()) return applyGlobal(t, arr); saveMine(t, arr); submitLyrics(t, arr); }
   const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
   const btn = (cls, txt, fn) => { const b = el('button', 'btn small ' + (cls || ''), txt); b.type = 'button'; b.onclick = fn; return b; };
-  function lysEditBuild() {
+  function lysEditBuild() { const scE = g('plrLyScroll'), scY = scE ? scE.scrollTop : 0; requestAnimationFrame(() => { if (scE) scE.scrollTop = scY; });
     const t = tracks[cur], box = g('plrLyL'), hint = g('plrLyHint'); box.textContent = ''; if (!t) return; const L = linesOf(t), mine = jget(MYK, {})[t.id], adm = isAdm();
     hint.textContent = adm ? 'التعديلات تُطبَّق للجميع مباشرة.' : 'تعديلاتك تظهر لك فوراً، وتُعتمد للجميع بعد المراجعة.';
     try { const sd = JSON.parse(localStorage.getItem(SYK(t)) || 'null'); if (sd && sd.ls && sd.k < sd.ls.length + 1) { const bn = el('div', 'mybar'); bn.append(el('span', '', 'ضبط يدوي غير مكتمل (' + Math.min(sd.k, sd.ls.length) + ' / ' + sd.ls.length + ')'), btn('primary', 'متابعة', () => syncView(box, t, sd.ls, sd)), btn('', 'حذف', () => { localStorage.removeItem(SYK(t)); lysEditBuild(); })); box.appendChild(bn); } } catch (e) {}
@@ -828,7 +828,7 @@
     if (mine && !adm) { const bar = el('div', 'mybar'); bar.append(el('span', '', 'هذه نسختك الخاصة'), btn('primary', 'إرسال للمراجعة', () => submitLyrics(t, mine)), btn('', 'حذف نسختي', () => { const m = jget(MYK, {}); delete m[t.id]; jset(MYK, m); lyrBuild(); lysEditBuild(); })); box.appendChild(bar); }
     if (!L.length) return;
     box.appendChild(el('h4', 'lsth', 'الأسطر والتوقيت'));
-    const lowS = new Set(jget(LOWK, {})[t.id] || []); if (lowS.size) { const bn = el('div', 'mybar'); bn.append(el('span', '', lowS.size + ' بيت ضبطه تلقائي غير مؤكد (معلّم بالأصفر) — استمع وصحّح')); bn.appendChild(btn('', 'تم', () => { const lw = jget(LOWK, {}); delete lw[t.id]; jset(LOWK, lw); lysEditBuild(); })); box.insertBefore(bn, box.querySelector('.lsth')); }
+    const lowS = new Set(jget(LOWK, {})[t.id] || []); if (lowS.size) { const bn = el('div', 'mybar'); bn.append(el('span', '', lowS.size + ' بيت ضبطه تلقائي غير مؤكد (معلّم بالأصفر) — استمع وصحّح')); let lj = -1; bn.appendChild(btn('primary', 'التالي ↓', () => { const rs = [...box.querySelectorAll('.plrlr.low')]; if (!rs.length) return; lj = (lj + 1) % rs.length; rs[lj].scrollIntoView({ block: 'center', behavior: 'smooth' }); rs[lj].classList.add('flash'); setTimeout(() => rs[lj] && rs[lj].classList.remove('flash'), 900); })); bn.appendChild(btn('', 'تم', () => { const lw = jget(LOWK, {}); delete lw[t.id]; jset(LOWK, lw); lysEditBuild(); })); box.insertBefore(bn, box.querySelector('.lsth')); }
     L.forEach((ln, li) => {
       const r = el('div', 'plrlr' + (ln.ed ? ' ed' : '') + (lowS.has(li) ? ' low' : '')), top = el('div', 'lrt'), tm = el('button', 'tm', fmt1(ln.t));
       const ta = mkTa(ln.l); roTa(ta); const adj = el('div', 'adj'); adj.hidden = true;
@@ -869,10 +869,16 @@
     const c = el('div', 'aic'), h = el('div', 'aih'); h.innerHTML = `<b>${ic('spark', 16)} الكلمات والتوزيع التلقائي</b>`; c.appendChild(h);
     const uniq = []; L.forEach((x) => { if (x.l && x.l !== '♪' && !uniq.includes(x.l)) uniq.push(x.l); });
     const DK = 'minbar.lyr.draft.' + t.id; let dr = null; try { dr = localStorage.getItem(DK); } catch (e) {}
-    const ta = mkTa(dr != null ? dr : uniq.join('\n')); ta.className = 'comp'; ta.rows = 5; ta.placeholder = 'سطر لكل بيت أو شطر، ويُفصل الشطران بـ *'; c.appendChild(ta);
+    const ta = mkTa(dr != null ? dr : (t.lyrRaw || uniq.join('\n'))); ta.className = 'comp'; ta.rows = 5; ta.placeholder = 'سطر لكل بيت أو شطر، ويُفصل الشطران بـ *'; c.appendChild(ta);
     if (dr != null) { const nb = el('div', 'aiql', 'تم استرجاع مسودتك المحفوظة'); c.appendChild(nb); }
     ta.addEventListener('input', () => { clearTimeout(ta._t); ta._t = setTimeout(() => { try { localStorage.setItem(DK, ta.value); } catch (e) {} }, 250); });
     const ls = () => ta.value.split('\n').map((s) => s.trim()).filter(Boolean);
+    if (isOwner()) { /* المالك: النص بالمربع هو الأصل، والضبط يصير على الخادم (أسرع وأدق) */
+      const sv = btn('primary', '✦ حفظ النص وضبطه تلقائياً', async () => { const raw = ta.value.trim(), l = ls(); if (l.length < 2) return toast('أدخل سطرين على الأقل'); const db = fdb(); if (!db) return toast('لا يوجد اتصال');
+        try { await db.collection('tracks').doc(t.id).set({ lyrRaw: raw, lyrQ: true, upd: Date.now() }, { merge: true }); t.lyrRaw = raw; t.lyrQ = true; try { localStorage.removeItem(DK); } catch (e) {} toast('حُفظ — يُضبط على الصوت تلقائياً خلال نصف ساعة تقريباً'); } catch (e) { toast('تعذّر الحفظ'); } });
+      sv.classList.add('wide'); c.appendChild(sv);
+      if (t.lyrQ) c.appendChild(el('div', 'aiql', '⏳ بانتظار الضبط التلقائي على الخادم'));
+      c.appendChild(el('div', 'aiql', 'أو على هذا الجهاز (أبطأ):')); }
     c.appendChild(el('div', 'aiql', 'دقة التحليل'));
     const q = el('div', 'seg'); [['fast', 'سريع'], ['good', 'دقيق'], ['best', 'الأعلى دقة']].forEach(([k, n]) => { const b = el('button', aiQ === k ? 'on' : '', n); b.type = 'button'; b.onclick = () => { if (aiBusy) return; aiQ = k; localStorage.setItem('minbar.ai.q', k); q.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); }; q.appendChild(b); }); c.appendChild(q);
     const row = el('div', 'row');
@@ -2109,7 +2115,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
       card('hand', 'وضع اللطم', 'يهتز الهاتف مع إيقاع اللطمية', (c) => { st.latm = !st.latm; save(); toolsUi(); c.classList.toggle('on', st.latm); c.querySelector('em').textContent = st.latm ? 'مفعّل' : 'متوقف'; g('plrMdB').classList.toggle('on', !!st.latm); }, !!st.latm);
       card('users', 'المجلس', MJ.on ? 'مفعّل · ' + MJ.code : 'استماع مشترك بنفس اللحظة', () => { close(); mjMenu(); });
     }); }
-  function fitUI() { const f = g('plrFull'); if (!f) return; let s = Math.min(innerWidth / 392, innerHeight / 800); s = Math.max(0.8, Math.min(1.2, s)); if (Math.abs(s - 1) < 0.03) s = 1; f.style.setProperty('--fs', s.toFixed(3)); f.classList.toggle('fsx', s !== 1); }
+  let fitH = 0, fitW = 0; function fitUI() { const f = g('plrFull'); if (!f) return; const ae = document.activeElement; if (ae && /INPUT|TEXTAREA/.test(ae.tagName) && innerWidth === fitW) return; /* الكيبورد لا يغيّر الحجم */ if (innerWidth !== fitW || innerHeight > fitH) { fitW = innerWidth; fitH = innerHeight; } let s = Math.min(fitW / 392, fitH / 800); s = Math.max(0.8, Math.min(1.2, s)); if (Math.abs(s - 1) < 0.03) s = 1; f.style.setProperty('--fs', s.toFixed(3)); f.classList.toggle('fsx', s !== 1); }
   addEventListener('resize', fitUI); fitUI();
   g('plrMdB').onclick = modesSheet; g('plrMdB').classList.toggle('on', !!st.latm);
   g('plrRecB').onclick = recognize; g('plrMj').onclick = () => mjMenu(); g('plrTitle').onclick = about; g('plrTitle').style.cursor = 'pointer';
