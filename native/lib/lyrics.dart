@@ -41,22 +41,31 @@ List<Lyric> splitLong(List<Lyric> L, [int? maxChars]) {
       o.add(x);
       continue;
     }
+    // يُقسَم البيت لأجزاء متقاربة الطول، ووقت البيت يتوزّع عليها بالتساوي
     final ws = s.split(' ');
-    final half = s.length / 2;
-    var acc = 0, cut = 1;
-    var best = 1e9;
-    for (var k = 1; k < ws.length; k++) {
-      acc += ws[k - 1].length + 1;
-      final d = (acc - half).abs();
-      if (d < best) {
-        best = d;
-        cut = k;
-      }
+    final n = math.min<int>(ws.length, (s.length / lim).ceil().clamp(2, 6).toInt());
+    final cum = <int>[0];
+    for (final w in ws) {
+      cum.add(cum.last + w.length + 1);
     }
-    final a = ws.sublist(0, cut).join(' '), b = ws.sublist(cut).join(' ');
-    final nt = i + 1 < L.length ? L[i + 1].t : x.t + 5, r = a.length / s.length;
-    o.add(Lyric(x.t, a, x.gap));
-    o.add(Lyric(x.t + math.min(nt - x.t, 8.0) * r * 0.95, b, x.gap));
+    final cuts = <int>[0];
+    for (var j = 1; j < n; j++) {
+      final target = s.length * j / n;
+      var best = cuts.last + 1, bd = 1e9;
+      for (var k = cuts.last + 1; k <= ws.length - (n - j); k++) {
+        final d = (cum[k] - target).abs();
+        if (d < bd) {
+          bd = d;
+          best = k;
+        }
+      }
+      cuts.add(best);
+    }
+    cuts.add(ws.length);
+    final nt = i + 1 < L.length ? L[i + 1].t : x.t + 5, span = nt - x.t;
+    for (var j = 0; j < n; j++) {
+      o.add(Lyric(x.t + span * j / n, ws.sublist(cuts[j], cuts[j + 1]).join(' '), x.gap));
+    }
   }
   return o;
 }
@@ -273,6 +282,7 @@ class _LyricStripState extends State<LyricStrip> with SingleTickerProviderStateM
         sc = st == 2 ? 1 : 0.9;
     }
     var style = lyStyle(base: widget.base);
+    if (tr == 'kar' && st != 2) style = style.copyWith(color: Colors.white.withOpacity(0.55));
     if (st == 2 && tr == 'glow') {
       style = style.copyWith(color: Colors.white, shadows: [Shadow(color: kGold.withOpacity(0.9), blurRadius: 18), const Shadow(color: Colors.black, blurRadius: 8, offset: Offset(0, 2))]);
     } else if (st == 2) {
