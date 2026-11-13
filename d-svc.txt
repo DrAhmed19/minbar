@@ -1,0 +1,34 @@
+ACTIVITY MANAGER SERVICES (dumpsys activity services)
+  User 0 active services:
+  * ServiceRecord{94e907 u0 com.minbar.minbar_native/com.ryanheise.audioservice.AudioService}
+    intent={act=android.media.browse.MediaBrowserService cmp=com.minbar.minbar_native/com.ryanheise.audioservice.AudioService}
+    packageName=com.minbar.minbar_native
+    processName=com.minbar.minbar_native
+    baseDir=/data/app/~~A9NSS-OsCzhGNrNEzy6dEQ==/com.minbar.minbar_native-AoYt37FRrIEmd49D4WtEwQ==/base.apk
+    dataDir=/data/user/0/com.minbar.minbar_native
+    app=ProcessRecord{12468c8 4783:com.minbar.minbar_native/u0a174}
+    allowWhileInUsePermissionInFgs=true
+    recentCallingPackage=com.android.systemui
+    recentCallingUid=10157
+    allowStartForeground=PROC_STATE_TOP
+    startForegroundCount=1
+    infoAllowStartForeground=[callingPackage: com.minbar.minbar_native; callingUid: 10174; uidState: TOP ; intent: Intent { act=android.media.browse.MediaBrowserService cmp=com.minbar.minbar_native/com.ryanheise.audioservice.AudioService }; code:PROC_STATE_TOP; tempAllowListReason:<null>; targetSdkVersion:36; callerTargetSdkVersion:36; startForegroundCount:0; bindFromPackage:null]; startForegroundDelayMs:76367
+    isForeground=true foregroundId=1124 foregroundNoti=Notification(channel=com.minbar.app.audio shortcut=null contentView=null vibrate=null sound=null defaults=0x0 flags=0x62 color=0x00000000 category=transport actions=2 vis=PUBLIC)
+    createTime=-1m33s269ms startingBgTimeout=--
+    lastActivity=-16s171ms restartTime=-1m33s269ms createdFromFg=true
+    startRequested=true delayedStop=false stopIfKilled=true callStart=true lastStartId=1
+    Bindings:
+    * IntentBindRecord{78422f4 CREATE}:
+      intent={act=android.media.browse.MediaBrowserService cmp=com.minbar.minbar_native/com.ryanheise.audioservice.AudioService}
+      binder=android.os.BinderProxy@2a16a1d
+      requested=true received=true hasBound=true doRebind=false
+      * Client AppBindRecord{c7d3492 ProcessRecord{12468c8 4783:com.minbar.minbar_native/u0a174}}
+        Per-process Connections:
+          ConnectionRecord{1300346 u0 CR CAPS com.minbar.minbar_native/com.ryanheise.audioservice.AudioService:@9003321}
+    All Connections:
+      ConnectionRecord{1300346 u0 CR CAPS com.minbar.minbar_native/com.ryanheise.audioservice.AudioService:@9003321}
+
+  Connection bindings to services:
+  * ConnectionRecord{1300346 u0 CR CAPS com.minbar.minbar_native/com.ryanheise.audioservice.AudioService:@9003321}
+    binding=AppBindRecord{c7d3492 com.minbar.minbar_native/com.ryanheise.audioservice.AudioService:com.minbar.minbar_native}
+    conn=android.os.BinderProxy@9003321 flags=0x1001
