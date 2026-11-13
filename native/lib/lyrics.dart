@@ -32,25 +32,20 @@ TextStyle lyStyle({double base = 24, Color? color, double? weight}) {
 }
 
 /// تقسيم الأسطر الطويلة (نفس splitLong)
-List<Lyric> splitLong(List<Lyric> L, [int? maxChars]) {
+List<Lyric> splitLong(List<Lyric> L, [int? maxChars, double Function(String)? measure, double avail = 0]) {
   if (app.player.lySplit == 0) return L;
   final lim = maxChars ?? (36 / app.player.lySize).round(), o = <Lyric>[];
-  for (var i = 0; i < L.length; i++) {
-    final x = L[i], s = x.l.trim();
-    if (s.length <= lim || !s.contains(' ')) {
-      o.add(x);
-      continue;
-    }
-    // يُقسَم البيت لأجزاء متقاربة الطول، ووقت البيت يتوزّع عليها بالتساوي
-    final ws = s.split(' ');
-    final n = math.min<int>(ws.length, (s.length / lim).ceil().clamp(2, 6).toInt());
+  // يناسب السطر؟ بالقياس الفعلي للعرض إذا متوفر (أدق من عدّ الحروف، فما يلتف أي سطر على سطرين)
+  bool fits(String t) => measure != null && avail > 0 ? measure(t) <= avail : t.length <= lim;
+  List<int> cutsFor(List<String> ws, int n) {
     final cum = <int>[0];
     for (final w in ws) {
       cum.add(cum.last + w.length + 1);
     }
+    final total = cum.last;
     final cuts = <int>[0];
     for (var j = 1; j < n; j++) {
-      final target = s.length * j / n;
+      final target = total * j / n;
       var best = cuts.last + 1, bd = 1e9;
       for (var k = cuts.last + 1; k <= ws.length - (n - j); k++) {
         final d = (cum[k] - target).abs();
@@ -62,6 +57,31 @@ List<Lyric> splitLong(List<Lyric> L, [int? maxChars]) {
       cuts.add(best);
     }
     cuts.add(ws.length);
+    return cuts;
+  }
+
+  for (var i = 0; i < L.length; i++) {
+    final x = L[i], s = x.l.trim();
+    if (fits(s) || !s.contains(' ')) {
+      o.add(x);
+      continue;
+    }
+    // يُقسَم البيت لأقل عدد أجزاء متقاربة الطول يناسب كل منها سطر واحد، ووقته يتوزّع عليها بالتساوي
+    final ws = s.split(' ');
+    var n = 2;
+    var cuts = cutsFor(ws, n);
+    while (n < math.min(6, ws.length)) {
+      var ok = true;
+      for (var j = 0; j < n; j++) {
+        if (!fits(ws.sublist(cuts[j], cuts[j + 1]).join(' '))) {
+          ok = false;
+          break;
+        }
+      }
+      if (ok) break;
+      n++;
+      cuts = cutsFor(ws, n);
+    }
     final nt = i + 1 < L.length ? L[i + 1].t : x.t + 5, span = (nt - x.t) > 0 ? nt - x.t : n * 2.5;
     for (var j = 0; j < n; j++) {
       o.add(Lyric(x.t + span * j / n, ws.sublist(cuts[j], cuts[j + 1]).join(' '), x.gap));
@@ -106,10 +126,12 @@ class _LyricStripState extends State<LyricStrip> with SingleTickerProviderStateM
     // حد التقسيم حسب العرض الفعلي وحجم الخط (لا سطر يلتف على سطرين)
     final cw = widget.base * app.player.lySize * 0.5;
     final lim = _w > 0 ? ((_w - 36) / cw).floor().clamp(12, 60) : null;
-    final k = '${widget.lines.length}|${widget.lines.isEmpty ? '' : widget.lines.first.l}|${app.player.lySplit}|${app.player.lySize}|$lim';
+    final k = '${widget.lines.length}|${widget.lines.isEmpty ? '' : widget.lines.first.l}|${app.player.lySplit}|${app.player.lySize}|${app.player.lyFont}|$_w';
     if (k != _key) {
       _key = k;
-      L = splitLong(widget.lines, lim);
+      final ts = MediaQuery.textScalerOf(context), stl = lyStyle(base: widget.base);
+      double meas(String t) => (TextPainter(text: TextSpan(text: t, style: stl), textDirection: TextDirection.rtl, maxLines: 1, textScaler: ts)..layout()).width;
+      L = splitLong(widget.lines, lim, meas, _w - 24 - 10);
     }
   }
 
