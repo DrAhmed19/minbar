@@ -286,7 +286,7 @@
     if (!pfq || pfq.length !== n) pfq = new Float32Array(n); pfq.set(fqd);
   }
   /* ===== تحليل صوتي مسبق: يُحسب مرة واحدة (بالخلفية عند المالك) ويُقرأ وقت التشغيل بلا أي معالجة صوت — يحرّك الرسم واللطم بدل التحليل الحي ===== */
-  const APPV = '3.85';
+  const APPV = '3.86';
   const ANV = 'v1', ANKEY = (t) => 'n/' + t.id + '-' + ANV + '.bin', ANOK = (t) => /^[A-Za-z0-9_-]{3,64}$/.test((t && t.id) || '');
   let PRE = null; const PF = { dd: new Float32Array(22), vb: { db: 0, peak: 1 }, cb: { db: 0, flat: 0 }, hb: { db: 0 }, lb: { db: 0 }, on: 0 }; let synW = null, synT = 0;
   async function anLoad(t) { PRE = null; if (!t || t.an !== 1 || !ANOK(t)) return; try { const r = await fetch('media/u/' + ANKEY(t)); if (!r.ok) return; const b = new Uint8Array(await r.arrayBuffer()); if (b.length < 12 || b[0] !== 77 || b[1] !== 66 || b[2] !== 65) return; const nf = new DataView(b.buffer).getUint32(8, true); if (tracks[cur] && tracks[cur].id === t.id) PRE = { id: t.id, fps: b[4], nf, W: b[5] + b[6], d: b, o: 12 }; } catch (e) {} }
@@ -1761,24 +1761,26 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     }); }
   /* كلمات إصدار: كل قصائد الإصدار بمكان واحد، تلصق كلمات كل وحدة وتُضبط تلقائياً بالخلفية */
   function albumLyrics() { if (!isOwner()) return toast('متاح للمالك فقط');
-    modal('كلمات الإصدار', (bx, close) => {
+    modal('إدارة الإصدار', (bx, close) => {
       const als = Object.values(ALB).sort((a, b) => (b.at || 0) - (a.at || 0)); if (!als.length) { bx.appendChild(el('p', 'hint', 'لا توجد إصدارات بعد.')); bx.appendChild(btn('wide', 'إغلاق', close)); return; }
       const ab = el('select', 'mdin'); als.forEach((a) => { const o = el('option', '', a.name); o.value = a.id; ab.appendChild(o); }); bx.appendChild(ab);
-      bx.appendChild(el('p', 'hint', 'افتح القصيدة والصق كلماتها (كل بيت بسطر). تظهر فوراً بتوقيت تقريبي ثم تُضبط تلقائياً بالخلفية.'));
+      bx.appendChild(el('p', 'hint', 'عدّل اسم كل قصيدة وشاعرها مباشرة، واضغط «الكلمات» لتلصق كلماتها (كل بيت بسطر) — تُضبط تلقائياً بالخلفية.'));
       const list = el('div', 'abl'); bx.appendChild(list); let rows = [];
       const draw = () => { list.textContent = ''; rows = tracks.filter((x) => x.album === ab.value).sort((a, b) => (a.at || 0) - (b.at || 0)).map((t, i) => { const cu = linesOf(t), orig = cu.map((x) => x.l).join('\n');
           const r = el('div', 'abr'), hd = el('div', 'abh'); hd.append(el('b', '', String(i + 1)), el('span', '', t.title + (t.poet ? ' · ' + t.poet : ''))); const stt = el('em', '', cu.length ? '✓ ' + cu.length + ' بيت' : 'بدون كلمات'); hd.appendChild(stt); if (!cu.length) r.classList.add('bad');
-          const ly = el('textarea', 'mdin lyta'); ly.rows = 6; ly.hidden = true; ly.value = orig; ly.placeholder = 'الصق كلمات القصيدة — كل بيت بسطر'; hd.onclick = () => { ly.hidden = !ly.hidden; if (!ly.hidden) ly.focus(); }; ly.oninput = () => { stt.textContent = ly.value.trim() !== orig.trim() ? '● معدّلة' : (cu.length ? '✓ ' + cu.length + ' بيت' : 'بدون كلمات'); };
-          r.append(hd, ly); list.appendChild(r); return { t, ly, orig }; }); if (!rows.length) list.appendChild(el('p', 'hint', 'لا توجد قصائد بهذا الإصدار.')); };
+          const ti = el('input', 'mdin'); ti.placeholder = 'اسم القصيدة'; ti.value = t.title || ''; const po = el('input', 'mdin'); po.placeholder = 'الشاعر'; po.value = t.poet || ''; const lb = el('button', 'abk', 'الكلمات'); lb.type = 'button';
+          const ly = el('textarea', 'mdin lyta'); ly.rows = 6; ly.hidden = true; ly.value = orig; ly.placeholder = 'الصق كلمات القصيدة — كل بيت بسطر'; lb.onclick = () => { ly.hidden = !ly.hidden; if (!ly.hidden) ly.focus(); }; ly.oninput = () => { stt.textContent = ly.value.trim() !== orig.trim() ? '● معدّلة' : (cu.length ? '✓ ' + cu.length + ' بيت' : 'بدون كلمات'); };
+          r.append(hd, ti, po, lb, ly); list.appendChild(r); return { t, ly, orig, ti, po }; }); if (!rows.length) list.appendChild(el('p', 'hint', 'لا توجد قصائد بهذا الإصدار.')); };
       ab.onchange = draw; draw();
-      const go = el('button', 'pri', 'حفظ الكلمات'); go.type = 'button'; bx.appendChild(go); const cn = el('button', 'cn', 'إغلاق'); cn.type = 'button'; cn.onclick = close; bx.appendChild(cn);
-      go.onclick = async () => { const ch = rows.filter((x) => x.ly.value.trim() && x.ly.value.trim() !== x.orig.trim()); if (!ch.length) return toast('ما اكو تغيير'); const db = fdb(); if (!db) return toast('لا يوجد اتصال'); go.disabled = true; let n = 0;
+      const go = el('button', 'pri', 'حفظ التعديلات'); go.type = 'button'; bx.appendChild(go); const cn = el('button', 'cn', 'إغلاق'); cn.type = 'button'; cn.onclick = close; bx.appendChild(cn);
+      go.onclick = async () => { const ch = rows.filter((x) => x.ly.value.trim() && x.ly.value.trim() !== x.orig.trim()), mt = rows.filter((x) => x.ti.value.trim() && (x.ti.value.trim() !== (x.t.title || '') || x.po.value.trim() !== (x.t.poet || ''))); if (!ch.length && !mt.length) return toast('ما اكو تغيير'); const db = fdb(); if (!db) return toast('لا يوجد اتصال'); go.disabled = true; let n = 0, m = 0;
+        for (const x of mt) { try { await db.collection('tracks').doc(x.t.id).set({ title: x.ti.value.trim(), poet: x.po.value.trim(), upd: Date.now() }, { merge: true }); m++; } catch (e) {} }
         for (const x of ch) { try { const lines = x.ly.value.split(/\n+/).map((q) => q.replace(/\s+/g, ' ').trim()).filter(Boolean), est = estLines(lines, x.t.dur || 300, null); await db.collection('tracks').doc(x.t.id).set({ lyrics: est, lyrEst: true, upd: Date.now() }, { merge: true }); try { await applyGlobal(x.t, est, true); } catch (e) {} aqAdd(x.t.id, lines); n++; } catch (e) {} }
-        toast('حُفظت كلمات ' + n + ' قصيدة — تُضبط بالخلفية'); close(); fsLoad(); };
+        toast((m ? 'عُدّلت بيانات ' + m + ' قصيدة' : '') + (m && n ? ' · ' : '') + (n ? 'حُفظت كلمات ' + n + ' — تُضبط بالخلفية' : '')); close(); fsLoad(); };
     }); }
   function upMenu(t) { if (!isOwner()) return toast('الإضافة متاحة للمالك فقط'); const ed = !!t;
     modal(ed ? 'تعديل القصيدة' : 'إضافة قصيدة', (bx, close) => {
-      if (!ed) { bx.appendChild(btn('wide primary', 'رفع إصدار كامل (عدة قصائد مرة واحدة)', () => { close(); albumUp(); })); bx.appendChild(btn('wide', 'كلمات إصدار (كل قصائده بمكان واحد)', () => { close(); albumLyrics(); })); const bk = btn('wide', 'كلمات جماعية لعدة قصائد', () => { close(); bulkLyrics(); }); bx.appendChild(bk); }
+      if (!ed) { bx.appendChild(btn('wide primary', 'رفع إصدار كامل (عدة قصائد مرة واحدة)', () => { close(); albumUp(); })); bx.appendChild(btn('wide', 'إدارة إصدار (أسماء وشعراء وكلمات قصائده)', () => { close(); albumLyrics(); })); const bk = btn('wide', 'كلمات جماعية لعدة قصائد', () => { close(); bulkLyrics(); }); bx.appendChild(bk); }
       const inp = (ph, v) => { const i = el('input', 'mdin'); i.placeholder = ph; i.value = v || ''; bx.appendChild(i); return i; };
       /* اختيار من القائمة (الرواديد/الشعراء السابقين) مع إمكانية كتابة اسم جديد */
       const pick = (ph, v, k) => { const w = el('div', 'pkw'), i = el('input', 'mdin'); i.placeholder = ph + ' — اختر أو اكتب اسماً جديداً'; i.value = v || ''; const ch = el('div', 'pkc'); w.append(i, ch); bx.appendChild(w);
@@ -1832,6 +1834,9 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   function aqAdd(id, lines) { const q = jget(AQK, []).filter((x) => x.id !== id); q.push({ id, lines, at: Date.now() }); jset(AQK, q); aqUi(); setTimeout(aqRun, 1500); }
   function aqUi() { const q = jget(AQK, []), c = g('plrAq'); if (!c) return; c.hidden = !q.length || !isOwner(); if (!q.length) return; c.querySelector('b').textContent = aqBusy ? 'ضبط الكلمات… (' + q.length + ')' : 'بانتظار ضبط الكلمات (' + q.length + ')'; c.classList.toggle('on', aqBusy); }
   async function aqRun() { if (aqBusy || aiBusy || !isOwner() || document.hidden || !A.paused || !window.LYAI) return; const q = jget(AQK, []); if (!q.length) return aqUi(); const it = q[0], t = byId(it.id); if (!t) { jset(AQK, q.slice(1)); return aqRun(); }
+    /* لا يشتغل الضبط التلقائي (ثقيل على الذاكرة) والمحرر مفتوح، وإذا أسقط الصفحة مرتين على نفس القصيدة تُترك للضبط اليدوي */
+    if (!g('plrLys').hidden) { setTimeout(aqRun, 20000); return; }
+    { const c = jget('minbar.aq.crash', {}); if (c.id === it.id && c.n >= 2) { jset(AQK, q.slice(1)); jset('minbar.aq.crash', {}); toast('تعذّر الضبط التلقائي لـ«' + t.title + '» على هذا الجهاز — اضبطها يدوياً'); return aqRun(); } jset('minbar.aq.crash', { id: it.id, n: (c.id === it.id ? c.n : 0) + 1 }); }
     aqBusy = true; aqStopF = false; aqUi(); const PK = 'minbar.asr.part.' + t.id + '.good';
     try { const part = { get: () => JSON.parse(localStorage.getItem(PK) || 'null'), put: (o) => { try { localStorage.setItem(PK, JSON.stringify(o)); } catch (e) {} } };
       const segs = await window.LYAI.transcribe(t.audio, 'good', (s, v) => { const c = g('plrAq'); if (c) c.querySelector('small').textContent = Math.round(v * 100) + '% · ' + t.title; }, () => aqStopF || document.hidden, part);
@@ -1841,7 +1846,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
       const lw = jget(LOWK, {}); if (low.length) lw[t.id] = low; else delete lw[t.id]; jset(LOWK, lw); jset(AQK, jget(AQK, []).filter((x) => x.id !== it.id));
       snack('ضُبطت كلمات «' + t.title + '»' + (low.length ? ' — ' + low.length + ' بيت يحتاج مراجعة' : ' بدقة جيدة'), low.length ? 'مراجعة' : 'تشغيل', () => lyrReview(t), 10000);
     } catch (e) { if (!(e && e.message === 'cancel')) { const q2 = jget(AQK, []); const x = q2.find((y) => y.id === it.id); if (x) { x.fail = (x.fail || 0) + 1; if (x.fail > 2) q2.splice(q2.indexOf(x), 1); jset(AQK, q2); } } }
-    aqBusy = false; try { window.LYAI.free(); } catch (e) {} aqUi(); if (!aqStopF) setTimeout(aqRun, 3000); }
+    aqBusy = false; jset('minbar.aq.crash', {}); try { window.LYAI.free(); } catch (e) {} aqUi(); if (!aqStopF) setTimeout(aqRun, 3000); }
   function lyrReview(t) { qFrom(t, tracks); play(tracks.indexOf(t), true); setTimeout(() => { openFull(); g('plrLyT').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x.dataset.k === 'edit')); openLys(); }, 400); }
   document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(aqRun, 2000); });
   A.addEventListener('play', () => { if (aqBusy) { aqStopF = true; } }); /* لا نزاحم التشغيل بالتحليل الثقيل */
