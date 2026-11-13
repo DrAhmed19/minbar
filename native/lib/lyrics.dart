@@ -292,7 +292,9 @@ class _LyricStripState extends State<LyricStrip> with SingleTickerProviderStateM
               colors: [col, col, Colors.white.withOpacity(0.38), Colors.white.withOpacity(0.38)],
               stops: [0, (p - 0.025).clamp(0.0, 1.0), (p + 0.025).clamp(0.0, 1.0), 1],
             ).createShader(Rect.fromLTWH(ox, 0, math.max(1.0, tw), 10));
-            return Text(
+            // RepaintBoundary: يخلّي إحداثيات فرشاة التلوين تبدأ من أول السطر نفسه
+            // (بدونها التدرّج ينحسب من مكان ثاني بالشاشة فيطلع السطر ممتلئ من البداية)
+            return RepaintBoundary(child: Text(
               s,
               textAlign: TextAlign.center,
               style: TextStyle(
@@ -306,7 +308,7 @@ class _LyricStripState extends State<LyricStrip> with SingleTickerProviderStateM
                 foreground: Paint()..shader = sh,
                 shadows: const [Shadow(color: Color(0x8C000000), blurRadius: 10, offset: Offset(0, 2))],
               ),
-            );
+            ));
           });
       t = ab == null ? fillAt(kp) : _KarTick(a: ab[0], b: ab[1], build: fillAt);
     }
