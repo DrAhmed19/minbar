@@ -454,11 +454,178 @@ class _PlayerPageState extends State<PlayerPage> {
         b(Ic.queue, 'القائمة', false, _queueSheet),
         if (pc.layout == 2) b(Ic.eq, 'القالب', false, _settingsSheet) else b(Ic.text, 'الكلمات', false, () => showLyricsSheet(context, ly)),
         b(Ic.pulse, 'الصوت', false, () => showAudioSheet(context)),
+        b(Ic.arch, 'الأجواء', Latm.on, _modesSheet),
       ]),
     );
   }
 
   // ---------- الأوراق ----------
+  /// نافذة الأجواء: الحسينية، السيارة، اللطم، المجلس — بطاقات مرتّبة
+  void _modesSheet() {
+    Widget card(StateSetter ss, String ic, String title, String sub, VoidCallback f, {bool? on}) {
+      final act = on == true;
+      return GestureDetector(
+        onTap: f,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            color: act ? kGold.withOpacity(0.12) : const Color(0x0DFFFFFF),
+            border: Border.all(color: act ? kGold.withOpacity(0.7) : const Color(0x1AFFFFFF)),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: kGold.withOpacity(act ? 0.25 : 0.12)),
+                child: Center(child: PIcon(ic, color: kGold, size: 21)),
+              ),
+              const Spacer(),
+              if (on != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), color: act ? kGold : const Color(0x1AFFFFFF)),
+                  child: Text(act ? 'مفعّل' : 'متوقف', style: tx(10.5, c: act ? const Color(0xFF2A2106) : Colors.white54, w: FontWeight.w700)),
+                )
+              else
+                const PIcon(Ic.back, color: Colors.white30, size: 16),
+            ]),
+            const SizedBox(height: 12),
+            Text(title, style: tx(15, c: Colors.white, w: FontWeight.w800)),
+            const SizedBox(height: 2),
+            Text(sub, maxLines: 2, style: tx(11.5, c: Colors.white54, h: 1.5)),
+          ]),
+        ),
+      );
+    }
+
+    _sheet((c, ss) => Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Center(child: Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 12), decoration: BoxDecoration(color: const Color(0x33FFFFFF), borderRadius: BorderRadius.circular(4)))),
+            Row(children: [
+              const PIcon(Ic.arch, color: kGold, size: 22),
+              const SizedBox(width: 8),
+              Text('أجواء الاستماع', style: tx(18, c: Colors.white, w: FontWeight.w800)),
+            ]),
+            const SizedBox(height: 4),
+            Text('اختر الجو المناسب لمكان استماعك', style: tx(12, c: Colors.white54)),
+            const SizedBox(height: 14),
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              childAspectRatio: 1.25,
+              children: [
+                card(ss, Ic.text, 'وضع الحسينية', 'كلمات كبيرة على شاشة سوداء للعرض بالمجلس', () {
+                  Navigator.pop(c);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => HusnPage(ly)));
+                }),
+                card(ss, Ic.speed, 'وضع السيارة', 'أزرار كبيرة وشاشة لا تنطفئ أثناء القيادة', () {
+                  Navigator.pop(c);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const CarPage()));
+                }),
+                card(ss, Ic.hand, 'وضع اللطم', 'يهتز الهاتف مع إيقاع اللطمية', () {
+                  Latm.toggle();
+                  ss(() {});
+                  setState(() {});
+                }, on: Latm.on),
+                card(ss, Ic.users, 'المجلس', majlis.on ? 'مفعّل · ${majlis.code}' : 'استماع مشترك بنفس اللحظة', () {
+                  Navigator.pop(c);
+                  showMajlisSheet(context);
+                }),
+              ],
+            ),
+          ]),
+        ));
+  }
+
+  /// عن القصيدة: بطاقة خضراء مثل الويب
+  void _aboutSheet(Track t) {
+    final pc = app.player;
+    final dur = (pc.p.duration?.inMilliseconds ?? 0) / 1000.0;
+    String mm(double x) => '${(x ~/ 60).toString().padLeft(2, '0')}:${(x.round() % 60).toString().padLeft(2, '0')}';
+    final lines = ly.where((l) => !RegExp(r'^[\s\*\-–—_\.•~=]+$').hasMatch(l.l)).length;
+    final pk = social.peakT();
+    final sub = [if (t.reciter.isNotEmpty) t.reciter, if (t.poet.isNotEmpty) 'كلمات ${t.poet}'].join(' · ');
+    Widget cell(String k, String v) => Container(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          decoration: BoxDecoration(color: const Color(0x14FFFFFF), borderRadius: BorderRadius.circular(18)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+            Text(k, style: tx(12, c: Colors.white54)),
+            const SizedBox(height: 6),
+            Text(v, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(17, c: Colors.white, w: FontWeight.w800)),
+          ]),
+        );
+    showMSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF123A30),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
+      builder: (c) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Center(child: Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 12), decoration: BoxDecoration(color: const Color(0x33FFFFFF), borderRadius: BorderRadius.circular(4)))),
+              Row(children: [
+                Cover(t.coverUrl, size: 84, radius: 18),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(t.title, maxLines: 2, style: tx(22, c: kGold, w: FontWeight.w800)),
+                    const SizedBox(height: 4),
+                    Text(sub, maxLines: 2, style: tx(13, c: Colors.white70)),
+                  ]),
+                ),
+              ]),
+              const SizedBox(height: 14),
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 2.3,
+                children: [
+                  cell('التصنيف', t.cat.isEmpty ? '—' : t.cat),
+                  cell('الإصدار', t.albumName.isEmpty ? '—' : t.albumName),
+                  cell('المدة', dur > 0 ? mm(dur) : '—'),
+                  cell('الأبيات', lines > 0 ? '$lines' : '—'),
+                  cell('التعليقات', '${social.cm.length}'),
+                  cell('التفاعلات', '${social.rx.length} ❤️'),
+                ],
+              ),
+              const SizedBox(height: 14),
+              if (pk != null) ...[
+                GoldButton('الانتقال إلى أكثر لحظة تفاعلاً (${mm(pk)})', () {
+                  Navigator.pop(c);
+                  pc.seek(pk);
+                  if (!pc.p.playing) pc.toggle();
+                }),
+                const SizedBox(height: 10),
+              ],
+              GestureDetector(
+                onTap: () => Navigator.pop(c),
+                child: Container(
+                  height: 52,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0x33FFFFFF))),
+                  child: Text('إغلاق', style: tx(15, c: Colors.white70, w: FontWeight.w700)),
+                ),
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _sheet(Widget Function(BuildContext, StateSetter) b, {double h = 0.0}) {
     return showMSheet(
       context: context,
@@ -678,23 +845,8 @@ class _PlayerPageState extends State<PlayerPage> {
                   _sleepSheet();
                 }),
                 _tile(Ic.info, 'عن القصيدة', 'الرادود والتفاصيل', () {
-                  showDialog(
-                    context: context,
-                    builder: (d) => Directionality(
-                      textDirection: TextDirection.rtl,
-                      child: AlertDialog(
-                        backgroundColor: Color(0xFF1C1612),
-                        title: Text(t.title, style: tx(18, c: Colors.white)),
-                        content: Text([
-                          if (t.reciter.isNotEmpty) 'الرادود: ${t.reciter}',
-                          if (t.poet.isNotEmpty) 'الشاعر: ${t.poet}',
-                          if (t.albumName.isNotEmpty) 'الإصدار: ${t.albumName}',
-                          if (t.cat.isNotEmpty) 'التصنيف: ${t.cat}',
-                        ].join('\n'), style: tx(14, c: Colors.white70, h: 1.9)),
-                        actions: [TextButton(onPressed: () => Navigator.pop(d), child: Text('إغلاق', style: tx(13, c: kGold)))],
-                      ),
-                    ),
-                  );
+                  Navigator.pop(c);
+                  _aboutSheet(t);
                 }),
                 _tile(Ic.share, 'مشاركة اللحظة', 'من الدقيقة الحالية', () async {
                   final sec = pc.p.position.inSeconds;
@@ -707,26 +859,6 @@ class _PlayerPageState extends State<PlayerPage> {
                   Navigator.pop(c);
                   pc.seek(pk);
                   if (!pc.p.playing) pc.toggle();
-                }),
-              ]),
-            _grp('أوضاع الاستماع'),
-            _list([
-                _tile(Ic.users, 'المجلس', majlis.on ? 'مفعّل · ${majlis.code}' : 'استماع مشترك', () {
-                  Navigator.pop(c);
-                  showMajlisSheet(context);
-                }, neu: true),
-                _tile(Ic.text, 'وضع الحسينية', 'كلمات كبيرة للشاشة', () {
-                  Navigator.pop(c);
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => HusnPage(ly)));
-                }),
-                _tile(Ic.speed, 'وضع السيارة', 'أزرار كبيرة للقيادة', () {
-                  Navigator.pop(c);
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const CarPage()));
-                }),
-                _tile(Ic.pulse, 'وضع اللطم', 'اهتزاز مع الإيقاع', sw: Latm.on, () {
-                  Latm.toggle();
-                  ss(() {});
-                  snack2(Latm.on ? 'وضع اللطم مفعّل: يهتز الهاتف مع الإيقاع' : 'أُوقف وضع اللطم');
                 }),
               ]),
             _grp('الجهاز'),

@@ -161,7 +161,7 @@ class GoldPill extends StatelessWidget {
 /// أيقونات الويب نفسها (مسارات SVG من player.js) — تُحمَّل مرة واحدة عند الإقلاع
 class Ic {
   static const play = 'play', pause = 'pause', prev = 'prev', next = 'next', heart = 'heart', heartF = 'heartF', lib = 'lib', pulse = 'pulse', plist = 'plist',
-      search = 'search', x = 'x', users = 'users', back = 'back', plus = 'plus', reset = 'reset', down = 'down', power = 'power', check = 'check', dl = 'dl',
+      search = 'search', x = 'x', users = 'users', back = 'back', plus = 'plus', reset = 'reset', down = 'down', power = 'power', check = 'check', dl = 'dl', arch = 'arch', hand = 'hand',
       chat = 'chat', info = 'info', flame = 'flame', spark = 'spark', color = 'color', lay = 'lay', speed = 'speed', wave = 'wave',
       queue = 'queue', share = 'share', eq = 'eq', more = 'more', text = 'text', moon = 'moon', rw = 'rw', fw = 'fw', rep = 'rep', shuf = 'shuf', timer = 'timer';
 }
@@ -171,6 +171,8 @@ Future<void> loadIcons() async {
   try {
     final m = jsonDecode(await rootBundle.loadString('assets/icons.json')) as Map;
     _icons = m.map((k, v) => MapEntry('$k', '$v'));
+    _icons['arch'] = '<path d="M5 21V11a7 7 0 0 1 14 0v10"/><path d="M9 21v-5a3 3 0 0 1 6 0v5M3 21h18M12 4V2"/>';
+    _icons['hand'] = '<path d="M7 11V5.5a1.5 1.5 0 0 1 3 0V10m0-4.5v-1a1.5 1.5 0 0 1 3 0V10m0-4a1.5 1.5 0 0 1 3 0v4m0-1.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7h-1a6 6 0 0 1-5-2.7L3.6 14a1.5 1.5 0 0 1 2.4-1.8L7 13.5"/>';
     _icons['dl'] = '<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19h14"/>';
   } catch (_) {}
 }

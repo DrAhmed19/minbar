@@ -280,23 +280,34 @@ class _LyricStripState extends State<LyricStrip> with SingleTickerProviderStateM
     }
     Widget t = Text(s, textAlign: TextAlign.center, style: style);
     if (st == 2 && tr == 'kar') {
-      // طبقة ظل منفصلة + نص واحد بتدرّج لوني ناعم (بلا نصّين فوق بعض فلا تظهر نقاط)،
-      // والتعبئة تتحدّث كل إطار لتكون سلسة
-      final shadow = style.copyWith(color: Colors.transparent, shadows: const [Shadow(color: Color(0x8C000000), blurRadius: 10, offset: Offset(0, 2))]);
-      final plain = style.copyWith(color: Colors.white, shadows: const []);
-      Widget fillAt(double p) => Stack(alignment: Alignment.center, children: [
-            Text(s, textAlign: TextAlign.center, style: shadow),
-            ShaderMask(
-              blendMode: BlendMode.srcIn,
-              shaderCallback: (r) => LinearGradient(
-                begin: Alignment.centerRight,
-                end: Alignment.centerLeft,
-                colors: [col, col, Colors.white.withOpacity(0.38), Colors.white.withOpacity(0.38)],
-                stops: [0, (p - 0.025).clamp(0.0, 1.0), (p + 0.025).clamp(0.0, 1.0), 1],
-              ).createShader(r),
-              child: Text(s, textAlign: TextAlign.center, style: plain),
-            ),
-          ]);
+      // التلوين يصير بفرشاة النص نفسه (foreground shader) بدل قناع الطبقة،
+      // فأطراف الحروف النازلة (ي، ع، ج…) تتلوّن صح ولا يطلع أي أثر أبيض تحت الكتابة بأي خط
+      final plain = style.copyWith(shadows: const []);
+      Widget fillAt(double p) => LayoutBuilder(builder: (_, c) {
+            final tp = TextPainter(text: TextSpan(text: s, style: plain), textDirection: TextDirection.rtl, textAlign: TextAlign.center)..layout(maxWidth: c.maxWidth);
+            final tw = tp.width, bw = math.max(c.minWidth, tw), ox = (bw - tw) / 2;
+            final sh = LinearGradient(
+              begin: Alignment.centerRight,
+              end: Alignment.centerLeft,
+              colors: [col, col, Colors.white.withOpacity(0.38), Colors.white.withOpacity(0.38)],
+              stops: [0, (p - 0.025).clamp(0.0, 1.0), (p + 0.025).clamp(0.0, 1.0), 1],
+            ).createShader(Rect.fromLTWH(ox, 0, math.max(1.0, tw), 10));
+            return Text(
+              s,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: plain.fontFamily,
+                fontFamilyFallback: plain.fontFamilyFallback,
+                fontSize: plain.fontSize,
+                fontWeight: plain.fontWeight,
+                height: plain.height,
+                letterSpacing: plain.letterSpacing,
+                wordSpacing: plain.wordSpacing,
+                foreground: Paint()..shader = sh,
+                shadows: const [Shadow(color: Color(0x8C000000), blurRadius: 10, offset: Offset(0, 2))],
+              ),
+            );
+          });
       t = ab == null ? fillAt(kp) : _KarTick(a: ab[0], b: ab[1], build: fillAt);
     }
     if (blur > 0) t = ImageFiltered(imageFilter: ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur), child: t);

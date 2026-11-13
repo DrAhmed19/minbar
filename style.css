@@ -1373,3 +1373,16 @@ textarea.mdin{resize:none}
 .smgo{width:100%;justify-content:center;padding:15px!important;border-radius:22px!important;font:800 16px Cairo,sans-serif!important;background:linear-gradient(90deg,#F4D88A,#E0B04A)!important;color:#2a2106!important;gap:10px!important}
 .smgo .pi{width:18px;height:18px;fill:currentColor}
 .smside{bottom:calc(190px + env(safe-area-inset-bottom))!important}
+/* v3.79: أطراف الحروف النازلة داخل منطقة التلوين (بلا أثر تحت الكتابة) */
+.plrlyb[data-tr=kar] .lc,.lyx[data-tr=kar] .ll.cur{padding-top:.25em!important;padding-bottom:.5em!important;margin-top:-.25em!important;margin-bottom:-.5em!important;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+/* v3.79: نافذة الأجواء */
+.mdh b{display:flex;align-items:center;gap:8px;font:800 18px Cairo,sans-serif;color:#fff}.mdh b .pi{width:22px;height:22px;color:#E8C468}
+.mdh small{display:block;margin:4px 0 14px;font:500 12px Cairo,sans-serif;color:rgba(255,255,255,.55)}
+.mdg{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mdc{display:flex;flex-direction:column;align-items:flex-start;text-align:start;gap:2px;padding:14px 14px 12px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fff;transition:.2s}
+.mdc.on{background:rgba(232,196,104,.12);border-color:rgba(232,196,104,.7)}
+.mdt{display:flex;width:100%;align-items:center;justify-content:space-between;margin-bottom:10px}
+.mdt i{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:rgba(232,196,104,.12);color:#E8C468}.mdc.on .mdt i{background:rgba(232,196,104,.25)}
+.mdt em{font:700 10.5px Cairo,sans-serif;font-style:normal;padding:3px 9px;border-radius:20px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.55)}.mdc.on .mdt em{background:#E8C468;color:#2a2106}
+.mdc b{font:800 15px Cairo,sans-serif}.mdc small{font:500 11.5px/1.5 Cairo,sans-serif;color:rgba(255,255,255,.55)}
+.mdc:last-child:nth-child(odd){grid-column:1/-1}
