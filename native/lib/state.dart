@@ -15,6 +15,14 @@ import 'audio.dart';
 import 'data.dart';
 
 class PlayerCtl extends ChangeNotifier {
+  /// تفعيل وضع الأداء تلقائياً لهذه الجلسة فقط
+  void autoPerf(String why) {
+    if (perf == 1) return;
+    perf = 1;
+    debugPrint('MBPERF auto: $why');
+    notifyListeners();
+  }
+
   final AudioPlayer p = AudioPlayer(audioPipeline: AudioPipeline(androidAudioEffects: [auLoud, auEq]));
   final Repo repo;
   List<Track> queue = [];
@@ -79,7 +87,7 @@ class PlayerCtl extends ChangeNotifier {
       lySize = sp.getDouble('lyS') ?? 1;
       lyTr = sp.getInt('lyTr') ?? 0;
       lySplit = sp.getInt('lySp') ?? 1;
-      perf = sp.getInt('perf') ?? 0;
+      perf = 0; // كل جلسة تبدأ بالشكل الكامل، ويتحوّل تلقائياً لوضع الأداء عند البطء أو الخطأ
       cmOn = sp.getInt('cmOn') ?? 1;
       cmDens = sp.getInt('cmDens') ?? 2;
       cmView = sp.getInt('cmView') ?? 0;

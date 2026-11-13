@@ -127,7 +127,7 @@ class _LyricStripState extends State<LyricStrip> with SingleTickerProviderStateM
       // ارتفاع كل سطر (الحالي بحجم أكبر)
       final hs = <double>[];
       for (final l in L) {
-        final tp = TextPainter(text: TextSpan(text: l.l, style: lyStyle(base: widget.base)), textDirection: TextDirection.rtl, textAlign: TextAlign.center)..layout(maxWidth: w);
+        final tp = TextPainter(text: TextSpan(text: l.l, style: lyStyle(base: widget.base)), textDirection: TextDirection.rtl, textAlign: TextAlign.center, textScaler: MediaQuery.textScalerOf(context))..layout(maxWidth: w);
         hs.add(tp.height + 4);
       }
       final tops = <double>[];
@@ -284,7 +284,7 @@ class _LyricStripState extends State<LyricStrip> with SingleTickerProviderStateM
       // فأطراف الحروف النازلة (ي، ع، ج…) تتلوّن صح ولا يطلع أي أثر أبيض تحت الكتابة بأي خط
       final plain = style.copyWith(shadows: const []);
       Widget fillAt(double p) => LayoutBuilder(builder: (_, c) {
-            final tp = TextPainter(text: TextSpan(text: s, style: plain), textDirection: TextDirection.rtl, textAlign: TextAlign.center)..layout(maxWidth: c.maxWidth);
+            final tp = TextPainter(text: TextSpan(text: s, style: plain), textDirection: TextDirection.rtl, textAlign: TextAlign.center, textScaler: MediaQuery.textScalerOf(context))..layout(maxWidth: c.maxWidth);
             final tw = tp.width, bw = math.max(c.minWidth, tw), ox = (bw - tw) / 2;
             final sh = LinearGradient(
               begin: Alignment.centerRight,

@@ -326,10 +326,6 @@ class _SettingsPageState extends State<SettingsPage> {
               Opt.set('fade', v);
               setState(() {});
             }),
-            _sw('وضع الأداء', 'رسوم أخف للأجهزة الضعيفة (يُطبَّق عند إعادة فتح المشغّل)', pc.perf == 1, (v) {
-              pc.setPref('perf', v ? 1 : 0);
-              setState(() {});
-            }),
             _row(Ic.speed, 'وضع السيارة', 'أزرار كبيرة وشاشة لا تنطفئ', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CarPage()))),
           ]),
           _sec('التنزيلات'),

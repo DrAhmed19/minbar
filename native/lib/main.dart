@@ -1,7 +1,9 @@
+import 'dart:math' as math;
 import 'dart:async';
 import 'package:audio_session/audio_session.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'pages.dart';
@@ -16,7 +18,29 @@ Future<void> main() async {
 
 Future<void> _start() async {
   WidgetsFlutterBinding.ensureInitialized();
-  FlutterError.onError = (d) => debugPrint('MBERR ui: ${d.exception}\n${(d.stack ?? '').toString().split('\n').take(6).join('\n')}');
+  FlutterError.onError = (d) {
+    debugPrint('MBERR ui: ${d.exception}\n${(d.stack ?? '').toString().split('\n').take(6).join('\n')}');
+    try {
+      app.player.autoPerf('error');
+    } catch (_) {}
+  };
+  // مراقبة سلاسة الرسم: إذا صار الجهاز يتقطّع بشكل واضح يتحوّل تلقائياً لوضع الأداء
+  var fr = 0, slow = 0;
+  SchedulerBinding.instance.addTimingsCallback((ts) {
+    for (final t in ts) {
+      fr++;
+      if (t.totalSpan.inMilliseconds > 32) slow++;
+    }
+    if (fr >= 180) {
+      if (slow > fr * 0.28) {
+        try {
+          app.player.autoPerf('jank $slow/$fr');
+        } catch (_) {}
+      }
+      fr = 0;
+      slow = 0;
+    }
+  });
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(statusBarColor: Colors.transparent, systemNavigationBarColor: kCream));
   await JustAudioBackground.init(
     androidNotificationChannelId: 'com.minbar.app.audio',
@@ -64,8 +88,44 @@ class MinbarApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: kGreen, brightness: Brightness.light),
         scaffoldBackgroundColor: kCream,
       ),
-      builder: (context, child) => Directionality(textDirection: TextDirection.rtl, child: child ?? const SizedBox()),
+      builder: (context, child) => Directionality(textDirection: TextDirection.rtl, child: AutoScale(child: child ?? const SizedBox())),
       home: const Gate(),
+    );
+  }
+}
+
+/// تصميم ذكي حسب حجم الشاشة: كل الواجهة (أيقونات، نصوص، أزرار، لوحات) تتكبّر أو تتصغّر
+/// بنسبة واحدة محسوبة من حجم الشاشة، فتبقى متناسقة بالشاشات الصغيرة والكبيرة
+class AutoScale extends StatelessWidget {
+  final Widget child;
+  const AutoScale({super.key, required this.child});
+  @override
+  Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    final w = mq.size.width, h = mq.size.height - mq.padding.vertical;
+    if (w <= 0 || h <= 0) return child;
+    var sc = math.min(w / 392, h / 800).clamp(0.8, 1.2).toDouble();
+    if ((sc - 1).abs() < 0.03) return child;
+    final lw = w / sc, lh = mq.size.height / sc;
+    return ClipRect(
+      child: FittedBox(
+        fit: BoxFit.fill,
+        alignment: Alignment.topLeft,
+        child: SizedBox(
+          width: lw,
+          height: lh,
+          child: MediaQuery(
+            data: mq.copyWith(
+              size: Size(lw, lh),
+              padding: mq.padding / sc,
+              viewPadding: mq.viewPadding / sc,
+              viewInsets: mq.viewInsets / sc,
+              devicePixelRatio: mq.devicePixelRatio * sc,
+            ),
+            child: child,
+          ),
+        ),
+      ),
     );
   }
 }

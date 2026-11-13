@@ -861,14 +861,6 @@ class _PlayerPageState extends State<PlayerPage> {
                   if (!pc.p.playing) pc.toggle();
                 }),
               ]),
-            _grp('الجهاز'),
-            _list([
-                _tile(Ic.wave, 'وضع الأداء', 'رسوم أخف للأجهزة الضعيفة', sw: pc.perf == 1, () {
-                  pc.setPref('perf', pc.perf == 1 ? 0 : 1);
-                  ss(() {});
-                  snack2(pc.perf == 1 ? 'وضع الأداء مفعّل: يُطبَّق عند فتح المشغّل من جديد' : 'أُوقف وضع الأداء');
-                }),
-              ]),
       ];
       return SizedBox(
         height: MediaQuery.of(c).size.height * 0.85,
