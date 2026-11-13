@@ -1,3 +1,6 @@
 faster-whisper>=1.1.0
 rapidfuzz
 google-cloud-firestore
+demucs
+torchaudio<2.6
+soundfile

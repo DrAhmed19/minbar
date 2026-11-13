@@ -11,6 +11,8 @@ ALBUM = os.environ.get('ALBUM', '').strip()
 WRITE = os.environ.get('WRITE', 'false').lower() == 'true'
 LIMIT = int(os.environ.get('LIMIT') or 50)
 MODEL = os.environ.get('MODEL') or 'large-v3-turbo'
+ONLY = os.environ.get('ONLY', '').strip()
+VOCALS = os.environ.get('VOCALS', 'true').lower() == 'true'
 SHARD = int(os.environ.get('SHARD') or 0); SHARDS = int(os.environ.get('SHARDS') or 1)
 
 SEP = re.compile(r'^[\s\*\-–—_\.•~=♪…]+$')
@@ -136,6 +138,7 @@ def main():
         todo = [t for t in tracks if t.get('lyrQ')]
         print('قصائد بانتظار الضبط:', len(todo))
     todo.sort(key=lambda t: t.get('at') or 0)
+    if ONLY: todo = [t for t in todo if ONLY in (t.get('title') or '')]
     todo = [t for t in todo if t.get('audio') and (t.get('lyrRaw') or t.get('lyrics'))][:LIMIT][SHARD::SHARDS]
     done = 0
     for t in todo[:LIMIT]:
@@ -164,6 +167,14 @@ def main():
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 minbar-align'})
             with urllib.request.urlopen(req, timeout=180) as r, open(src_f, 'wb') as f: f.write(r.read())
             subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', src_f, '-ac', '1', '-ar', '16000', wav], check=True)
+            if VOCALS:  # فصل صوت الرادود عن اللطم والمؤثرات قبل السماع (أكبر سبب لضعف الدقة)
+                tv = time.time()
+                r = subprocess.run([sys.executable, '-m', 'demucs', '--two-stems=vocals', '-n', 'htdemucs', '-j', str(os.cpu_count() or 2), '-o', td, src_f], capture_output=True, text=True)
+                vf = os.path.join(td, 'htdemucs', 'a', 'vocals.wav')
+                if os.path.exists(vf):
+                    subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', vf, '-ac', '1', '-ar', '16000', '-af', 'highpass=f=120,lowpass=f=7000,dynaudnorm', wav], check=True)
+                    print(f'  فُصل الصوت ({time.time() - tv:.0f}ث)', flush=True)
+                else: print('  تعذّر الفصل:', r.stderr[-300:])
             dur = float(subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', wav], capture_output=True, text=True).stdout.strip() or 0)
             hot = ' '.join(dict.fromkeys(' '.join(lines).split()))[:900]
             W = transcribe(wav, hot)
