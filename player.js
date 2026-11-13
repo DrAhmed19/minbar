@@ -286,7 +286,7 @@
     if (!pfq || pfq.length !== n) pfq = new Float32Array(n); pfq.set(fqd);
   }
   /* ===== تحليل صوتي مسبق: يُحسب مرة واحدة (بالخلفية عند المالك) ويُقرأ وقت التشغيل بلا أي معالجة صوت — يحرّك الرسم واللطم بدل التحليل الحي ===== */
-  const APPV = '3.89';
+  const APPV = '3.90';
   const ANV = 'v1', ANKEY = (t) => 'n/' + t.id + '-' + ANV + '.bin', ANOK = (t) => /^[A-Za-z0-9_-]{3,64}$/.test((t && t.id) || '');
   let PRE = null; const PF = { dd: new Float32Array(22), vb: { db: 0, peak: 1 }, cb: { db: 0, flat: 0 }, hb: { db: 0 }, lb: { db: 0 }, on: 0 }; let synW = null, synT = 0;
   async function anLoad(t) { PRE = null; if (!t || t.an !== 1 || !ANOK(t)) return; try { const r = await fetch('media/u/' + ANKEY(t)); if (!r.ok) return; const b = new Uint8Array(await r.arrayBuffer()); if (b.length < 12 || b[0] !== 77 || b[1] !== 66 || b[2] !== 65) return; const nf = new DataView(b.buffer).getUint32(8, true); if (tracks[cur] && tracks[cur].id === t.id) PRE = { id: t.id, fps: b[4], nf, W: b[5] + b[6], d: b, o: 12 }; } catch (e) {} }
@@ -404,6 +404,9 @@
   let LITE = (navigator.hardwareConcurrency || 8) <= 3 || (navigator.deviceMemory || 8) <= 2, lfE = 0.016, lfN = 0;
   const liteSet = (on) => { LITE = on; root.classList.toggle('lite', on); if (on) vizDpr = Math.min(vizDpr, 1.5); };
   if (LITE) { root.classList.add('lite'); vizDpr = 1.5; }
+  /* لما المتصفح تخلص ذاكرة الرسم يفقد الكانفس سياقه ويطلع مربع أبيض بوجه حزين: نخفف الرسم ونعيد بناء الكانفس */
+  root.addEventListener('contextlost', (e) => { const cv = e.target; try { liteSet(true); vizDpr = 1; } catch (x) {} setTimeout(() => { try { cv.width = 1; cv.height = 1; } catch (x) {} try { waveDraw(); } catch (x) {} }, 400); }, true);
+  root.addEventListener('contextrestored', () => { try { waveDraw(); } catch (x) {} }, true);
   function liteCheck(raw) { if (LITE || document.hidden) return; lfE = lfE * 0.95 + Math.min(0.2, raw) * 0.05; if (lfE > 1 / 20) { if (++lfN > 300) liteSet(true); } else lfN = Math.max(0, lfN - 2); }
   function vizLoop(ts) {
     if (root.hidden || g('plrFull').hidden || document.hidden) { vizOn = false; return; }
