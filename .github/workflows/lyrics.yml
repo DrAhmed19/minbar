@@ -8,6 +8,8 @@ on:
       limit: { description: 'أقصى عدد قصائد', default: '50' }
       only: { description: 'قصيدة واحدة بالاسم (اختياري)', default: '' }
       vocals: { description: 'فصل صوت الرادود عن اللطم', default: 'true' }
+      check: { description: 'فحص الحالة فقط', default: 'false' }
+      fa: { description: 'محاذاة إجبارية', default: 'true' }
       restore: { description: 'إرجاع التوقيت اليدوي السابق', default: 'false' }
   schedule:
     - cron: '*/20 * * * *'
@@ -38,6 +40,8 @@ jobs:
           ONLY: ${{ inputs.only }}
           VOCALS: ${{ inputs.vocals || 'true' }}
           RESTORE: ${{ inputs.restore }}
+          CHECK: ${{ inputs.check }}
+          FA: ${{ inputs.fa || 'true' }}
           SHARD: ${{ matrix.shard }}
           SHARDS: 4
         run: |

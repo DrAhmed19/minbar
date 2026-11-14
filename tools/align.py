@@ -155,6 +155,8 @@ def fix_times(seq, dur):
             ts[k] = a + (b - a) * (k - pi) / (ni - pi)
     return [round(max(0.0, x), 2) for x in ts]
 
+PROTECT = [w for w in os.environ.get('PROTECT', 'دخان').split(',') if w]
+
 def main():
     db = firestore.Client(project='minbar-8f037')
     albums = {d.id: d.to_dict() for d in db.collection('albums').stream()}
@@ -168,6 +170,16 @@ def main():
         todo = [t for t in tracks if t.get('lyrQ')]
         print('قصائد بانتظار الضبط:', len(todo))
     todo.sort(key=lambda t: t.get('at') or 0)
+    if os.environ.get('CHECK') == 'true':
+        for t in todo:
+            if ONLY and ONLY not in (t.get('title') or ''): continue
+            ap = db.collection('lyrApproved').document(t['id']).get(); d = ap.to_dict() if ap.exists else {}
+            L = t.get('lyrics') if isinstance(t.get('lyrics'), list) else []
+            print('CHECK', t.get('title'), t['id'], '| tracks.lyrics:', len(L), 'أول أوقات', [x.get('t') for x in L[:5]], '| lyrQ', t.get('lyrQ'), 'lyrEst', t.get('lyrEst'))
+            print('   lyrApproved:', 'موجود' if ap.exists else 'لا', 'by=', d.get('by'), 'at=', d.get('at'), 'prev=', bool(d.get('prev')), 'low=', len(d.get('low') or []))
+            try: print('   أوقات الموافق عليه:', [x.get('t') for x in json.loads(d.get('json') or '[]')[:8]])
+            except Exception: pass
+        return
     if os.environ.get('RESTORE') == 'true':  # إرجاع التوقيت اليدوي السابق (قبل الضبط التلقائي)
         for t in (todo if SHARD == 0 else []):
             if ONLY and ONLY not in (t.get('title') or ''): continue
@@ -254,6 +266,8 @@ def main():
                 ds.sort(); print(f'  مقارنة بالسابق: وسيط الفرق {ds[len(ds) // 2]:.1f}ث — ضمن ثانية {sum(d <= 1 for d in ds) * 100 // len(ds)}% — ضمن 3ث {sum(d <= 3 for d in ds) * 100 // len(ds)}%')
         for k, x in enumerate(arr[:400]):
             print(f"   {x['t']:7.2f} (سماع {ts_w[k]:7.2f}{f' ثقة {fa[k][2]:.2f}' if fa else ''}) {'⚠' if k in low else ' '} {x['l']}")
+        if WRITE and any(w in (t.get('title') or '') for w in PROTECT):
+            print('  🔒 قصيدة محمية (ضبط يدوي) — لم تُكتب'); done += 1; continue
         if WRITE:
             doc = {'json': json.dumps(arr, ensure_ascii=False), 'title': t.get('title') or '', 'by': 'auto', 'at': firestore.SERVER_TIMESTAMP, 'low': low}
             if ap.exists and ap.to_dict().get('json') and ap.to_dict().get('by') != 'auto': doc['prev'] = ap.to_dict().get('json')
