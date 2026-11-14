@@ -525,7 +525,7 @@ class _PlayerPageState extends State<PlayerPage> {
                   Navigator.pop(c);
                   Navigator.push(context, MaterialPageRoute(builder: (_) => HusnPage(ly)));
                 }),
-                card(ss, Ic.speed, 'وضع السيارة', 'أزرار كبيرة وشاشة لا تنطفئ أثناء القيادة', () {
+                card(ss, Ic.speed, 'وضع السيارة', 'لوحة قيادة حيّة: طريق وسرعة وأزرار كبيرة', () {
                   Navigator.pop(c);
                   Navigator.push(context, MaterialPageRoute(builder: (_) => const CarPage()));
                 }),

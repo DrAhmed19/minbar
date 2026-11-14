@@ -17,6 +17,8 @@ import 'lyrics.dart';
 import 'occasion.dart';
 import 'state.dart';
 import 'ui.dart';
+import 'car.dart';
+export 'car.dart';
 
 /// إضافات التطبيق: الإعدادات، الإشعارات (قصائد جديدة + تذكير المناسبات)،
 /// التنزيل التلقائي للمفضلة على الواي فاي، وضع السيارة.
@@ -326,7 +328,7 @@ class _SettingsPageState extends State<SettingsPage> {
               Opt.set('fade', v);
               setState(() {});
             }),
-            _row(Ic.speed, 'وضع السيارة', 'أزرار كبيرة وشاشة لا تنطفئ', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CarPage()))),
+            _row(Ic.speed, 'وضع السيارة', 'لوحة قيادة حيّة مع عدّاد السرعة', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CarPage()))),
           ]),
           _sec('التنزيلات'),
           _card([
@@ -389,113 +391,6 @@ class _SettingsPageState extends State<SettingsPage> {
             }),
           ]),
         ]),
-      ),
-    );
-  }
-}
-
-// ================= وضع السيارة =================
-class CarPage extends StatefulWidget {
-  const CarPage({super.key});
-  @override
-  State<CarPage> createState() => _CarPageState();
-}
-
-class _CarPageState extends State<CarPage> {
-  List<Lyric> ly = const [];
-  String? _id;
-
-  @override
-  void initState() {
-    super.initState();
-    WakelockPlus.enable();
-    app.player.addListener(_r);
-    _r();
-  }
-
-  void _r() {
-    final t = app.player.cur;
-    if (t != null && t.id != _id) {
-      _id = t.id;
-      ly = const [];
-      app.repo.lyricsFor(t).then((l) {
-        if (mounted && _id == t.id) setState(() => ly = l);
-      });
-    }
-    if (mounted) setState(() {});
-  }
-
-  @override
-  void dispose() {
-    WakelockPlus.disable();
-    app.player.removeListener(_r);
-    super.dispose();
-  }
-
-  Widget _btn(String ic, VoidCallback f, {double s = 96, bool main = false}) => GestureDetector(
-        onTap: () {
-          HapticFeedback.mediumImpact();
-          f();
-        },
-        child: Container(
-          width: s,
-          height: s,
-          decoration: BoxDecoration(shape: BoxShape.circle, color: main ? kGold : const Color(0x1FFFFFFF), border: Border.all(color: main ? kGold2 : const Color(0x40FFFFFF), width: 2)),
-          child: Center(child: PIcon(ic, color: main ? const Color(0xFF2A2106) : Colors.white, size: s * 0.46)),
-        ),
-      );
-
-  @override
-  Widget build(BuildContext context) {
-    final pc = app.player, t = pc.cur;
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: const Color(0xFF04140F),
-        body: SafeArea(
-          child: Column(children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-              child: Row(children: [
-                IconButton(onPressed: () => Navigator.pop(context), icon: const PIcon(Ic.x, color: Colors.white70, size: 28)),
-                const Spacer(),
-                Text('وضع السيارة', style: tx(15, c: Colors.white38)),
-              ]),
-            ),
-            const Spacer(),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(children: [
-                Text(t?.title ?? 'اختر قصيدة', maxLines: 2, textAlign: TextAlign.center, style: tx(34, c: Colors.white, h: 1.4)),
-                const SizedBox(height: 6),
-                Text(t?.reciter ?? '', style: tx(20, c: kGold)),
-              ]),
-            ),
-            SizedBox(height: 150, child: ly.isEmpty ? const SizedBox() : LyricStrip(lines: ly, base: 26)),
-            const Spacer(),
-            Directionality(
-              textDirection: TextDirection.ltr,
-              child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-                _btn(Ic.prev, pc.prev),
-                StreamBuilder<PlayerState>(stream: pc.p.playerStateStream, builder: (_, s) => _btn((s.data?.playing ?? false) ? Ic.pause : Ic.play, pc.toggle, s: 132, main: true)),
-                _btn(Ic.next, pc.next),
-              ]),
-            ),
-            const SizedBox(height: 28),
-            Directionality(
-              textDirection: TextDirection.ltr,
-              child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-                _btn(Ic.rw, () => pc.seek((pc.p.position.inSeconds - 15).clamp(0, 1 << 30).toDouble()), s: 72),
-                _btn(t != null && app.repo.isFav(t.id) ? Ic.heartF : Ic.heart, () {
-                  if (t != null) app.repo.toggleFav(t.id);
-                  setState(() {});
-                }, s: 72),
-                _btn(Ic.fw, () => pc.seek(pc.p.position.inSeconds + 15.0), s: 72),
-              ]),
-            ),
-            const SizedBox(height: 36),
-          ]),
-        ),
       ),
     );
   }
