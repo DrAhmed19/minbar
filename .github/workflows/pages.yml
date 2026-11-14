@@ -3,17 +3,19 @@ name: نشر الموقع
 on:
   push:
     branches: [main]
-    paths-ignore: ['native/**', '.github/workflows/apk.yml', '.github/workflows/shots.yml']
+    paths-ignore: ['native/**', 'tools/**', '.github/workflows/migrate.yml', '.github/workflows/apk.yml', '.github/workflows/shots.yml']
   workflow_dispatch:
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: فحص الكود قبل النشر
+        run: for f in *.js; do node --check "$f" || exit 1; done
       - name: تجهيز ملفات الموقع
         run: |
           mkdir -p /tmp/site
-          rsync -a --exclude .git --exclude .github --exclude native --exclude functions --exclude srv \
+          rsync -a --exclude .git --exclude .github --exclude native --exclude tools --exclude functions --exclude srv \
             --exclude '*.rules' --exclude '*.rules.txt' --exclude firebase.json --exclude .firebaserc --exclude .gitignore ./ /tmp/site/
           rm -rf site && mv /tmp/site site && ls site | head -50
       - name: نشر
