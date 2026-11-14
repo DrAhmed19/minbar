@@ -82,7 +82,7 @@ def gemini_times(wav, lines):
         "(مع تكرار الردّة والأبيات كلما تكررت بالصوت وبترتيب الإنشاد الفعلي). تجاهل اللطم والموسيقى. "
         "أرجع JSON فقط: مصفوفة عناصرها {\"i\": رقم البيت, \"t\": \"MM:SS.s\"} حسب ظهورها بالتسجيل من أوله لآخره. "
         "إن كان البيت الطويل مقسوماً بالإنشاد لعدة عبارات فاذكر بداية أول عبارة فقط.\n\nالأبيات:\n" + txt)
-    model = os.environ.get('GEM_MODEL', 'gemini-2.5-flash')
+    model = os.environ.get('GEM_MODEL', 'gemini-3.8-flash')
     try:
         r = c.models.generate_content(model=model, contents=[f, prompt], config=types.GenerateContentConfig(response_mime_type='application/json', temperature=0))
     except Exception as e:
