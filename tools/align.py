@@ -169,6 +169,7 @@ def main():
     else:
         todo = [t for t in tracks if t.get('lyrQ')]
         print('قصائد بانتظار الضبط:', len(todo))
+    if not ONLY: todo = [t for t in todo if not any(w in (t.get('title') or '') for w in PROTECT)]
     todo.sort(key=lambda t: t.get('at') or 0)
     if os.environ.get('CHECK') == 'true':
         for t in todo:
