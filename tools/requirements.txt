@@ -5,3 +5,4 @@ demucs
 torchaudio<2.6
 soundfile
 git+https://github.com/MahmoudAshraf97/ctc-forced-aligner.git
+transformers==4.49.0
