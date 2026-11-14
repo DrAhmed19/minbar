@@ -82,14 +82,16 @@ def gemini_times(wav, lines):
         "(مع تكرار الردّة والأبيات كلما تكررت بالصوت وبترتيب الإنشاد الفعلي). تجاهل اللطم والموسيقى. "
         "أرجع JSON فقط: مصفوفة عناصرها {\"i\": رقم البيت, \"t\": \"MM:SS.s\"} حسب ظهورها بالتسجيل من أوله لآخره. "
         "إن كان البيت الطويل مقسوماً بالإنشاد لعدة عبارات فاذكر بداية أول عبارة فقط.\n\nالأبيات:\n" + txt)
-    model = os.environ.get('GEM_MODEL', 'gemini-3.8-flash')
-    try:
-        r = c.models.generate_content(model=model, contents=[f, prompt], config=types.GenerateContentConfig(response_mime_type='application/json', temperature=0))
-    except Exception as e:
-        print('  Gemini خطأ:', repr(e)[:300])
-        try: print('  نماذج متاحة:', [m.name for m in c.models.list() if 'flash' in m.name or 'pro' in m.name][:30])
-        except Exception: pass
-        return None
+    r = None
+    for model in [os.environ.get('GEM_MODEL', 'gemini-3.8-flash'), 'gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-3.6-flash']:
+        for k in range(3):
+            try:
+                r = c.models.generate_content(model=model, contents=[f, prompt], config=types.GenerateContentConfig(response_mime_type='application/json', temperature=0))
+                print('  نموذج:', model); break
+            except Exception as e:
+                print('  Gemini خطأ', model, repr(e)[:120]); time.sleep(20 * (k + 1))
+        if r: break
+    if not r: return None
     def sec(x):
         x = str(x).strip(); p = x.split(':')
         try: return round(sum(float(v) * 60 ** k for k, v in enumerate(reversed(p))), 2)
