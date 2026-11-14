@@ -9,6 +9,7 @@ on:
       only: { description: 'قصيدة واحدة بالاسم (اختياري)', default: '' }
       vocals: { description: 'فصل صوت الرادود عن اللطم', default: 'true' }
       check: { description: 'فحص الحالة فقط', default: 'false' }
+      gem: { description: 'Gemini بدل Whisper', default: 'false' }
       fa: { description: 'محاذاة إجبارية', default: 'true' }
       restore: { description: 'إرجاع التوقيت اليدوي السابق', default: 'false' }
   schedule:
@@ -40,6 +41,8 @@ jobs:
           ONLY: ${{ inputs.only }}
           VOCALS: ${{ inputs.vocals || 'true' }}
           RESTORE: ${{ inputs.restore }}
+          GEM: ${{ inputs.gem }}
+          GEMINI_KEY: ${{ secrets.GEMINI_KEY }}
           CHECK: ${{ inputs.check }}
           FA: ${{ inputs.fa || 'true' }}
           SHARD: ${{ matrix.shard }}

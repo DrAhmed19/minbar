@@ -1,8 +1,9 @@
 faster-whisper>=1.1.0
 rapidfuzz
 google-cloud-firestore
+google-genai
 demucs
-torchaudio<2.6
+torch==2.6.0
+torchaudio==2.6.0
 soundfile
 git+https://github.com/MahmoudAshraf97/ctc-forced-aligner.git
-transformers==4.49.0

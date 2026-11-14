@@ -66,6 +66,39 @@ def forced_align(wav, seq_lines):
         out.append((float(part[0]['start']), float(part[-1]['end']), sum(float(x.get('score', 0)) for x in part) / len(part)))
     return out
 
+def gemini_times(wav, lines):
+    """Gemini يسمع الصوت مع النص ويرجع وقت بداية كل بيت بترتيب الإنشاد (مع التكرار)."""
+    from google import genai
+    from google.genai import types
+    c = genai.Client(api_key=os.environ['GEMINI_KEY'])
+    mp3 = wav + '.mp3'
+    subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', wav, '-ac', '1', '-b:a', '48k', mp3], check=True)
+    f = c.files.upload(file=mp3)
+    for _ in range(30):
+        if getattr(f.state, 'name', str(f.state)) != 'PROCESSING': break
+        time.sleep(3); f = c.files.get(name=f.name)
+    txt = '\n'.join(f'{i}: {l}' for i, l in enumerate(lines))
+    prompt = ("هذه لطمية حسينية بصوت رادود. أدناه أبيات القصيدة مرقّمة. استمع للتسجيل كاملاً وأعطني وقت بداية كل مرة ينشد فيها الرادود بيتاً "
+        "(مع تكرار الردّة والأبيات كلما تكررت بالصوت وبترتيب الإنشاد الفعلي). تجاهل اللطم والموسيقى. "
+        "أرجع JSON فقط: مصفوفة عناصرها {\"i\": رقم البيت, \"t\": \"MM:SS.s\"} حسب ظهورها بالتسجيل من أوله لآخره. "
+        "إن كان البيت الطويل مقسوماً بالإنشاد لعدة عبارات فاذكر بداية أول عبارة فقط.\n\nالأبيات:\n" + txt)
+    model = os.environ.get('GEM_MODEL', 'gemini-2.5-flash')
+    try:
+        r = c.models.generate_content(model=model, contents=[f, prompt], config=types.GenerateContentConfig(response_mime_type='application/json', temperature=0))
+    except Exception as e:
+        print('  Gemini خطأ:', repr(e)[:300])
+        try: print('  نماذج متاحة:', [m.name for m in c.models.list() if 'flash' in m.name or 'pro' in m.name][:30])
+        except Exception: pass
+        return None
+    def sec(x):
+        x = str(x).strip(); p = x.split(':')
+        try: return round(sum(float(v) * 60 ** k for k, v in enumerate(reversed(p))), 2)
+        except Exception: return None
+    try: arr = json.loads(r.text)
+    except Exception: print('  Gemini رد غير JSON:', (r.text or '')[:200]); return None
+    out = [(int(a['i']), sec(a['t'])) for a in arr if isinstance(a, dict) and 'i' in a and sec(a.get('t')) is not None and 0 <= int(a['i']) < len(lines)]
+    return out
+
 def align(lines, W, R):
     """lines: الأبيات (مطبّعة)، W: كلمات المسموع، R: عدد أبيات المستهل (أول مقطع).
     يرجع قائمة (فهرس البيت، وقت البداية أو None، الثقة) بترتيب الإنشاد مع التكرارات."""
@@ -224,6 +257,12 @@ def main():
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 minbar-align'})
             with urllib.request.urlopen(req, timeout=180) as r, open(src_f, 'wb') as f: f.write(r.read())
             subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', src_f, '-ac', '1', '-ar', '16000', wav], check=True)
+            if os.environ.get('GEM') == 'true':
+                tg = time.time(); g = gemini_times(wav, [l for l in dict.fromkeys(lines)])
+                if g:
+                    ul = list(dict.fromkeys(lines)); print(f'  Gemini ({time.time() - tg:.0f}ث): {len(g)} سطر')
+                    for i, t_ in g: print(f"   {t_:7.2f} (gemini) {ul[i][:70]}")
+                continue
             if VOCALS:  # فصل صوت الرادود عن اللطم والمؤثرات قبل السماع (أكبر سبب لضعف الدقة)
                 tv = time.time()
                 r = subprocess.run([sys.executable, '-m', 'demucs', '--two-stems=vocals', '-n', 'htdemucs', '-j', str(os.cpu_count() or 2), '-o', td, src_f], capture_output=True, text=True)
