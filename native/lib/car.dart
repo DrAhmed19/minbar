@@ -90,6 +90,8 @@ class _Scene {
   double t = 0, q = 0, v = 0, a = 0, brake = 0, tail = 0.3, curv = 0, lean = 0, blink = 0, pitch = 0, spin = 0, flash = 0, splash = 0;
   double sunEl = 45, sunAz = 180, moonEl = -20, moonAz = 0, moonPh = 0.5, heading = 180;
   double rain = 0, snow = 0, cloud = 0, fog = 0, dust = 0, storm = 0, wind = 0;
+  double holyB = 0, holyD = 0; // اتجاه ومسافة حرم الإمام الحسين (ع)
+  int bolt = 0;
 }
 
 /// أبعاد المسرح المحسوبة من التخطيط (الأفق، مركز الطريق، موضع السيارة وعرضها)
@@ -112,7 +114,8 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
   final _clock = ValueNotifier<DateTime>(DateTime.now());
   late final Ticker _tk;
   Duration _last = Duration.zero;
-  Timer? _ct, _wt;
+  Timer? _ct, _wt, _wt2;
+  DateTime? _backAt;
   StreamSubscription<Position>? _gs;
   bool gps = false;
   // GPS
@@ -261,6 +264,11 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
       ..moonEl = me
       ..moonAz = ma
       ..moonPh = ph;
+    // اتجاه كربلاء (حرم الإمام الحسين) من موقعك
+    const kLat = 32.6164 * rad, kLon = 44.0324 * rad;
+    final la1 = _lat * rad, dl = kLon - _lon * rad;
+    _sc.holyB = (math.atan2(math.sin(dl) * math.cos(kLat), math.cos(la1) * math.sin(kLat) - math.sin(la1) * math.cos(kLat) * math.cos(dl)) / rad + 360) % 360;
+    _sc.holyD = Geolocator.distanceBetween(_lat, _lon, 32.6164, 44.0324) / 1000;
     final h = _sc.heading;
     switch (_tMode) {
       case 1:
@@ -289,7 +297,7 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
     }
 
     try {
-      final m = await get('https://api.open-meteo.com/v1/forecast?latitude=$la&longitude=$lo&current=temperature_2m,weather_code,cloud_cover,precipitation,wind_speed_10m,visibility');
+      final m = await get('https://api.open-meteo.com/v1/forecast?latitude=$la&longitude=$lo&current=temperature_2m,weather_code,cloud_cover,precipitation,wind_speed_10m&hourly=visibility&forecast_hours=1');
       final cu = m['current'] as Map<String, dynamic>;
       double nv(String k) => (cu[k] as num?)?.toDouble() ?? 0.0;
       final code = (cu['weather_code'] as num?)?.toInt() ?? 0;
@@ -303,7 +311,10 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
       w.snow = snowBy[code] ?? 0.0;
       w.rain = math.max(rainBy[code] ?? 0.0, w.snow > 0 ? 0.0 : _cl(nv('precipitation') / 6));
       w.storm = code >= 95 ? 1.0 : 0.0;
-      final vis = nv('visibility');
+      double vis = 0;
+      try {
+        vis = (((m['hourly'] as Map<String, dynamic>)['visibility'] as List).first as num).toDouble();
+      } catch (_) {}
       w.fog = math.max(code == 45 || code == 48 ? 0.75 : 0.0, vis > 0 && vis < 8000 ? _cl(1 - vis / 8000) : 0.0);
       if (w.rain > 0 || w.snow > 0) w.cloud = math.max(w.cloud, 0.85);
       try {
@@ -311,8 +322,12 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
         final d = ((aq['current'] as Map<String, dynamic>)['dust'] as num?)?.toDouble() ?? 0.0;
         w.dust = _cl((d - 120) / 600);
       } catch (_) {}
+      debugPrint('car wx ok code=$code t=${w.temp} rain=${w.rain} dust=${w.dust}');
       if (mounted) setState(() => _wx = w);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('car wx fail $e');
+      _wt2?.cancel();
+      _wt2 = Timer(const Duration(seconds: 60), _wxFetch); // إعادة المحاولة
     } finally {
       c.close();
     }
@@ -364,7 +379,10 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
       ..dust += (w.dust - s.dust) * m
       ..storm += (w.storm - s.storm) * m
       ..wind += (w.wind - s.wind) * m;
-    if (s.storm > 0.3 && _rnd.nextDouble() < dt * 0.12) s.flash = 1;
+    if (s.storm > 0.3 && _rnd.nextDouble() < dt * 0.12) {
+      s.flash = 1;
+      s.bolt++;
+    }
     s.flash = math.max(0.0, s.flash - dt * 3.5);
     final lightsOn = 1 - _sm(-3, 5, s.sunEl);
     final murk = math.max(math.max(s.fog, s.dust), s.rain * 0.8);
@@ -398,6 +416,7 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
     _tk.dispose();
     _ct?.cancel();
     _wt?.cancel();
+    _wt2?.cancel();
     _gs?.cancel();
     _frame.dispose();
     _clock.dispose();
@@ -444,7 +463,14 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
     return Padding(
       padding: const EdgeInsets.fromLTRB(6, 4, 12, 0),
       child: Row(children: [
-        IconButton(onPressed: () => Navigator.pop(context), icon: const PIcon(Ic.x, color: Colors.white, size: 26)),
+        GestureDetector(
+          onTap: () => _say('اضغط مطولاً على ✕ للخروج'),
+          onLongPress: () {
+            HapticFeedback.heavyImpact();
+            Navigator.pop(context);
+          },
+          child: const Padding(padding: EdgeInsets.all(10), child: PIcon(Ic.x, color: Colors.white, size: 26)),
+        ),
         Flexible(
           child: _chip(Text('${w.icon(night)}$t  ${w.label}${_wMode == 0 ? '' : ' · تجربة'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(13, c: Colors.white)), () {
             setState(() => _wMode = (_wMode + 1) % _presets.length);
@@ -453,7 +479,11 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
           }),
         ),
         const SizedBox(width: 6),
-        _chip(PIcon(Ic.moon, color: _tMode == 0 ? Colors.white : kGold, size: 18), () {
+        _chip(Row(mainAxisSize: MainAxisSize.min, children: [
+          PIcon(Ic.moon, color: _tMode == 0 ? Colors.white : kGold, size: 16),
+          const SizedBox(width: 4),
+          Text(const ['تلقائي', 'نهار', 'غروب', 'ليل'][_tMode], style: tx(12, c: _tMode == 0 ? Colors.white : kGold)),
+        ]), () {
           setState(() => _tMode = (_tMode + 1) % 4);
           SharedPreferences.getInstance().then((p) => p.setInt('car.tm', _tMode));
           _env();
@@ -495,7 +525,7 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
                     child: Column(mainAxisSize: MainAxisSize.min, children: [
                       Directionality(
                         textDirection: TextDirection.ltr,
-                        child: Text(gps ? '${k.round()}' : '--',
+                        child: Text('${k.round()}',
                             style: tx(g * 0.27, c: col, h: 1).copyWith(fontFeatures: const [FontFeature.tabularFigures()], shadows: const [Shadow(color: Color(0xAA000000), blurRadius: 10)])),
                       ),
                       Text('كم/س', style: tx(g * 0.075, c: Colors.white70, h: 1.3)),
@@ -598,7 +628,20 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final t = app.player.cur, pad = MediaQuery.of(context).padding;
-    return Directionality(
+    // الخروج بإجراء مقصود فقط: ضغطتا رجوع متتاليتان، أو ضغط مطوّل على ✕ (حتى لا يخرج بالغلط أثناء القيادة)
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        final now = DateTime.now();
+        if (_backAt != null && now.difference(_backAt!) < const Duration(seconds: 2)) {
+          Navigator.pop(context);
+        } else {
+          _backAt = now;
+          _say('اضغط رجوع مرة ثانية للخروج');
+        }
+      },
+      child: Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: Colors.black,
@@ -608,8 +651,8 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
           if (land) {
             // أفقي: المشهد كامل، اللوحة على اليمين بزجاج متدرج
             final pw = w * 0.42, sw = w - pw, u = _cl(h * 0.17, 50, 84);
-            final hz = h * 0.4, carY = h - pad.bottom - h * 0.07, cw = math.min(sw * 0.5, (carY - hz) * 1.05);
-            final g = _cl(math.min(sw * 0.42, (hz - top - 44) / 0.7), 90, 210);
+            final g = _cl(math.min(sw * 0.36, h * 0.3), 90, 170);
+            final hz = math.max(h * 0.36, top + 44 + g * 0.7 + 4), carY = h - pad.bottom - h * 0.06, cw = math.min(sw * 0.36, (carY - hz) * 0.85);
             return Stack(children: [
               Positioned.fill(child: RepaintBoundary(child: CustomPaint(painter: _World(_sc, _Stage(hz, sw * 0.5, carY, cw), _frame)))),
               Positioned(
@@ -637,9 +680,10 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
           // عمودي: المشهد كامل، اللوحة أسفل بزجاج متدرج والسيارة فوقها مباشرة
           final u = _cl(w * 0.19, 58, 88), lyH = ly.isEmpty ? 0.0 : _cl(h * 0.1, 54, 96);
           final panel = 58 + lyH + 30 + u * 1.3 + u * 0.16 + u * 0.64 + 14 + pad.bottom;
-          final hz = h * 0.3, carY = h - panel - 6;
-          final cw = math.min(w * 0.5, (carY - hz) * 1.0);
-          final g = _cl(math.min(w * 0.5, (hz - top - 48) / 0.7), 100, 230);
+          // العدّاد بالسماء والأفق تحته مباشرة، والسيارة فوق اللوحة بحجم يُظهر خطوط المسار على جانبيها
+          final g = _cl(math.min(w * 0.44, h * 0.2), 100, 200);
+          final hz = math.max(h * 0.3, top + 46 + g * 0.7 + 6), carY = h - panel - 6;
+          final cw = math.min(w * 0.38, (carY - hz) * 0.85);
           return Stack(children: [
             Positioned.fill(child: RepaintBoundary(child: CustomPaint(painter: _World(_sc, _Stage(hz, w / 2, carY, cw), _frame)))),
             Positioned(
@@ -668,6 +712,7 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
           ]);
         }),
       ),
+    ),
     );
   }
 }
@@ -711,8 +756,9 @@ class _World extends CustomPainter {
   final _Scene s;
   final _Stage g;
   _World(this.s, this.g, Listenable r) : super(repaint: r);
-  static TextPainter? _plate;
+  static TextPainter? _plate, _holyTp;
   static double _plateW = 0;
+  static int _holyKm = -1;
 
   @override
   void paint(Canvas c, Size z) {
@@ -726,7 +772,7 @@ class _World extends CustomPainter {
     double f(double q) => 1 / (1 + q);
     double off(double q) {
       final d = q - qc;
-      return s.curv * 3.125 * d * d;
+      return s.curv * 3.125 * d * d / (1 + d.abs() / 30);
     }
 
     double X(double xm, double q) => cx + (xm + off(q)) * s0 * f(q);
@@ -781,10 +827,22 @@ class _World extends CustomPainter {
     for (int i = 0; i < nCl; i++) {
       final cw0 = w * (0.25 + _hash(i + 40) * 0.35);
       final x = ((_hash(i + 20) * (w + cw0) + s.t * (3 + s.wind * 2) * (0.5 + _hash(i))) % (w + cw0 * 2)) - cw0, y = _hash(i + 30) * hz * 0.65;
-      final cc = _mix(_mix(Colors.white, const Color(0xFF8A939C), over), const Color(0xFF151A20), 1 - light);
-      c.drawOval(Rect.fromLTWH(x, y, cw0, cw0 * 0.24), Paint()
-        ..color = cc.withOpacity(0.35 + 0.35 * s.cloud)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, cw0 * 0.07));
+      // غيمة منتفخة: كتل دائرية بقاعدة مسطحة، أعلاها مضاء وأسفلها ظل
+      final lit = _mix(_mix(Colors.white, const Color(0xFF9AA3AC), over), _mix(const Color(0xFF1C2229), const Color(0xFF2A3038), golden), 1 - light);
+      final shade = _mix(lit, _mix(const Color(0xFF5E6874), const Color(0xFF0A0D10), 1 - light), 0.55 + 0.3 * over);
+      final tint = _mix(lit, const Color(0xFFFFB27A), golden * 0.6);
+      final al = 0.55 + 0.35 * s.cloud, bl = MaskFilter.blur(BlurStyle.normal, cw0 * 0.025);
+      c.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(x, y + cw0 * 0.12, cw0, cw0 * 0.12), Radius.circular(cw0 * 0.06)), Paint()
+        ..color = shade.withOpacity(al)
+        ..maskFilter = bl);
+      for (int b = 0; b < 5; b++) {
+        final bx = x + cw0 * (0.15 + 0.17 * b), br = cw0 * (0.09 + 0.07 * _hash(i * 7 + b)) * (b == 2 ? 1.35 : 1);
+        final by = y + cw0 * 0.15 - br * 0.6;
+        final rc = Rect.fromCircle(center: Offset(bx, by), radius: br);
+        c.drawCircle(Offset(bx, by), br, Paint()
+          ..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [tint.withOpacity(al), shade.withOpacity(al)]).createShader(rc)
+          ..maskFilter = bl);
+      }
     }
 
     // ---------- الأرض ----------
@@ -803,18 +861,58 @@ class _World extends CustomPainter {
     c.drawPath(hills, Paint()..color = _mix(land, hor, 0.55));
     final gr = Rect.fromLTRB(0, hz, w, h);
     c.drawRect(gr, Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [_mix(land, hor, 0.45), land, _mix(land, Colors.black, 0.25)], stops: const [0, 0.35, 1]).createShader(gr));
+    // أضواء مدن بعيدة بالليل
+    if (lightsOn > 0.1) {
+      for (int i = 0; i < 70; i++) {
+        final x = (_hash(i + 900) * w * 4 - s.heading / 360 * w * 4) % (w * 4);
+        if (x > w) continue;
+        final y = hz - hh * (0.004 + _hash(i + 901) * 0.012);
+        c.drawCircle(Offset(x, y), 0.6 + _hash(i + 902) * 0.8, Paint()..color = _mix(const Color(0xFFFFC27A), Colors.white, _hash(i + 903)).withOpacity(lightsOn * (0.4 + 0.5 * _hash(i + 904)) * (1 - math.max(s.fog, s.dust))));
+      }
+    }
+    // حرم الإمام الحسين (ع) بالأفق باتجاهه الحقيقي من موقعك
+    if (s.holyD > 2) {
+      final hx = sxOf(s.holyB), sz = w * _cl(0.035 + 2.5 / (s.holyD + 15), 0.035, 0.13);
+      if (hx > -sz && hx < w + sz) {
+        final haze = _cl(s.holyD / 140 + math.max(s.fog, s.dust) * 0.7, 0, 0.75), by0 = hz - hh * 0.02;
+        final gold = _mix(_mix(const Color(0xFF6B4E12), const Color(0xFFE9B949), _cl(light + lightsOn * 0.7)), hor, haze);
+        final wall = _mix(_mix(const Color(0xFF15120C), const Color(0xFFB8A27A), light), hor, haze);
+        final sp = Path()
+          ..addRect(Rect.fromLTRB(hx - sz * 0.9, by0 - sz * 0.32, hx + sz * 0.9, by0 + 1))
+          ..addRect(Rect.fromLTRB(hx - sz * 0.3, by0 - sz * 0.55, hx + sz * 0.3, by0));
+        c.drawPath(sp, Paint()..color = wall);
+        final dome = Path()
+          ..moveTo(hx - sz * 0.34, by0 - sz * 0.55)
+          ..cubicTo(hx - sz * 0.42, by0 - sz * 0.95, hx - sz * 0.1, by0 - sz * 1.05, hx, by0 - sz * 1.22)
+          ..cubicTo(hx + sz * 0.1, by0 - sz * 1.05, hx + sz * 0.42, by0 - sz * 0.95, hx + sz * 0.34, by0 - sz * 0.55)
+          ..close();
+        if (lightsOn > 0.1) c.drawCircle(Offset(hx, by0 - sz * 0.7), sz * 1.6, Paint()..shader = RadialGradient(colors: [const Color(0xFFFFC94D).withOpacity(0.35 * lightsOn * (1 - haze)), const Color(0x00FFC94D)]).createShader(Rect.fromCircle(center: Offset(hx, by0 - sz * 0.7), radius: sz * 1.6)));
+        c.drawPath(dome, Paint()..color = gold);
+        for (final sd in const [-1.0, 1.0]) {
+          final mx = hx + sd * sz * 0.72;
+          c.drawRect(Rect.fromLTRB(mx - sz * 0.05, by0 - sz * 1.45, mx + sz * 0.05, by0 - sz * 0.3), Paint()..color = wall);
+          c.drawRect(Rect.fromLTRB(mx - sz * 0.085, by0 - sz * 1.15, mx + sz * 0.085, by0 - sz * 1.08), Paint()..color = gold);
+          c.drawPath(Path()..moveTo(mx - sz * 0.05, by0 - sz * 1.45)..lineTo(mx, by0 - sz * 1.62)..lineTo(mx + sz * 0.05, by0 - sz * 1.45)..close(), Paint()..color = gold);
+        }
+        if (_holyKm != s.holyD.round()) {
+          _holyKm = s.holyD.round();
+          _holyTp = TextPainter(text: TextSpan(text: 'كربلاء $_holyKm كم', style: const TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.white, shadows: [Shadow(color: Color(0xCC000000), blurRadius: 4)])), textDirection: TextDirection.rtl)..layout();
+        }
+        final tp = _holyTp!;
+        tp.paint(c, Offset(hx - tp.width / 2, by0 - sz * 1.62 - tp.height - 2));
+      }
+    }
 
     // ---------- الطريق: 3 مسارات × 3.6 م، كتف 1.6 م ----------
     const half = 5.4, shoulder = 1.6, qMin = -0.9, qMax = 70.0;
     void strip(double x0, double x1, double q0, double q1, Paint p, [int n = 36]) {
-      final pa = Path(), f0 = f(q0), f1 = f(q1);
+      // عيّنات بنسبة ثابتة بالعمق: نفس الدقة قريباً وبعيداً فتتطابق الحواف مع الخطوط حتى بالانعطاف
+      final pa = Path(), f0 = f(q0), f1 = f(q1), qs = List<double>.generate(n + 1, (i) => 1 / (f0 * math.pow(f1 / f0, i / n)) - 1);
       for (int i = 0; i <= n; i++) {
-        final q = 1 / (f0 + (f1 - f0) * i / n) - 1;
-        i == 0 ? pa.moveTo(X(x0, q), Y(q)) : pa.lineTo(X(x0, q), Y(q));
+        i == 0 ? pa.moveTo(X(x0, qs[i]), Y(qs[i])) : pa.lineTo(X(x0, qs[i]), Y(qs[i]));
       }
       for (int i = n; i >= 0; i--) {
-        final q = 1 / (f0 + (f1 - f0) * i / n) - 1;
-        pa.lineTo(X(x1, q), Y(q));
+        pa.lineTo(X(x1, qs[i]), Y(qs[i]));
       }
       pa.close();
       c.drawPath(pa, p);
@@ -825,6 +923,29 @@ class _World extends CustomPainter {
     asph = _mix(asph, _mix(const Color(0xFF07090B), const Color(0xFF2B2E32), light), wet);
     strip(-half - shoulder, half + shoulder, qMin, qMax, Paint()..color = _mix(asph, land, 0.35), 48);
     strip(-half, half, qMin, qMax, Paint()..color = asph, 48);
+    // آثار العجلات بمنتصف كل مسار: داكنة جافة، لامعة مبللة
+    for (final lcn in const [-3.6, 0.0, 3.6]) {
+      for (final o in const [-0.8, 0.8]) {
+        strip(lcn + o - 0.3, lcn + o + 0.3, qMin, 40, Paint()..color = wet > 0.3 ? hor.withOpacity(0.07 * wet) : Colors.black.withOpacity(0.05 + 0.06 * light), 40);
+      }
+    }
+    // رقع وشقوق الأسفلت تتحرك مع السرعة
+    for (int k = -1; k < 12; k++) {
+      final idx = (s.q / 4).floor() + k, q = idx * 4 - s.q + _hash(idx + 11) * 2;
+      if (q + 1 < qMin || q > 36) continue;
+      final hsh = _hash(idx * 3 + 1);
+      if (hsh < 0.3) {
+        final x0 = -half + 0.3 + _hash(idx) * (2 * half - 3), q0 = math.max(q, qMin);
+        strip(x0, x0 + 0.8 + _hash(idx + 4) * 1.6, q0, q0 + 0.3 + _hash(idx + 9) * 0.6, Paint()..color = Colors.black.withOpacity(0.06 + 0.05 * light), 6);
+      } else if (hsh > 0.82 && q > qMin) {
+        strip(-half, half, q, q + 0.025, Paint()..color = Colors.black.withOpacity(0.22), 2);
+      }
+    }
+    if (s.snow > 0.3) {
+      for (final sd in const [-1.0, 1.0]) {
+        strip(sd * half, sd * (half + shoulder), qMin, qMax, Paint()..color = Colors.white.withOpacity(0.75 * s.snow * (0.4 + 0.6 * light)), 40);
+      }
+    }
     if (wet > 0.05) strip(-half, half, 3, qMax, Paint()..color = hor.withOpacity(0.12 * wet), 24); // لمعان الأسفلت المبلل
     final lineC = _mix(const Color(0xFF3A3C3E), const Color(0xFFF2F2F2), _cl(light + 0.25));
     for (final xm in const [-half + 0.2, half - 0.2]) {
@@ -852,6 +973,36 @@ class _World extends CustomPainter {
       }
     }
 
+    // برك ماء تعكس السماء، وحلقات قطرات المطر
+    if (s.rain > 0.12) {
+      for (int k = -1; k < 10; k++) {
+        final idx = (s.q / 6).floor() + k, q = idx * 6 - s.q + _hash(idx + 21) * 3;
+        if (q < qMin + 0.2 || q > 34 || _hash(idx + 22) > 0.25 + s.rain * 0.5) continue;
+        final xm = -half + 0.6 + _hash(idx + 23) * (2 * half - 1.2), wm = 0.9 + _hash(idx + 24) * 1.8, dm = 0.25 + _hash(idx + 25) * 0.5;
+        final rc = Rect.fromLTRB(X(xm - wm / 2, q), Y(q + dm), X(xm + wm / 2, q), Y(math.max(q - dm, qMin)));
+        c.drawOval(rc, Paint()
+          ..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [_mix(hor, top, 0.5).withOpacity(0.55 * s.rain), hor.withOpacity(0.35 * s.rain)]).createShader(rc)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, math.max(1.0, rc.height * 0.15)));
+        for (int j = 0; j < 3; j++) {
+          final life = (s.t * 1.6 + _hash(idx * 5 + j)) % 1, cxr = rc.left + rc.width * (0.2 + 0.6 * _hash(idx * 7 + j)), cyr = rc.top + rc.height * (0.3 + 0.4 * _hash(idx * 9 + j));
+          c.drawOval(Rect.fromCenter(center: Offset(cxr, cyr), width: rc.width * 0.25 * life, height: rc.height * 0.25 * life), Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1
+            ..color = Colors.white.withOpacity(0.35 * (1 - life) * s.rain));
+        }
+      }
+      // ارتداد القطرات على الأسفلت قرب الكاميرا
+      for (int i = 0; i < (60 * s.rain).round(); i++) {
+        final life = (s.t * 2.5 + _hash(i + 300)) % 1, gen = ((s.t * 2.5 + _hash(i + 300)) / 1).floor();
+        final xm = -half + _hash(i * 13 + gen) * 2 * half, q = qc - 0.6 + _hash(i * 17 + gen) * 6;
+        final sc = s0 * f(q) * 0.25 * life;
+        c.drawOval(Rect.fromCenter(center: Offset(X(xm, q), Y(q)), width: sc, height: sc * 0.35), Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1
+          ..color = _mix(const Color(0xFF9AA4AE), Colors.white, light).withOpacity(0.45 * (1 - life) * s.rain));
+      }
+    }
+
     // ---------- النخيل وأعمدة الإنارة (من البعيد للقريب) ----------
     final objs = <(double, int, int)>[];
     const pp = 6.0, lp = 14.0;
@@ -876,23 +1027,55 @@ class _World extends CustomPainter {
         final tr = Path()
           ..moveTo(bx, by)
           ..quadraticBezierTo(bx + side * 0.05 * sc, (by + ty0) / 2, tx0, ty0);
+        // جذع مخروطي بحلقات
         c.drawPath(tr, Paint()
           ..style = PaintingStyle.stroke
-          ..strokeWidth = math.max(1.0, 0.4 * sc)
+          ..strokeWidth = math.max(1.0, 0.45 * sc)
           ..strokeCap = StrokeCap.round
           ..color = trunkC);
-        final sway = math.sin(s.t * 1.3 + o.$3) * (0.1 + s.wind * 0.02);
-        for (int j = 0; j < 9; j++) {
-          final a = (j - 4) * 0.42 + sway, len = (2.6 + _hash(o.$3 * 9 + j) * 0.8) * sc, droop = (0.5 + (j - 4).abs() * 0.28) * sc;
-          final ex = tx0 + math.sin(a) * len, ey = ty0 - math.cos(a).abs() * len * 0.25 + droop;
-          final fr = Path()
-            ..moveTo(tx0, ty0)
-            ..quadraticBezierTo(tx0 + math.sin(a) * len * 0.55, ty0 - len * 0.45, ex, ey);
-          c.drawPath(fr, Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = math.max(1.0, 0.32 * sc)
-            ..strokeCap = StrokeCap.round
-            ..color = leafC);
+        if (sc > 4) {
+          final ringC = _mix(trunkC, Colors.black, 0.45);
+          for (double u = 0.06; u < 0.97; u += 0.07) {
+            final px = (1 - u) * (1 - u) * bx + 2 * (1 - u) * u * (bx + side * 0.05 * sc) + u * u * tx0, py = (1 - u) * (1 - u) * by + 2 * (1 - u) * u * (by + ty0) / 2 + u * u * ty0;
+            c.drawLine(Offset(px - 0.22 * sc, py), Offset(px + 0.22 * sc, py - 0.05 * sc), Paint()
+              ..strokeWidth = math.max(0.6, 0.05 * sc)
+              ..color = ringC);
+          }
+        }
+        // سعف بطبقتين (داكنة خلفية + فاتحة أمامية) مع وريقات، وعذوق تمر
+        final sway = math.sin(s.t * 1.3 + o.$3) * (0.08 + s.wind * 0.025);
+        for (int layer = 0; layer < 2; layer++) {
+          final lc0 = layer == 0 ? _mix(leafC, Colors.black, 0.35) : leafC;
+          for (int j = 0; j < 9; j++) {
+            final a = (j - 4) * 0.42 + sway + (layer == 0 ? 0.21 : 0), len = (2.7 + _hash(o.$3 * 9 + j + layer * 31) * 0.9) * sc, droop = (0.6 + (j - 4).abs() * 0.3) * sc;
+            final cxq = tx0 + math.sin(a) * len * 0.55, cyq = ty0 - len * 0.42, ex = tx0 + math.sin(a) * len, ey = ty0 - math.cos(a).abs() * len * 0.22 + droop;
+            final fr = Path()
+              ..moveTo(tx0, ty0)
+              ..quadraticBezierTo(cxq, cyq, ex, ey);
+            c.drawPath(fr, Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = math.max(1.0, 0.14 * sc)
+              ..strokeCap = StrokeCap.round
+              ..color = lc0);
+            if (sc > 3) {
+              final lw = Paint()
+                ..strokeWidth = math.max(0.7, 0.06 * sc)
+                ..strokeCap = StrokeCap.round
+                ..color = lc0;
+              for (double u = 0.2; u < 0.98; u += 0.11) {
+                final px = (1 - u) * (1 - u) * tx0 + 2 * (1 - u) * u * cxq + u * u * ex, py = (1 - u) * (1 - u) * ty0 + 2 * (1 - u) * u * cyq + u * u * ey;
+                final ll = (1 - u * 0.6) * 0.55 * sc;
+                c.drawLine(Offset(px, py), Offset(px - ll * 0.35, py + ll), lw);
+                c.drawLine(Offset(px, py), Offset(px + ll * 0.35, py + ll), lw);
+              }
+            }
+          }
+        }
+        if (sc > 3 && _hash(o.$3 + 50) > 0.4) {
+          final dc = _mix(const Color(0xFF1A0E05), const Color(0xFFB5651D), light);
+          for (final sd2 in const [-1.0, 1.0]) {
+            c.drawOval(Rect.fromCenter(center: Offset(tx0 + sd2 * 0.35 * sc, ty0 + 0.45 * sc), width: 0.45 * sc, height: 0.7 * sc), Paint()..color = dc);
+          }
         }
       } else {
         for (final side in const [-1.0, 1.0]) {
@@ -913,8 +1096,65 @@ class _World extends CustomPainter {
               ..color = lampC.withOpacity(0.18 * lightsOn)
               ..maskFilter = MaskFilter.blur(BlurStyle.normal, math.max(2.0, 1.2 * sc)));
             if (wet > 0.1 && q > qc) wetRefl.add(Offset(px, by));
+            // مخروط ضوء مرئي بالضباب والمطر والغبار
+            final air = _cl(math.max(math.max(s.fog, s.dust), s.rain * 0.7) * 1.3);
+            if (air > 0.08) {
+              final cone = Path()
+                ..moveTo(ax - 0.3 * sc, ty0)
+                ..lineTo(ax + 0.3 * sc, ty0)
+                ..lineTo(ax + 2.8 * sc, by)
+                ..lineTo(ax - 2.8 * sc, by)
+                ..close();
+              c.drawPath(cone, Paint()
+                ..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [lampC.withOpacity(0.28 * air * lightsOn), lampC.withOpacity(0.04 * air * lightsOn)]).createShader(Rect.fromLTRB(0, ty0, w, by))
+                ..maskFilter = MaskFilter.blur(BlurStyle.normal, math.max(2.0, 0.6 * sc)));
+            }
           }
         }
+      }
+    }
+
+    // ---------- الحواجز: حاجز معدني يمين وحاجز خرساني يسار ----------
+    void ribbon(double xm, double y0, double y1, double q0, double q1, Paint p, [int n = 40]) {
+      final pa = Path(), f0 = f(q0), f1 = f(q1), qs = List<double>.generate(n + 1, (i) => 1 / (f0 * math.pow(f1 / f0, i / n)) - 1);
+      for (int i = 0; i <= n; i++) {
+        i == 0 ? pa.moveTo(X(xm, qs[i]), Y(qs[i], y1)) : pa.lineTo(X(xm, qs[i]), Y(qs[i], y1));
+      }
+      for (int i = n; i >= 0; i--) {
+        pa.lineTo(X(xm, qs[i]), Y(qs[i], y0));
+      }
+      pa.close();
+      c.drawPath(pa, p);
+    }
+
+    const gx = half + shoulder + 0.3, bxm = -(half + shoulder + 0.25);
+    final steel = _mix(const Color(0xFF16181A), const Color(0xFFB3B9BF), light), conc = _mix(const Color(0xFF1C1C1A), const Color(0xFFB7B2A6), light);
+    // أعمدة الحاجز المعدني كل 2 م
+    for (int k = 0; k < 60; k++) {
+      final q = k * 0.8 - (s.q % 0.8);
+      if (q < qMin) continue;
+      if (q > qMax || (Y(q) - Y(q + 0.8)) < 2.5) break;
+      c.drawLine(Offset(X(gx, q), Y(q)), Offset(X(gx, q), Y(q, 0.75)), Paint()
+        ..strokeWidth = math.max(1.0, 0.1 * s0 * f(q))
+        ..color = _mix(steel, Colors.black, 0.35));
+    }
+    ribbon(gx, 0.5, 0.78, qMin, qMax, Paint()..color = steel);
+    ribbon(gx, 0.74, 0.78, qMin, qMax, Paint()..color = _mix(steel, Colors.white, 0.35 * light));
+    ribbon(bxm, 0, 0.82, qMin, qMax, Paint()..color = conc);
+    ribbon(bxm, 0, 0.18, qMin, qMax, Paint()..color = _mix(conc, Colors.black, 0.2));
+    ribbon(bxm, 0.78, 0.82, qMin, qMax, Paint()..color = _mix(conc, Colors.white, 0.25 * light));
+    if (s.snow > 0.3) {
+      ribbon(bxm, 0.8, 0.9, qMin, qMax, Paint()..color = Colors.white.withOpacity(0.85 * s.snow));
+      ribbon(gx, 0.78, 0.84, qMin, qMax, Paint()..color = Colors.white.withOpacity(0.8 * s.snow));
+    }
+    // عاكسات على الحواجز تلمع بضوء السيارة
+    for (int k = 0; k < 24; k++) {
+      final q = k * 1.6 - (s.q % 1.6);
+      if (q < qc + 0.2) continue;
+      if (q > qMax || f(q) * s0 * 0.12 < 0.6) break;
+      final glow = _cl(0.25 + lightsOn * 0.9) * _cl(f(q) * 8);
+      for (final o2 in [(gx, 0.62, const Color(0xFFFFFFFF)), (bxm, 0.6, const Color(0xFFFFC21A))]) {
+        c.drawCircle(Offset(X(o2.$1, q), Y(q, o2.$2)), math.max(0.8, 0.07 * s0 * f(q)), Paint()..color = o2.$3.withOpacity(glow));
       }
     }
 
@@ -953,10 +1193,24 @@ class _World extends CustomPainter {
     // ---------- السيارة ----------
     final bob = (math.sin(s.t * 11) * 0.5 + math.sin(s.t * 23 + 1) * 0.3) * _cl(s.v / 20) * g.cw * 0.004;
     final ox = cx + off(qc) * s0 * fc + s.lean * g.cw * 0.06, oy = g.carY + bob + s.pitch * g.cw * 0.004;
+    // ظل الشمس باتجاهها الحقيقي
+    final rel = ((s.sunAz - s.heading + 540) % 360 - 180) * math.pi / 180;
+    final shL = _cl(1 / math.tan(math.max(el, 4) * math.pi / 180), 0, 3) * 0.22, shA = day * (1 - over) * (1 - s.dust * 0.7);
+    final sunSh = Offset(-math.sin(rel) * shL, math.cos(rel) * shL * 0.3);
+    // أقرب عمود إنارة للسيارة: لمعة تمر على السقف والزجاج
+    final lq = ((s.q - 3) / lp).round() * lp - s.q + 3 - qc;
+    // انعكاس السيارة على الأسفلت المبلل
+    if (wet > 0.25) {
+      c.saveLayer(Rect.fromLTWH(ox - g.cw, oy - 2, g.cw * 2, g.cw * 0.7), Paint()..color = Colors.white.withOpacity(0.28 * wet));
+      c.translate(ox, oy);
+      c.scale(1, -0.75);
+      _car(c, g.cw, light, 0, day, lightsOn, refl: true);
+      c.restore();
+    }
     c.save();
     c.translate(ox, oy);
     c.rotate(s.lean * 0.035);
-    _car(c, g.cw, light, wet, day, lightsOn);
+    _car(c, g.cw, light, wet, day, lightsOn, shd: sunSh, shA: shA, pass: lq);
     c.restore();
 
     // ---------- رذاذ الإطارات بالمطر ----------
@@ -992,11 +1246,50 @@ class _World extends CustomPainter {
         c.drawCircle(Offset(x, y), sz, Paint()..color = Colors.white.withOpacity(0.75));
       }
     }
-    if (s.flash > 0.01) c.drawRect(Offset.zero & z, Paint()..color = Colors.white.withOpacity(0.35 * s.flash));
+    // رمال تتطاير مع الريح بالغبار
+    if (s.dust > 0.2) {
+      final dc = _mix(const Color(0xFF3A2A16), const Color(0xFFE2BC80), light);
+      for (int i = 0; i < 40; i++) {
+        final y = hz + (h - hz) * (0.2 + _hash(i + 700) * 0.8), len = 30 + 90 * _hash(i + 701);
+        final x = (_hash(i + 702) * (w + 300) + s.t * (80 + s.wind * 25) * (0.6 + _hash(i + 703))) % (w + 300) - 150;
+        c.drawLine(Offset(x, y), Offset(x + len, y - len * 0.04), Paint()
+          ..strokeWidth = 1 + _hash(i + 704) * 2
+          ..color = dc.withOpacity(0.18 * s.dust)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2));
+      }
+    }
+    // البرق: خط متعرج متفرع
+    if (s.flash > 0.45) {
+      final bp = Path();
+      var x = w * (0.15 + 0.7 * _hash(s.bolt * 7)), y = 0.0;
+      bp.moveTo(x, y);
+      final bpts = <Offset>[];
+      for (int k = 0; k < 12; k++) {
+        x += (_hash(s.bolt * 31 + k) - 0.5) * w * 0.09;
+        y += hz * 0.085;
+        bp.lineTo(x, y);
+        bpts.add(Offset(x, y));
+      }
+      final br = bpts[4];
+      bp.moveTo(br.dx, br.dy);
+      bp.lineTo(br.dx + w * 0.06, br.dy + hz * 0.12);
+      bp.lineTo(br.dx + w * 0.1, br.dy + hz * 0.2);
+      final a = _cl((s.flash - 0.45) / 0.55);
+      c.drawPath(bp, Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 6
+        ..color = const Color(0xFFBFD4FF).withOpacity(0.5 * a)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6));
+      c.drawPath(bp, Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.8
+        ..color = Colors.white.withOpacity(a));
+    }
+    if (s.flash > 0.01) c.drawRect(Offset.zero & z, Paint()..color = Colors.white.withOpacity(0.3 * s.flash));
   }
 
   /// سيارة رياضية من الخلف (الوحدة = عرض السيارة؛ y سالب للأعلى، 0 = الأرض)
-  void _car(Canvas c, double cw, double light, double wet, double day, double lightsOn) {
+  void _car(Canvas c, double cw, double light, double wet, double day, double lightsOn, {bool refl = false, Offset shd = Offset.zero, double shA = 0, double pass = 99}) {
     Offset p(double x, double y) => Offset(x * cw, y * cw);
     Rect r(double x0, double y0, double x1, double y1) => Rect.fromPoints(p(x0, y0), p(x1, y1));
     // أوامر المسار: [0,x,y]=انتقال، [1,x,y]=خط، 4 قيم=منحنى تربيعي، 6 قيم=منحنى تكعيبي
@@ -1019,13 +1312,20 @@ class _World extends CustomPainter {
     final red = Color.lerp(const Color(0xFF3A060C), const Color(0xFFFF2236), lit)!;
     final blinkOn = s.blink != 0 && (s.t * 1.6) % 1 < 0.55;
 
-    // الظل
-    c.drawOval(r(-0.56, -0.03, 0.56, 0.05), Paint()
-      ..color = Colors.black.withOpacity(0.55 + 0.25 * day)
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, cw * 0.035));
+    if (!refl) {
+      // ظل الشمس (يمتد عكس اتجاهها) + ظل التلامس
+      if (shA > 0.05) {
+        c.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: p(shd.dx * 0.8, 0.01 + shd.dy), width: cw * (1.0 + shd.dx.abs() * 0.9), height: cw * (0.07 + shd.dy.abs() * 0.5)), Radius.circular(cw * 0.05)), Paint()
+          ..color = Colors.black.withOpacity(0.45 * shA)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, cw * 0.012));
+      }
+      c.drawOval(r(-0.56, -0.03, 0.56, 0.05), Paint()
+        ..color = Colors.black.withOpacity(0.55 + 0.25 * day)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, cw * 0.035));
+    }
     // انعكاس الأضواء الخلفية على الأرض (أطول على الأسفلت المبلل)
     final rl = 0.25 + 0.5 * wet;
-    for (final sd in const [-1.0, 1.0]) {
+    for (final sd in refl ? const <double>[] : const [-1.0, 1.0]) {
       final rc = r(sd * 0.36, 0.0, sd * 0.47, 0.25 + wet * 0.9);
       c.drawRect(rc, Paint()
         ..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [red.withOpacity(rl * lit), red.withOpacity(0)]).createShader(rc)
@@ -1078,6 +1378,24 @@ class _World extends CustomPainter {
     }
     c.drawRect(r(-0.5, -0.36, 0.5, -0.3), Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [red.withOpacity(0.25 * lit), red.withOpacity(0)]).createShader(r(-0.5, -0.36, 0.5, -0.3)));
     c.restore();
+    // لمعة عمود الإنارة المار + قطرات المطر على الطلاء
+    if (!refl && lightsOn > 0.2 && pass.abs() < 3) {
+      final k = (1 - pass.abs() / 3) * lightsOn, yy = -0.62 + _cl((3 - pass) / 6) * 0.22;
+      c.save();
+      c.clipPath(Path.combine(PathOperation.union, body, cab));
+      c.drawOval(Rect.fromCenter(center: p(0, yy), width: cw * 0.9, height: cw * 0.06), Paint()
+        ..color = const Color(0xFFFFD9A0).withOpacity(0.35 * k)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, cw * 0.02));
+      c.restore();
+    }
+    if (wet > 0.3 && !refl) {
+      c.save();
+      c.clipPath(Path.combine(PathOperation.union, body, cab));
+      for (int i = 0; i < 26; i++) {
+        c.drawCircle(p(-0.48 + _hash(i + 120) * 0.96, -0.6 + _hash(i + 121) * 0.52), cw * (0.003 + _hash(i + 122) * 0.003), Paint()..color = Colors.white.withOpacity(0.3 * wet));
+      }
+      c.restore();
+    }
     // الزجاج الخلفي
     final gl = path([
       [0, -0.255, -0.44],
@@ -1098,6 +1416,12 @@ class _World extends CustomPainter {
     c.restore();
     // السقف كما يُرى من الأعلى قليلاً
     c.drawPath(path([[0, -0.18, -0.613], [-0.1, -0.632, 0.1, -0.632, 0.18, -0.613], [0.1, -0.622, -0.1, -0.622, -0.18, -0.613]]), Paint()..color = Colors.white.withOpacity(0.05 + 0.1 * light));
+    // ثلج متراكم على السقف وغطاء المحرك
+    if (s.snow > 0.4 && !refl) {
+      final sn = Paint()..color = Colors.white.withOpacity(0.9 * s.snow);
+      c.drawPath(path([[0, -0.19, -0.613], [-0.1, -0.645, 0.1, -0.645, 0.19, -0.613], [0.1, -0.622, -0.1, -0.622, -0.19, -0.613]]), sn);
+      c.drawPath(path([[0, -0.37, -0.432], [-0.2, -0.452, 0.2, -0.452, 0.37, -0.432], [0.2, -0.44, -0.2, -0.44, -0.37, -0.432]]), sn);
+    }
     // ضوء الفرامل الثالث أعلى الزجاج
     final tb = RRect.fromRectAndRadius(r(-0.06, -0.603, 0.06, -0.594), Radius.circular(cw * 0.004));
     if (brake > 0.05) {

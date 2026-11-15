@@ -6,30 +6,50 @@ wait 4
 swipe 540 1800 540 700 400
 wait 3
 text "وضع السيارة"
-wait 10
+wait 12
 shot c01-real
-dump c01
-text "°"
-wait 6
-shot c02-clear
-text "تجربة"
-text "تجربة"
+tap 880 204
+wait 1
+tap 880 204
 wait 7
+shot c02-cloud
+tap 880 204
+wait 8
 shot c03-rain
-text "تجربة"
-wait 7
+tap 880 204
+wait 5
 shot c04-storm
-text "تجربة"
-wait 7
+tap 880 204
+wait 8
 shot c05-fog
-text "تجربة"
-wait 7
+tap 880 204
+wait 8
 shot c06-dust
-text "تجربة"
-wait 7
+tap 880 204
+wait 8
 shot c07-snow
-text "تجربة"
+tap 880 204
 wait 2
+text "تلقائي"
+wait 1
+text "نهار"
+wait 8
+shot c08-sunset
+text "غروب"
+wait 8
+shot c09-night
+tap 880 204
+wait 1
+tap 880 204
+wait 1
+tap 880 204
+wait 8
+shot c10-night-rain
+back
+wait 1
+shot c11-one-back
+back
+wait 0.3
 back
 wait 3
-shot c08-after-back
+shot c12-exit
