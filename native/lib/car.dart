@@ -472,7 +472,8 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
           child: const Padding(padding: EdgeInsets.all(10), child: PIcon(Ic.x, color: Colors.white, size: 26)),
         ),
         Flexible(
-          child: _chip(Text('${w.icon(night)}$t  ${w.label}${_wMode == 0 ? '' : ' · تجربة'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(13, c: Colors.white)), () {
+          flex: 5,
+          child: _chip(Text('${w.icon(night)}$t  ${w.label}${_wMode == 0 ? '' : ' (تجربة)'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(13, c: Colors.white)), () {
             setState(() => _wMode = (_wMode + 1) % _presets.length);
             SharedPreferences.getInstance().then((p) => p.setInt('car.wx', _wMode));
             _say(_wMode == 0 ? 'الطقس الحقيقي' : 'تجربة: ${_presets[_wMode]!.label}');
@@ -981,8 +982,7 @@ class _World extends CustomPainter {
         final xm = -half + 0.6 + _hash(idx + 23) * (2 * half - 1.2), wm = 0.9 + _hash(idx + 24) * 1.8, dm = 0.25 + _hash(idx + 25) * 0.5;
         final rc = Rect.fromLTRB(X(xm - wm / 2, q), Y(q + dm), X(xm + wm / 2, q), Y(math.max(q - dm, qMin)));
         c.drawOval(rc, Paint()
-          ..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [_mix(hor, top, 0.5).withOpacity(0.55 * s.rain), hor.withOpacity(0.35 * s.rain)]).createShader(rc)
-          ..maskFilter = MaskFilter.blur(BlurStyle.normal, math.max(1.0, rc.height * 0.15)));
+          ..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [_mix(hor, top, 0.5).withOpacity(0.55 * s.rain), hor.withOpacity(0.35 * s.rain)]).createShader(rc));
         for (int j = 0; j < 3; j++) {
           final life = (s.t * 1.6 + _hash(idx * 5 + j)) % 1, cxr = rc.left + rc.width * (0.2 + 0.6 * _hash(idx * 7 + j)), cyr = rc.top + rc.height * (0.3 + 0.4 * _hash(idx * 9 + j));
           c.drawOval(Rect.fromCenter(center: Offset(cxr, cyr), width: rc.width * 0.25 * life, height: rc.height * 0.25 * life), Paint()
@@ -1201,10 +1201,10 @@ class _World extends CustomPainter {
     final lq = ((s.q - 3) / lp).round() * lp - s.q + 3 - qc;
     // انعكاس السيارة على الأسفلت المبلل
     if (wet > 0.25) {
-      c.saveLayer(Rect.fromLTWH(ox - g.cw, oy - 2, g.cw * 2, g.cw * 0.7), Paint()..color = Colors.white.withOpacity(0.28 * wet));
+      c.save();
       c.translate(ox, oy);
       c.scale(1, -0.75);
-      _car(c, g.cw, light, 0, day, lightsOn, refl: true);
+      _car(c, g.cw, light, wet, day, lightsOn, refl: true);
       c.restore();
     }
     c.save();
@@ -1218,9 +1218,8 @@ class _World extends CustomPainter {
       for (int i = 0; i < 26; i++) {
         final side = i.isEven ? 1.0 : -1.0, life = (s.t * 2.2 + _hash(i)) % 1;
         final x = ox + side * g.cw * (0.4 + life * 0.25 * _hash(i + 5)), y = oy - g.cw * 0.03 + life * g.cw * 0.35;
-        c.drawCircle(Offset(x, y), g.cw * (0.03 + life * 0.07), Paint()
-          ..color = _mix(const Color(0xFF2A2E33), const Color(0xFFDDE3E8), light).withOpacity(0.22 * s.splash * (1 - life))
-          ..maskFilter = MaskFilter.blur(BlurStyle.normal, g.cw * 0.03));
+        final rr = g.cw * (0.05 + life * 0.08), sc0 = _mix(const Color(0xFF2A2E33), const Color(0xFFDDE3E8), light);
+        c.drawCircle(Offset(x, y), rr, Paint()..shader = RadialGradient(colors: [sc0.withOpacity(0.22 * s.splash * (1 - life)), sc0.withOpacity(0)]).createShader(Rect.fromCircle(center: Offset(x, y), radius: rr)));
       }
     }
 
@@ -1332,7 +1331,7 @@ class _World extends CustomPainter {
         ..maskFilter = MaskFilter.blur(BlurStyle.normal, cw * 0.02));
     }
     // الإطارات
-    for (final sd in const [-1.0, 1.0]) {
+    for (final sd in refl ? const <double>[] : const [-1.0, 1.0]) {
       c.drawRRect(RRect.fromRectAndRadius(r(sd * 0.33, -0.2, sd * 0.478, 0), Radius.circular(cw * 0.03)), Paint()..color = const Color(0xFF060707));
       c.drawRect(r(sd * 0.34, -0.2, sd * 0.468, -0.17), Paint()..color = const Color(0xFF1A1D1D));
     }
@@ -1360,6 +1359,17 @@ class _World extends CustomPainter {
       colors: [pnt(0xFF57C6A9, 0xFF123A31), pnt(0xFF17705F, 0xFF0A2A23), pnt(0xFF0C4337, 0xFF061C17), pnt(0xFF05211B, 0xFF020A08)],
       stops: const [0, 0.3, 0.62, 1],
     ).createShader(r(-0.5, -0.64, 0.5, -0.06));
+    if (refl) {
+      // انعكاس خفيف بلا طبقات إضافية (أخف على المعالج): هيكل شفاف + خط الإضاءة
+      final ra = 0.22 * wet;
+      final rs = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [pnt(0xFF2F8E77, 0xFF0A2A23).withOpacity(0), pnt(0xFF17705F, 0xFF061C17).withOpacity(ra)]).createShader(r(-0.5, -0.64, 0.5, -0.06));
+      c.drawPath(cab, Paint()..shader = rs);
+      c.drawPath(body, Paint()..shader = rs);
+      c.drawLine(p(-0.46, -0.366), p(0.46, -0.366), Paint()
+        ..strokeWidth = cw * 0.02
+        ..color = red.withOpacity(ra * 1.6 * (0.4 + lit)));
+      return;
+    }
     c.drawPath(cab, Paint()..shader = paintSh);
     c.drawPath(body, Paint()..shader = paintSh);
     // تظليل أسطواني وخط لمعان الكتفين
