@@ -360,10 +360,36 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
 
   double get _now => DateTime.now().millisecondsSinceEpoch / 1000.0;
 
+  // قياس زمن الإطارات وتخفيف الرسم تلقائياً إذا الجهاز ما يلحق (منع التقطيع)
+  final _ft = <double>[];
+  double _goodFor = 0;
+  void _timings(List<ui.FrameTiming> ts) {
+    for (final t in ts) {
+      _ft.add(math.max(t.buildDuration.inMicroseconds, t.rasterDuration.inMicroseconds) / 1000);
+    }
+    if (_ft.length < 45) return;
+    _ft.sort();
+    final p90 = _ft[(_ft.length * 0.9).floor()], med = _ft[_ft.length ~/ 2];
+    debugPrint('MBCAR q=${_World.q} med=${med.toStringAsFixed(1)}ms p90=${p90.toStringAsFixed(1)}ms');
+    if (p90 > 22 && _World.q > 0) {
+      _World.q--;
+      _goodFor = 0;
+    } else if (p90 < 11) {
+      _goodFor += _ft.length / 60;
+      if (_goodFor > 12 && _World.q < 2 && app.player.perf == 0) {
+        _World.q++;
+        _goodFor = 0;
+      }
+    }
+    _ft.clear();
+  }
+
   @override
   void initState() {
     super.initState();
     CarPage.open = true;
+    _World.q = app.player.perf == 0 ? 2 : 1;
+    SchedulerBinding.instance.addTimingsCallback(_timings);
     WakelockPlus.enable();
     app.player.addListener(_r);
     _r();
@@ -753,6 +779,7 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
   @override
   void dispose() {
     CarPage.open = false;
+    SchedulerBinding.instance.removeTimingsCallback(_timings);
     WakelockPlus.disable();
     app.player.removeListener(_r);
     _tk.dispose();
@@ -1377,6 +1404,8 @@ Path _cpath(List<List<double>> cmds, double cw, {double sx = 1, bool close = tru
 
 /// العالم: سماء حقيقية، أرض بنسيج رمل، طريق بنسيج أسفلت بمنظور هندسي بالأمتار، نخيل وأعمدة إنارة، طقس، وسيارة
 class _World extends CustomPainter {
+  /// مستوى الجودة يتكيّف مع قدرة الجهاز: 2 كامل، 1 بلا أنسجة وجزيئات أقل، 0 أخف ما يمكن
+  static int q = 2;
   final _Scene s;
   final _Stage g;
   _World(this.s, this.g, Listenable r) : super(repaint: r);
@@ -1541,7 +1570,7 @@ class _World extends CustomPainter {
 
     // نسيج بمنظور: شرائح عرضية، كل شريحة بمصفوفة تقريبية لعمقها (يتحرك مع المسافة الحقيقية)
     void tex(ui.Image img, double kTex, double alpha, {double? xl, double? xr}) {
-      const nb = 22;
+      final nb = q >= 2 ? 16 : 10;
       final travel = (s.q * 2.5) % (256 / kTex), f0 = f(qMin), f1 = f(36.0);
       final p = Paint()..color = Colors.white.withOpacity(_cl(alpha));
       for (int i = 0; i < nb; i++) {
@@ -1557,7 +1586,7 @@ class _World extends CustomPainter {
       }
     }
 
-    tex(_Art.sand, 40, 0.3 + 0.45 * light * (1 - s.snow));
+    if (q >= 2) tex(_Art.sand, 40, 0.3 + 0.45 * light * (1 - s.snow));
 
     // ---------- الطريق: 3 مسارات × 3.6 م، كتف 1.6 م ----------
     final wet = _cl(s.rain * 1.4 + s.snow * 0.5);
@@ -1565,7 +1594,7 @@ class _World extends CustomPainter {
     asph = _mix(asph, _mix(const Color(0xFF06080A), const Color(0xFF2A2D31), light), wet);
     strip(-half - shoulder, half + shoulder, qMin, qMax, Paint()..color = _mix(asph, land, 0.3), 48);
     strip(-half, half, qMin, qMax, Paint()..color = asph, 48);
-    tex(_Art.asphalt, 70, (0.75 - 0.35 * wet) * (0.4 + 0.6 * light), xl: -half - shoulder, xr: half + shoulder);
+    if (q >= 1) tex(_Art.asphalt, 70, (0.75 - 0.35 * wet) * (0.4 + 0.6 * light), xl: -half - shoulder, xr: half + shoulder);
     // آثار العجلات: داكنة جافة، لامعة مبللة
     for (final lcn in const [-3.6, 0.0, 3.6]) {
       for (final o in const [-0.8, 0.8]) {
@@ -1661,7 +1690,7 @@ class _World extends CustomPainter {
     const lampC = Color(0xFFFFB45A);
     final palmTint = _mix(_mix(const Color(0xFF151A1F), Colors.white, light), const Color(0xFFE6C690), s.dust * 0.6);
     final palmP = Paint()
-      ..filterQuality = FilterQuality.medium
+      ..filterQuality = FilterQuality.low
       ..colorFilter = ColorFilter.mode(palmTint, BlendMode.modulate);
     final air = _cl(math.max(murk, s.rain * 0.7) * 1.3);
     for (final o in objs) {
@@ -1669,7 +1698,7 @@ class _World extends CustomPainter {
       if (o.$2 == 0) {
         final side = o.$3.isEven ? 1.0 : -1.0, xm = side * (half + shoulder + 4 + _hash(o.$3) * 7), ht = 8 + _hash(o.$3 + 3) * 4;
         final k = ht * sc / 250, bx = X(xm, q), by = Y(q);
-        if (k * 256 < 2) continue;
+        if (k * 256 < 2 || (_World.q == 0 && q > 25)) continue;
         final sway = math.sin(s.t * 1.2 + o.$3) * (0.02 + s.wind * 0.006);
         c.save();
         c.translate(bx, by);
@@ -1848,7 +1877,7 @@ class _World extends CustomPainter {
 
     // ---------- المطر: ثلاث طبقات عمق بخيوط ناعمة (نداء رسم واحد) ----------
     if (s.rain > 0.02) {
-      final n = (80 + 380 * s.rain).round(), rc0 = _mix(const Color(0xFF8C96A0), const Color(0xFFE6ECF2), light);
+      final n = ((80 + 380 * s.rain) * (_World.q == 2 ? 1 : 0.5)).round(), rc0 = _mix(const Color(0xFF8C96A0), const Color(0xFFE6ECF2), light);
       final tr = <RSTransform>[], cl = <Color>[];
       final slant = s.wind * 0.035;
       for (int i = 0; i < n; i++) {
@@ -1864,7 +1893,7 @@ class _World extends CustomPainter {
     }
     // ---------- الثلج: رقائق بعمق، تتمايل وتسقط ببطء ----------
     if (s.snow > 0.02) {
-      final n = (60 + 260 * s.snow).round();
+      final n = ((60 + 260 * s.snow) * (_World.q == 2 ? 1 : 0.5)).round();
       final tr = <RSTransform>[], cl = <Color>[];
       for (int i = 0; i < n; i++) {
         final d = _hash(i + 2), sz = 2 + 9 * d * d;
