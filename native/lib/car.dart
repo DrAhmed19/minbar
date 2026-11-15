@@ -126,9 +126,10 @@ class _Art {
     for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
         final i = (y * w + x) * 4, v = (_cl(a((x + 0.5) / w * 2 - 1, (y + 0.5) / h * 2 - 1)) * 255).round();
-        px[i] = 255;
-        px[i + 1] = 255;
-        px[i + 2] = 255;
+        // ألوان مضروبة مسبقاً بالشفافية (المطلوب من المعالج الرسومي)
+        px[i] = v;
+        px[i + 1] = v;
+        px[i + 2] = v;
         px[i + 3] = v;
       }
     }
@@ -159,9 +160,9 @@ class _Art {
     void dotPx(Uint8List b, int x, int y, int rr, int gg, int bb, int a) {
       final i = (((y & 255) * 256) + (x & 255)) * 4;
       if (b[i + 3] >= a) return;
-      b[i] = rr;
-      b[i + 1] = gg;
-      b[i + 2] = bb;
+      b[i] = rr * a ~/ 255;
+      b[i + 1] = gg * a ~/ 255;
+      b[i + 2] = bb * a ~/ 255;
       b[i + 3] = a;
     }
 
@@ -180,17 +181,22 @@ class _Art {
       for (int x = 0; x < 256; x++) {
         final w0 = math.sin((y + math.sin(x / 256 * math.pi * 4) * 5) / 256 * math.pi * 2 * 22);
         final i = (y * 256 + x) * 4;
+        int a = 0, rr = 0, gg = 0, bb = 0;
         if (w0 > 0.55) {
-          sp[i] = 255;
-          sp[i + 1] = 245;
-          sp[i + 2] = 225;
-          sp[i + 3] = ((w0 - 0.55) * 90).round();
+          a = ((w0 - 0.55) * 90).round();
+          rr = 255;
+          gg = 245;
+          bb = 225;
         } else if (w0 < -0.4) {
-          sp[i] = 60;
-          sp[i + 1] = 40;
-          sp[i + 2] = 15;
-          sp[i + 3] = ((-w0 - 0.4) * 80).round();
+          a = ((-w0 - 0.4) * 80).round();
+          rr = 60;
+          gg = 40;
+          bb = 15;
         }
+        sp[i] = rr * a ~/ 255;
+        sp[i + 1] = gg * a ~/ 255;
+        sp[i + 2] = bb * a ~/ 255;
+        sp[i + 3] = a;
       }
     }
     for (int k = 0; k < 2500; k++) {
