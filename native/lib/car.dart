@@ -108,20 +108,31 @@ class _Stage {
   const _Stage(this.hz, this.cx, this.carY, this.cw, this.dpr);
 }
 
-/// صور مرسومة مرة واحدة (نخيل، غيوم، أنسجة، جزيئات) تُعاد بالـGPU كل إطار
+/// موارد الرسم: نقوش وجزيئات تُولَّد بكسلاتها على المعالج (بلا رسم خارج الشاشة)،
+/// ونخيل وغيوم كـ«صور متجهة» مسجّلة مرة لكل مستوى إضاءة — تجنباً لأعطال بعض المعالجات الرسومية
 class _Art {
   static bool _started = false, ready = false;
   static late ui.Image dot, streak, flake, asphalt, sand;
-  static late List<ui.Image> palms, clouds;
 
-  // تُولَّد الصور بشكل غير متزامن (الطريقة الآمنة على كل المعالجات الرسومية)
-  static Future<ui.Image> _img(int w, int h, void Function(Canvas) draw) async {
-    final r = ui.PictureRecorder();
-    draw(Canvas(r, Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble())));
-    final p = r.endRecording();
-    final im = await p.toImage(w, h);
-    p.dispose();
-    return im;
+  static Future<ui.Image> _pix(int w, int h, Uint8List rgba) {
+    final cpl = Completer<ui.Image>();
+    ui.decodeImageFromPixels(rgba, w, h, ui.PixelFormat.rgba8888, cpl.complete);
+    return cpl.future;
+  }
+
+  /// بقعة بيضاء ناعمة: a(d) دالة الشفافية حسب البعد عن المركز (0..1)
+  static Uint8List _soft(int w, int h, double Function(double nx, double ny) a) {
+    final px = Uint8List(w * h * 4);
+    for (int y = 0; y < h; y++) {
+      for (int x = 0; x < w; x++) {
+        final i = (y * w + x) * 4, v = (_cl(a((x + 0.5) / w * 2 - 1, (y + 0.5) / h * 2 - 1)) * 255).round();
+        px[i] = 255;
+        px[i + 1] = 255;
+        px[i + 2] = 255;
+        px[i + 3] = v;
+      }
+    }
+    return px;
   }
 
   static void ensure() {
@@ -131,141 +142,158 @@ class _Art {
   }
 
   static Future<void> _build() async {
-    dot = await _img(64, 64, (c) => c.drawCircle(const Offset(32, 32), 32, Paint()..shader = ui.Gradient.radial(const Offset(32, 32), 32, [Colors.white, Colors.white.withOpacity(0.35), Colors.white.withOpacity(0)], [0, 0.3, 1])));
-    streak = await _img(8, 96, (c) {
-      c.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(2.5, 0, 3, 96), const Radius.circular(1.5)), Paint()..shader = ui.Gradient.linear(Offset.zero, const Offset(0, 96), [Colors.white.withOpacity(0), Colors.white.withOpacity(0.9), Colors.white.withOpacity(0.25)], [0, 0.82, 1]));
-    });
-    flake = await _img(32, 32, (c) => c.drawCircle(const Offset(16, 16), 16, Paint()..shader = ui.Gradient.radial(const Offset(16, 16), 16, [Colors.white, Colors.white.withOpacity(0.85), Colors.white.withOpacity(0)], [0, 0.35, 1])));
-    asphalt = await _img(256, 256, _asphaltTex);
-    sand = await _img(256, 256, _sandTex);
-    palms = [for (int v = 0; v < 3; v++) await _img(256, 320, (c) => _palm(c, v))];
-    clouds = [for (int v = 0; v < 3; v++) await _img(512, 220, (c) => _cloud(c, v))];
+    dot = await _pix(64, 64, _soft(64, 64, (x, y) {
+      final d = math.sqrt(x * x + y * y);
+      return d >= 1 ? 0 : math.pow(1 - d, 2.2).toDouble();
+    }));
+    streak = await _pix(8, 96, _soft(8, 96, (x, y) {
+      final across = math.max(0.0, 1 - x.abs() * 1.6), along = y < 0.64 ? (y + 1) / 1.64 : 1 - (y - 0.64) / 0.36 * 0.75;
+      return across * across * along * 0.95;
+    }));
+    flake = await _pix(32, 32, _soft(32, 32, (x, y) {
+      final d = math.sqrt(x * x + y * y);
+      return d >= 1 ? 0 : (d < 0.35 ? 1 : math.pow((1 - d) / 0.65, 1.5).toDouble());
+    }));
+    // أسفلت: حبيبات حصى داكنة وفاتحة على خلفية شفافة (قابلة للتكرار)
+    final r = math.Random(5), ap = Uint8List(256 * 256 * 4);
+    void dotPx(Uint8List b, int x, int y, int rr, int gg, int bb, int a) {
+      final i = (((y & 255) * 256) + (x & 255)) * 4;
+      if (b[i + 3] >= a) return;
+      b[i] = rr;
+      b[i + 1] = gg;
+      b[i + 2] = bb;
+      b[i + 3] = a;
+    }
+
+    for (int k = 0; k < 9000; k++) {
+      final x = r.nextInt(256), y = r.nextInt(256), dark = r.nextDouble() < 0.62, a = dark ? 60 + r.nextInt(90) : 25 + r.nextInt(45), v = dark ? 0 : 255;
+      dotPx(ap, x, y, v, v, v, a);
+      if (r.nextDouble() < 0.35) {
+        dotPx(ap, x + 1, y, v, v, v, a ~/ 2);
+        dotPx(ap, x, y + 1, v, v, v, a ~/ 2);
+      }
+    }
+    asphalt = await _pix(256, 256, ap);
+    // رمل: تموجات ريح + حبيبات
+    final sp = Uint8List(256 * 256 * 4);
+    for (int y = 0; y < 256; y++) {
+      for (int x = 0; x < 256; x++) {
+        final w0 = math.sin((y + math.sin(x / 256 * math.pi * 4) * 5) / 256 * math.pi * 2 * 22);
+        final i = (y * 256 + x) * 4;
+        if (w0 > 0.55) {
+          sp[i] = 255;
+          sp[i + 1] = 245;
+          sp[i + 2] = 225;
+          sp[i + 3] = ((w0 - 0.55) * 90).round();
+        } else if (w0 < -0.4) {
+          sp[i] = 60;
+          sp[i + 1] = 40;
+          sp[i + 2] = 15;
+          sp[i + 3] = ((-w0 - 0.4) * 80).round();
+        }
+      }
+    }
+    for (int k = 0; k < 2500; k++) {
+      final dark = r.nextBool();
+      dotPx(sp, r.nextInt(256), r.nextInt(256), dark ? 50 : 255, dark ? 35 : 250, dark ? 10 : 235, dark ? 70 : 50);
+    }
+    sand = await _pix(256, 256, sp);
     ready = true;
   }
 
-  /// حبيبات الأسفلت: حصى داكنة وفاتحة متناثرة (قابلة للتكرار بلا فواصل)
-  static void _asphaltTex(Canvas c) {
-    final r = math.Random(5);
-    for (int pass = 0; pass < 4; pass++) {
-      final pts = <Offset>[];
-      for (int i = 0; i < 900; i++) {
-        pts.add(Offset(r.nextDouble() * 256, r.nextDouble() * 256));
-      }
-      final col = [Colors.black.withOpacity(0.45), Colors.black.withOpacity(0.25), Colors.white.withOpacity(0.16), Colors.white.withOpacity(0.08)][pass];
-      c.drawPoints(ui.PointMode.points, pts, Paint()
-        ..color = col
-        ..strokeWidth = [1.6, 2.6, 1.3, 2.2][pass]
-        ..strokeCap = StrokeCap.round);
-    }
-    for (int i = 0; i < 26; i++) {
-      final o = Offset(r.nextDouble() * 256, r.nextDouble() * 256);
-      c.drawOval(Rect.fromCenter(center: o, width: 10 + r.nextDouble() * 30, height: 6 + r.nextDouble() * 16), Paint()..color = Colors.black.withOpacity(0.05 + r.nextDouble() * 0.05));
-    }
+  // ---------- نخيل وغيوم: صور متجهة مسجّلة حسب الإضاءة ----------
+  static final Map<String, ui.Picture> _pics = {};
+  static ui.Picture palm(int v, double light, double dust) {
+    final key = 'p$v|${(light * 16).round()}|${(dust * 4).round()}';
+    return _pics[key] ??= () {
+      if (_pics.length > 60) _pics.clear();
+      final rec = ui.PictureRecorder();
+      _palm(Canvas(rec), v, (light * 16).round() / 16, (dust * 4).round() / 4);
+      return rec.endRecording();
+    }();
   }
 
-  /// رمل الصحراء: تموجات ريح + حبيبات
-  static void _sandTex(Canvas c) {
-    final r = math.Random(9);
-    for (double y = 4; y < 256; y += 11) {
-      final pa = Path()..moveTo(0, y);
-      for (double x = 0; x <= 256; x += 8) {
-        pa.lineTo(x, y + math.sin(x / 256 * math.pi * 4 + y * 0.3) * 3);
-      }
-      c.drawPath(pa, Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.2
-        ..color = const Color(0xFF5A3C14).withOpacity(0.13));
-      c.drawPath(pa.shift(const Offset(0, 2.2)), Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.2
-        ..color = Colors.white.withOpacity(0.1));
-    }
-    for (int pass = 0; pass < 2; pass++) {
-      final pts = [for (int i = 0; i < 700; i++) Offset(r.nextDouble() * 256, r.nextDouble() * 256)];
-      c.drawPoints(ui.PointMode.points, pts, Paint()
-        ..color = pass == 0 ? const Color(0xFF3D2A10).withOpacity(0.25) : Colors.white.withOpacity(0.15)
-        ..strokeWidth = 1.4
-        ..strokeCap = StrokeCap.round);
-    }
-  }
-
-  /// نخلة عراقية: جذع مخروطي بحلقات وكرانيف، سعف بوريقات بطبقتين، وعذوق تمر
-  static void _palm(Canvas c, int v) {
+  /// نخلة عراقية بإحداثيات 256×320 (القاعدة عند 128،318): جذع مخروطي بحلقات، سعف ورقي مسنّن بطبقتين، وعذوق تمر
+  static void _palm(Canvas c, int v, double light, double dust) {
+    Color L(int day) => _mix(_mix(const Color(0xFF0E1216), Color(day), light), const Color(0xFFD8BC8A), dust * 0.45);
     final r = math.Random(31 + v);
     const bx = 128.0, by = 318.0;
-    final tx = 128.0 + (v - 1) * 10, ty = 70.0 + v * 6;
+    final tx = 128.0 + (v - 1) * 12, ty = 72.0 + v * 6;
     final trunk = Path()
       ..moveTo(bx - 10, by)
       ..quadraticBezierTo(bx - 6, (by + ty) / 2, tx - 6, ty)
       ..lineTo(tx + 6, ty)
       ..quadraticBezierTo(bx + 7, (by + ty) / 2, bx + 10, by)
       ..close();
-    c.drawPath(trunk, Paint()..shader = ui.Gradient.linear(const Offset(bx - 10, 0), const Offset(bx + 10, 0), [const Color(0xFF5B4329), const Color(0xFF8B6B44), const Color(0xFF4A351F)], [0, 0.45, 1]));
-    for (double u = 0.03; u < 0.97; u += 0.045) {
+    c.drawPath(trunk, Paint()..shader = ui.Gradient.linear(const Offset(bx - 10, 0), const Offset(bx + 10, 0), [L(0xFF5B4329), L(0xFF8E6E46), L(0xFF45311C)], [0, 0.42, 1]));
+    final ring = Paint()
+      ..strokeWidth = 1.8
+      ..color = L(0xFF2E2112);
+    for (double u = 0.03; u < 0.97; u += 0.05) {
       final x = (1 - u) * (1 - u) * bx + 2 * (1 - u) * u * (bx - 1) + u * u * tx, y = by + (ty - by) * u, hw = 10 - 4 * u;
-      c.drawLine(Offset(x - hw, y), Offset(x + hw, y - 3), Paint()
-        ..strokeWidth = 1.6
-        ..color = const Color(0xFF2E2112).withOpacity(0.7));
+      c.drawLine(Offset(x - hw, y + 1.5), Offset(x, y - 1.5), ring);
+      c.drawLine(Offset(x, y - 1.5), Offset(x + hw, y + 1.5), ring);
     }
-    void frond(double a, double len, Color col, double wd) {
-      final ex = tx + math.sin(a) * len, ey = ty - math.cos(a) * len * 0.35 + (a.abs() * 0.55 + 0.25) * len * 0.55;
-      final cxq = tx + math.sin(a) * len * 0.5, cyq = ty - len * 0.38 - math.cos(a) * 10;
-      final pa = Path()
-        ..moveTo(tx, ty)
-        ..quadraticBezierTo(cxq, cyq, ex, ey);
-      c.drawPath(pa, Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = wd
-        ..strokeCap = StrokeCap.round
-        ..color = col);
-      final lw = Paint()
-        ..strokeWidth = 1.5
-        ..strokeCap = StrokeCap.round
-        ..color = col;
-      for (double u = 0.14; u < 0.98; u += 0.045) {
-        final px = (1 - u) * (1 - u) * tx + 2 * (1 - u) * u * cxq + u * u * ex, py = (1 - u) * (1 - u) * ty + 2 * (1 - u) * u * cyq + u * u * ey;
-        final dx = 2 * (1 - u) * (cxq - tx) + 2 * u * (ex - cxq), dy = 2 * (1 - u) * (cyq - ty) + 2 * u * (ey - cyq), dl = math.sqrt(dx * dx + dy * dy) + 1e-6;
-        final nx = -dy / dl, ny = dx / dl, ll = (1 - u * 0.7) * 20 * (0.85 + r.nextDouble() * 0.3);
-        c.drawLine(Offset(px, py), Offset(px + nx * ll + dx / dl * 5, py + ny * ll + 9), lw);
-        c.drawLine(Offset(px, py), Offset(px - nx * ll + dx / dl * 5, py - ny * ll + 9), lw);
+    // سعفة: عرق منحني + شريط ورقي مسنّن على الجانبين يضيق نحو الطرف
+    void frond(double a, double len, Color col) {
+      final ex = tx + math.sin(a) * len, ey = ty - math.cos(a) * len * 0.3 + (a.abs() * 0.5 + 0.3) * len * 0.55;
+      final cxq = tx + math.sin(a) * len * 0.5, cyq = ty - len * 0.36 - math.cos(a) * 10;
+      Offset at(double u) => Offset((1 - u) * (1 - u) * tx + 2 * (1 - u) * u * cxq + u * u * ex, (1 - u) * (1 - u) * ty + 2 * (1 - u) * u * cyq + u * u * ey);
+      final up = <Offset>[], dn = <Offset>[];
+      for (int i = 0; i <= 18; i++) {
+        final u = i / 18, pt = at(u), nx = at(math.min(1, u + 0.02)) - at(math.max(0, u - 0.02));
+        final dl = nx.distance + 1e-6, n = Offset(-nx.dy / dl, nx.dx / dl), wd = (math.sin(u * math.pi) * 0.85 + 0.15) * (1 - u * 0.6) * 15 * (i.isEven ? 1 : 0.55);
+        up.add(pt + n * wd + const Offset(0, 4));
+        dn.add(pt - n * wd + const Offset(0, 4));
       }
+      final leaf = Path()..moveTo(tx, ty);
+      for (final o in up) {
+        leaf.lineTo(o.dx, o.dy);
+      }
+      for (final o in dn.reversed) {
+        leaf.lineTo(o.dx, o.dy);
+      }
+      leaf.close();
+      c.drawPath(leaf, Paint()..color = col);
+      c.drawPath(
+          Path()
+            ..moveTo(tx, ty)
+            ..quadraticBezierTo(cxq, cyq, ex, ey),
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.6
+            ..color = _mix(col, Colors.black, 0.3));
     }
 
     for (int i = 0; i < 8; i++) {
-      frond(-1.9 + i * 0.54 + r.nextDouble() * 0.2, 92 + r.nextDouble() * 22, const Color(0xFF2B4A1E), 3.2);
+      frond(-1.9 + i * 0.54 + r.nextDouble() * 0.2, 92 + r.nextDouble() * 22, L(0xFF2A4A1D));
     }
-    final dc = const Color(0xFFB0621C);
     for (final sd in const [-1.0, 1.0]) {
-      for (int k = 0; k < 9; k++) {
-        c.drawCircle(Offset(tx + sd * (10 + r.nextDouble() * 8), ty + 10 + r.nextDouble() * 18), 3, Paint()..color = _mix(dc, const Color(0xFF6B3410), r.nextDouble()));
+      for (int k = 0; k < 10; k++) {
+        c.drawCircle(Offset(tx + sd * (9 + r.nextDouble() * 9), ty + 9 + r.nextDouble() * 18), 3.2, Paint()..color = L(_mix(const Color(0xFFB8661E), const Color(0xFF6B3410), r.nextDouble()).value));
       }
     }
     for (int i = 0; i < 9; i++) {
-      frond(-1.75 + i * 0.44 + r.nextDouble() * 0.15, 98 + r.nextDouble() * 26, _mix(const Color(0xFF4F7F33), const Color(0xFF6E9441), r.nextDouble()), 3.4);
+      frond(-1.75 + i * 0.44 + r.nextDouble() * 0.15, 98 + r.nextDouble() * 26, L(_mix(const Color(0xFF4B7C31), const Color(0xFF6F9542), r.nextDouble()).value));
     }
-    c.drawCircle(Offset(tx, ty), 7, Paint()..color = const Color(0xFF3B5A26));
+    c.drawCircle(Offset(tx, ty + 2), 7, Paint()..color = L(0xFF3B5A26));
   }
 
-  /// غيمة ركامية: كتل متداخلة ناعمة، قاعدتها رمادية وقمتها بيضاء
-  static void _cloud(Canvas c, int v) {
-    final r = math.Random(70 + v);
-    final blobs = <(Offset, double)>[];
-    for (int i = 0; i < 9; i++) {
-      final x = 90 + i * 42.0 + r.nextDouble() * 20, rad = 34 + r.nextDouble() * 42 * (1 - (i - 4).abs() / 6);
-      blobs.add((Offset(x, 150 - rad * 0.55), rad));
-    }
-    final soft = Paint()..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
-    c.saveLayer(const Rect.fromLTWH(0, 0, 512, 220), Paint());
-    for (final b in blobs) {
-      c.drawCircle(b.$1, b.$2, soft..color = Colors.white);
-    }
-    c.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(70, 120, 380, 46), const Radius.circular(23)), soft..color = Colors.white);
-    c.drawRect(const Rect.fromLTWH(0, 0, 512, 220), Paint()
-      ..blendMode = BlendMode.srcATop
-      ..shader = ui.Gradient.linear(const Offset(0, 40), const Offset(0, 170), [Colors.white, const Color(0xFFDCE2E8), const Color(0xFF9AA4AE)], [0, 0.55, 1]));
-    c.restore();
+  /// غيمة ركامية من كتل بتدرّج دائري ناعم (بلا تمويه): قمة مضاءة وقاعدة رمادية
+  static ui.Picture cloud(int v, Color lit, Color base, double a) {
+    final key = 'c$v|${lit.value}|${base.value}|${(a * 10).round()}';
+    return _pics[key] ??= () {
+      if (_pics.length > 60) _pics.clear();
+      final rec = ui.PictureRecorder(), c = Canvas(rec), r = math.Random(70 + v);
+      for (int i = 0; i < 10; i++) {
+        final x = 80 + i * 38.0 + r.nextDouble() * 20, rad = 30 + r.nextDouble() * 44 * (1 - (i - 4.5).abs() / 6.5), y = 150 - rad * 0.5;
+        c.drawCircle(Offset(x, y), rad, Paint()..shader = ui.Gradient.radial(Offset(x, y - rad * 0.3), rad * 1.15, [lit.withOpacity(a), _mix(lit, base, 0.6).withOpacity(a * 0.9), base.withOpacity(0)], [0, 0.6, 1]));
+      }
+      return rec.endRecording();
+    }();
   }
 }
+
 /// هندسة نماذج السيارات (مولّدة من النموذج الأولي): الوحدة = عرض السيارة، y سالب للأعلى
 class _CarM {
   final List<double> tire, roof, mirror, plate, diff, third;
@@ -1434,8 +1462,6 @@ class _World extends CustomPainter {
   static TextPainter? _plate, _holyTp;
   static double _plateW = 0;
   static int _holyKm = -1;
-  static ui.Image? _carImg;
-  static String _carKey = '', _carPending = '';
   static const _r64 = Rect.fromLTWH(0, 0, 64, 64);
 
   // دفعة توهّجات تُرسم بنداء واحد (إضافي) بدل تمويه كل ضوء على حدة
@@ -1528,17 +1554,18 @@ class _World extends CustomPainter {
         c.drawCircle(Offset(x - rm * 0.3, y - rm * 0.2), rm * 0.22, Paint()..color = const Color(0xFFCFC8B0).withOpacity(0.35 * vis));
       }
     }
-    // الغيوم: صور ركامية ملوّنة حسب الضوء، تنساب مع الريح
-    final cTint = _mix(_mix(_mix(Colors.white, const Color(0xFFFFC090), golden * 0.7), const Color(0xFF9AA3AD), over * 0.8), const Color(0xFF1B2128), 1 - light0);
-    final cp = Paint()
-      ..filterQuality = FilterQuality.low
-      ..colorFilter = ColorFilter.mode(_mix(cTint, Colors.white, s.flash), BlendMode.modulate);
-    final nCl = _Art.ready ? (2 + s.cloud * 10).round() : 0;
+    // الغيوم: كتل ركامية ملوّنة حسب الضوء، تنساب مع الريح
+    final cLit = _mix(_mix(_mix(Colors.white, const Color(0xFFFFC090), golden * 0.7), const Color(0xFFA2ABB4), over * 0.8), const Color(0xFF1B2128), 1 - light0);
+    final cBase = _mix(_mix(const Color(0xFF8E98A3), const Color(0xFF5A6370), over), const Color(0xFF0B0E12), 1 - light0);
+    final nCl = (2 + s.cloud * 10).round();
     for (int i = 0; i < nCl; i++) {
       final cw0 = w * (0.35 + _hash(i + 40) * 0.45) * (1 - _hash(i + 30) * 0.4);
       final x = ((_hash(i + 20) * (w + cw0) + s.t * (2 + s.wind * 1.5) * (0.4 + _hash(i))) % (w + cw0 * 2)) - cw0, y = _hash(i + 30) * hz * 0.6 - cw0 * 0.12;
-      cp.color = Colors.white.withOpacity(0.55 + 0.4 * s.cloud);
-      c.drawImageRect(_Art.clouds[i % 3], const Rect.fromLTWH(0, 0, 512, 220), Rect.fromLTWH(x, y, cw0, cw0 * 0.43), cp);
+      c.save();
+      c.translate(x, y);
+      c.scale(cw0 / 512);
+      c.drawPicture(_Art.cloud(i % 3, _mix(cLit, Colors.white, s.flash), cBase, 0.55 + 0.4 * s.cloud));
+      c.restore();
     }
     if (over > 0.55) {
       c.drawRect(Rect.fromLTRB(0, 0, w, hz * 0.7), Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [top.withOpacity(0.8 * (over - 0.55) / 0.45), top.withOpacity(0)]).createShader(Rect.fromLTRB(0, 0, w, hz * 0.7)));
@@ -1710,23 +1737,21 @@ class _World extends CustomPainter {
     objs.sort((a, b) => b.$1.compareTo(a.$1));
     final wetRefl = <Offset>[];
     const lampC = Color(0xFFFFB45A);
-    final palmTint = _mix(_mix(const Color(0xFF151A1F), Colors.white, light), const Color(0xFFE6C690), s.dust * 0.6);
-    final palmP = Paint()
-      ..filterQuality = FilterQuality.low
-      ..colorFilter = ColorFilter.mode(palmTint, BlendMode.modulate);
     final air = _cl(math.max(murk, s.rain * 0.7) * 1.3);
     for (final o in objs) {
       final q = o.$1, sc = s0 * f(q);
       if (o.$2 == 0) {
         final side = o.$3.isEven ? 1.0 : -1.0, xm = side * (half + shoulder + 4 + _hash(o.$3) * 7), ht = 8 + _hash(o.$3 + 3) * 4;
         final k = ht * sc / 250, bx = X(xm, q), by = Y(q);
-        if (!_Art.ready || k * 256 < 2 || (_World.q == 0 && q > 25)) continue;
+        if (k * 256 < 2 || (_World.q == 0 && q > 25)) continue;
         final sway = math.sin(s.t * 1.2 + o.$3) * (0.02 + s.wind * 0.006);
         c.save();
         c.translate(bx, by);
         if (_hash(o.$3 + 8) > 0.5) c.scale(-1, 1);
         c.skew(sway, 0);
-        c.drawImageRect(_Art.palms[o.$3.abs() % 3], const Rect.fromLTWH(0, 0, 256, 320), Rect.fromLTWH(-128 * k, -318 * k, 256 * k, 320 * k), palmP);
+        c.scale(k);
+        c.translate(-128, -318);
+        c.drawPicture(_Art.palm(o.$3.abs() % 3, light0, s.dust));
         c.restore();
       } else {
         for (final side in const [-1.0, 1.0]) {
@@ -1850,9 +1875,7 @@ class _World extends CustomPainter {
     final cw = g.cw;
     final bob = (math.sin(s.t * 11) * 0.5 + math.sin(s.t * 23 + 1) * 0.3) * _cl(s.v / 20) * cw * 0.004;
     final ox = cx + off(qc) * s0 * fc + s.lean * cw * 0.06, oy = g.carY + bob + s.pitch * cw * 0.004;
-    final img = _carImage(cw, light0);
-    final W = cw * 1.3, Hc = cw * 1.0;
-    final src = img == null ? Rect.zero : Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble()), dst = Rect.fromLTWH(-W / 2, -cw * 0.9, W, Hc);
+    final pic = _carPicture(cw, light0);
     final lit = _cl(s.tail * 0.6 + s.brake * 0.9), red = Color.lerp(const Color(0xFF3A060C), const Color(0xFFFF2236), lit)!;
     // ظل الشمس باتجاهها الحقيقي (تدرّج بدل تمويه)
     final rel = ((s.sunAz - s.heading + 540) % 360 - 180) * math.pi / 180;
@@ -1862,14 +1885,10 @@ class _World extends CustomPainter {
       c.drawOval(sr, Paint()..shader = RadialGradient(colors: [Colors.black.withOpacity(0.5 * shA), Colors.black.withOpacity(0.35 * shA), Colors.black.withOpacity(0)], stops: const [0, 0.6, 1]).createShader(sr));
     }
     // انعكاس السيارة وأضوائها على الأسفلت المبلل
-    if (wet > 0.2 && img != null) {
-      c.save();
-      c.translate(ox, oy);
-      c.scale(1, -0.7);
-      c.drawImageRect(img, src, dst, Paint()
-        ..color = Colors.white.withOpacity(0.22 * wet)
-        ..filterQuality = FilterQuality.low);
-      c.restore();
+    if (wet > 0.2) {
+      // انعكاس مبسّط (ظل لوني للهيكل) بدل طبقة إضافية
+      final rr = Rect.fromLTWH(ox - cw * 0.5, oy, cw, cw * 0.45);
+      c.drawRect(rr, Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(_carColors[s.color]![2]).withOpacity(0.25 * wet * (0.3 + 0.7 * light0)), Colors.transparent]).createShader(rr));
     }
     final rl = 0.25 + 0.5 * wet;
     for (final sd in const [-1.0, 1.0]) {
@@ -1879,7 +1898,7 @@ class _World extends CustomPainter {
     c.save();
     c.translate(ox, oy);
     c.rotate(s.lean * 0.035);
-    if (img != null) c.drawImageRect(img, src, dst, Paint()..filterQuality = FilterQuality.medium);
+    c.drawPicture(pic);
     final lq = ((s.q - 3) / lp).round() * lp - s.q + 3 - qc;
     _carLive(c, m, cw, light, lightsOn, wet, lq, red, lit);
     c.restore();
@@ -2008,25 +2027,18 @@ class _World extends CustomPainter {
     tp.paint(c, Offset(hx - tp.width / 2, by0 - sz * 1.62 - tp.height - 2));
   }
 
-  /// صورة هيكل السيارة الثابت (تُرسم مرة لكل شكل/لون/حجم/مستوى ضوء)
-  ui.Image? _carImage(double cw, double light) {
-    final lq = (light * 24).round(), key = '${s.model}|${s.color}|${cw.round()}|$lq|${g.dpr}';
-    if (key != _carKey && key != _carPending) {
-      _carPending = key;
-      final rec = ui.PictureRecorder(), c = Canvas(rec);
-      c.scale(g.dpr);
-      c.translate(cw * 0.65, cw * 0.9);
-      _carBody(c, _carModels[s.model] ?? _carModels['sport']!, _carColors[s.color] ?? _carColors['green']!, cw, lq / 24);
-      final pic = rec.endRecording();
-      pic.toImage((cw * 1.3 * g.dpr).ceil(), (cw * g.dpr).ceil()).then((img) {
-        pic.dispose();
-        if (_carPending != key) return;
-        _carImg = img; // الصورة القديمة تُحرَّر تلقائياً
-        _carKey = key;
-        _carPending = '';
-      });
+  /// هيكل السيارة الثابت كصورة متجهة مسجّلة (تُعاد كل إطار بلا إعادة حساب) لكل شكل/لون/حجم/مستوى ضوء
+  static ui.Picture? _carPic;
+  static String _carKey = '';
+  ui.Picture _carPicture(double cw, double light) {
+    final lq = (light * 24).round(), key = '${s.model}|${s.color}|${cw.round()}|$lq';
+    if (key != _carKey || _carPic == null) {
+      final rec = ui.PictureRecorder();
+      _carBody(Canvas(rec), _carModels[s.model] ?? _carModels['sport']!, _carColors[s.color] ?? _carColors['green']!, cw, lq / 24);
+      _carPic = rec.endRecording();
+      _carKey = key;
     }
-    return _carImg;
+    return _carPic!;
   }
 
   /// الأجزاء الثابتة: ظلال التلامس، الإطارات، الهيكل بتظليل أسطواني، الزجاج، المرايا، اللوحة، الناشر والعادم، وأغطية الأضواء
