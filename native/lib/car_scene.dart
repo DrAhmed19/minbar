@@ -189,6 +189,7 @@ class _World extends CustomPainter {
   final _gT = <RSTransform>[], _gC = <Color>[];
   void _glow(Offset o, double r, Color col) {
     if (r < 0.5 || col.alpha < 3) return;
+    r = math.min(r, w * 0.09); // سقف للحجم: بدون هذا التوهج القريب يملأ الشاشة ثم يختفي فجأة (وميض)
     _gT.add(RSTransform.fromComponents(rotation: 0, scale: r / 32, anchorX: 32, anchorY: 32, translateX: o.dx, translateY: o.dy));
     _gC.add(col);
   }
@@ -680,6 +681,8 @@ class _World extends CustomPainter {
 
   // ======================= الأجسام الجانبية حسب المنطقة (من البعيد للقريب) =======================
   final _wet = <Offset>[];
+  /// تلاشي ناعم للأجسام وهي تعدي بجنب السيارة (بدل الاختفاء المفاجئ)
+  double _near(double q) => _sm(qc - 0.3, qc + 2.2, q);
   void _sides() {
     _wet.clear();
     final b = s.biome;
@@ -689,7 +692,7 @@ class _World extends CustomPainter {
       final i0 = ((s.q - phase) / period).floor();
       for (int k = -1; k < (maxQ / period).ceil() + 2; k++) {
         final idx = i0 + k, q = idx * period + phase - s.q;
-        if (q <= qMin || q >= maxQ) continue;
+        if (q <= qMin - (type == 200 ? 8 : 0) || q >= maxQ) continue;
         if (_hash(idx * 31 + salt) > prob * (type >= 100 ? 1 : (q >= 2 ? 1 : (q == 1 ? 0.6 : 0.35)))) continue;
         final xm = xOf(idx);
         objs.add((q, type, idx, xm.sign, xm));
@@ -727,7 +730,7 @@ class _World extends CustomPainter {
     }
     objs.sort((a, b) => b.$1.compareTo(a.$1));
     for (final o in objs) {
-      final q = o.$1, sc = s0 * f(q);
+      final q = o.$1, sc = s0 * f(math.max(q, qMin + 0.05));
       if (sc * 12 < 1.2) continue;
       switch (o.$2) {
         case 100:
@@ -787,11 +790,12 @@ class _World extends CustomPainter {
           ..color = poleC);
     c.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(ax, ay + 0.1 * sc), width: 0.9 * sc, height: 0.25 * sc), Radius.circular(0.1 * sc)), Paint()..color = _mix(poleC, Colors.black, 0.3));
     if (lightsOn > 0.05) {
-      _glow(Offset(ax, ay + 0.25 * sc), math.max(3.0, 2.2 * sc), lampC.withOpacity(0.55 * lightsOn));
-      _glow(Offset(ax, ay + 0.25 * sc), math.max(1.5, 0.5 * sc), const Color(0xFFFFEBC4).withOpacity(lightsOn));
+      final nf = _near(q);
+      _glow(Offset(ax, ay + 0.25 * sc), math.max(3.0, 2.2 * sc), lampC.withOpacity(0.55 * lightsOn * nf));
+      _glow(Offset(ax, ay + 0.25 * sc), math.max(1.5, 0.5 * sc), const Color(0xFFFFEBC4).withOpacity(lightsOn * nf));
       final px = X(xm - side * arm, q), y0 = Y(math.max(q - 1.6, -0.85)), y1 = Y(q + 1.6);
       final pr = Rect.fromCenter(center: Offset(px, by), width: 9 * sc, height: (y0 - y1).abs() + 2);
-      c.drawOval(pr, Paint()..shader = RadialGradient(colors: [lampC.withOpacity(0.28 * lightsOn), lampC.withOpacity(0)]).createShader(pr));
+      c.drawOval(pr, Paint()..shader = RadialGradient(colors: [lampC.withOpacity(0.28 * lightsOn * nf), lampC.withOpacity(0)]).createShader(pr));
       if (wet > 0.1 && q > qc) _wet.add(Offset(px, by));
       final air = _cl(math.max(murk, s.rain * 0.7) * 1.3);
       if (air > 0.08) {
@@ -801,7 +805,7 @@ class _World extends CustomPainter {
           ..lineTo(ax + 3 * sc, by)
           ..lineTo(ax - 3 * sc, by)
           ..close();
-        c.drawPath(cone, Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [lampC.withOpacity(0.24 * air * lightsOn), lampC.withOpacity(0.03 * air * lightsOn)]).createShader(Rect.fromLTRB(0, ay, w, by)));
+        c.drawPath(cone, Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [lampC.withOpacity(0.24 * air * lightsOn * nf), lampC.withOpacity(0.03 * air * lightsOn * nf)]).createShader(Rect.fromLTRB(0, ay, w, by)));
       }
     }
   }
@@ -846,21 +850,24 @@ class _World extends CustomPainter {
   void _building(double q0, int idx, double xm) {
     final side = xm.sign, depth = 3.0 + _hash(idx + 1) * 3, floors = 2 + (_hash(idx + 2) * 9).floor(), H = floors * 3.2 + 1;
     final q1 = q0 + depth, xa = xm, xb = xm + side * (8 + _hash(idx + 3) * 10);
-    if (Y(q0) - Y(q1) < 1) return;
+    if (q1 < qc - 0.4) return;
+    final nf = _near(q0 + depth * 0.5);
+    final qa = math.max(q0, qMin + 0.05);
+    if (Y(qa) - Y(q1) < 1) return;
     final hue = _hash(idx + 4);
     final wall = _mix(const Color(0xFFCDBFA6), _mix(const Color(0xFFB8B0A4), const Color(0xFFD9CDB4), hue), hue);
     final wallSide = shadeL(_mix(wall, Colors.black, 0.12)), wallFront = shadeL(wall);
     // الواجهة الجانبية (تطل على الطريق)
-    final sideFace = [P(xa, q0), P(xa, q1), P(xa, q1, H), P(xa, q0, H)];
+    final sideFace = [P(xa, qa), P(xa, q1), P(xa, q1, H), P(xa, qa, H)];
     c.drawPath(Path()..addPolygon(sideFace, true), Paint()..color = wallSide);
     // الواجهة الأمامية (تواجه الكاميرا)
     final front = Rect.fromLTRB(math.min(X(xa, q0), X(xb, q0)), Y(q0, H), math.max(X(xa, q0), X(xb, q0)), Y(q0));
-    if (front.right > -50 && front.left < w + 50) c.drawRect(front, Paint()..color = wallFront);
-    final sc = s0 * f(q0);
+    if (q0 > qMin + 0.2 && front.right > -50 && front.left < w + 50) c.drawRect(front, Paint()..color = wallFront);
+    final sc = s0 * f(qa);
     if (sc * 3 < 3) return;
     // شبابيك: الواجهة الجانبية بثنائية خطية
     Offset bil(double u, double v) {
-      final qq = q0 + (q1 - q0) * u;
+      final qq = qa + (q1 - qa) * u;
       return P(xa, qq, v * H);
     }
 
@@ -872,7 +879,7 @@ class _World extends CustomPainter {
       for (int k = 0; k < cols; k++) {
         final u0 = (k + 0.25) / cols, u1 = (k + 0.75) / cols;
         final quad = [bil(u0, v1), bil(u1, v1), bil(u1, v0), bil(u0, v0)];
-        (night && _hash(idx * 97 + fl * 13 + k) > 0.45 ? lit : win).addPolygon(quad, true);
+        (night && nf > 0.3 && _hash(idx * 97 + fl * 13 + k) > 0.45 ? lit : win).addPolygon(quad, true);
       }
     }
     // شبابيك الواجهة الأمامية
@@ -881,7 +888,7 @@ class _World extends CustomPainter {
       for (int k = 0; k < fcols; k++) {
         final x0 = xa + side * fw * (k + 0.25) / fcols, x1 = xa + side * fw * (k + 0.75) / fcols;
         final r = Rect.fromLTRB(math.min(X(x0, q0), X(x1, q0)), Y(q0, 1.2 + fl * 3.2 + 2.6), math.max(X(x0, q0), X(x1, q0)), Y(q0, 1.2 + fl * 3.2 + 0.7));
-        (night && _hash(idx * 61 + fl * 7 + k) > 0.45 ? lit : win).addRect(r);
+        (night && nf > 0.3 && _hash(idx * 61 + fl * 7 + k) > 0.45 ? lit : win).addRect(r);
       }
     }
     c.drawPath(win, Paint()..color = _mix(_mix(const Color(0xFF2A3A48), const Color(0xFF6E8AA0), light), hor, 0.15));
@@ -891,15 +898,15 @@ class _World extends CustomPainter {
     c.drawPath(Path()..addPolygon([bil(0.05, 3.0 / H), bil(0.95, 3.0 / H), bil(0.95, 2.4 / H), bil(0.05, 2.4 / H)], true), Paint()..color = shadeL(aw));
     final sign = [bil(0.1, 3.9 / H), bil(0.9, 3.9 / H), bil(0.9, 3.1 / H), bil(0.1, 3.1 / H)];
     c.drawPath(Path()..addPolygon(sign, true), Paint()..color = night ? _mix(aw, Colors.white, 0.4) : shadeL(const Color(0xFFEDEAE0)));
-    if (night) _glow(bil(0.5, 3.5 / H), sc * 2.2, aw.withOpacity(0.5 * lightsOn));
+    if (night) _glow(bil(0.5, 3.5 / H), sc * 2.2, aw.withOpacity(0.35 * lightsOn * nf));
     c.drawPath(Path()..addPolygon([bil(0.08, 2.3 / H), bil(0.92, 2.3 / H), bil(0.92, 0.1 / H), bil(0.08, 0.1 / H)], true), Paint()..color = night ? const Color(0xFFFFE2A8).withOpacity(0.6 * lightsOn) : shadeL(const Color(0xFF3A4048)));
     // خزانات ماء وصحون على السطح
     for (int k = 0; k < 2; k++) {
       if (_hash(idx * 5 + k) < 0.4) continue;
-      final xx = xa + side * fw * (0.2 + 0.5 * k), tw = 1.0 * s0 * f(q0), tp = P(xx, q0 + 0.5, H);
+      final xx = xa + side * fw * (0.2 + 0.5 * k), tw = 1.0 * s0 * f(qa), tp = P(xx, qa + 0.5, H);
       c.drawRect(Rect.fromLTWH(tp.dx - tw / 2, tp.dy - tw * 1.1, tw, tw * 1.1), Paint()..color = shadeL(k == 0 ? const Color(0xFFE6E6E0) : const Color(0xFF2A5E9A)));
     }
-    c.drawLine(P(xa, q0, H), P(xa, q1, H), Paint()
+    c.drawLine(P(xa, qa, H), P(xa, q1, H), Paint()
       ..strokeWidth = math.max(1.0, 0.15 * sc)
       ..color = shadeL(_mix(wall, Colors.white, 0.3)));
   }

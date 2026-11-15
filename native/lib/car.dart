@@ -397,6 +397,9 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
   DateTime? _backAt;
   // GPS
   Position? _lp;
+  bool _sim = false; // محاكاة: تجربة السرعة والانعطاف بدون قيادة
+  double _simV = 0;
+  int _simT = 0;
   double _lt = 0, _rawV = 0, _turn = 0, _acc = 99, _fixAt = -99, _blinkHold = 0;
   double _lat = 32.616, _lon = 44.024; // كربلاء افتراضياً
   // الطقس والوقت
@@ -710,7 +713,11 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
     final s = _sc, playing = app.player.p.playing;
     s.t += dt;
     double target;
-    if (gps) {
+    final gp = gps || _sim;
+    if (_sim) {
+      target = _simV;
+      _turn += (_simT * 0.3 - _turn) * math.min(1.0, dt * 2);
+    } else if (gps) {
       final age = _now - _fixAt;
       target = age < 5 ? _rawV : _rawV * _cl(1 - (age - 5) / 5); // فقدان الإشارة: تباطؤ تدريجي
     } else {
@@ -720,14 +727,14 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
     s.v += (target - s.v) * math.min(1.0, dt * 2.4);
     final acc = (s.v - prev) / dt;
     s.a += (acc - s.a) * math.min(1.0, dt * 4);
-    final braking = gps ? ((s.a < -0.7 && s.v > 0.5) || s.v < 0.35) : !playing;
+    final braking = gp ? ((s.a < -0.7 && s.v > 0.5) || s.v < 0.35) : !playing;
     s.brake += ((braking ? 1.0 : 0.0) - s.brake) * math.min(1.0, dt * 14);
     s.q += s.v * dt / 2.5; // وحدة العمق = 2.5 م
     if (playing) s.spin += dt * 0.8;
-    final k = gps && s.v > 2.5 ? _cl(_turn / s.v, -0.03, 0.03) : 0.0;
+    final k = gp && s.v > 2.5 ? _cl(_turn / s.v, -0.03, 0.03) : 0.0;
     s.curv += (k - s.curv) * math.min(1.0, dt * 1.2);
-    s.lean += ((gps ? _cl(s.v * _turn / 9.8, -0.5, 0.5) : 0.0) - s.lean) * math.min(1.0, dt * 3);
-    if (gps && _turn.abs() > 0.13 && s.v < 17) _blinkHold = 1.6 * _turn.sign;
+    s.lean += ((gp ? _cl(s.v * _turn / 9.8, -0.5, 0.5) : 0.0) - s.lean) * math.min(1.0, dt * 3);
+    if (gp && _turn.abs() > 0.13 && s.v < 17) _blinkHold = 1.6 * _turn.sign;
     if (_blinkHold != 0) {
       final sg = _blinkHold.sign;
       _blinkHold -= sg * dt;
@@ -1132,6 +1139,38 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
                       }),
                   ]),
                 ], note: 'المكتشفة: $detected'),
+                card('🎮', 'تجربة بدون قيادة', [
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: _sim,
+                    activeColor: kGold,
+                    onChanged: (v) => upd(() {
+                      _sim = v;
+                      if (!v) {
+                        _simV = 0;
+                        _simT = 0;
+                      }
+                    }),
+                    title: Text('محاكاة السرعة والانعطاف', style: tx(14, c: Colors.white)),
+                    subtitle: Text('تشوف تأثير السرعة والتفافة السيارة والإشارة والفرامل وإنت واقف', style: tx(12, c: Colors.white54, h: 1.5)),
+                  ),
+                  if (_sim) ...[
+                    Row(children: [
+                      Expanded(child: Text('السرعة', style: tx(13, c: Colors.white70))),
+                      Text('${(_simV * 3.6).round()} كم/س', style: tx(14, c: kGold)),
+                    ]),
+                    SliderTheme(
+                      data: SliderTheme.of(c).copyWith(activeTrackColor: kGold, thumbColor: kGold, inactiveTrackColor: Colors.white12, overlayColor: const Color(0x22E8C468)),
+                      child: Slider(value: _simV * 3.6, min: 0, max: 160, onChanged: (v) => set(() => _simV = v / 3.6)),
+                    ),
+                    label('الانعطاف'),
+                    wrap([
+                      chip('يسار', _simT == -1, () => _simT = -1, icon: '↰'),
+                      chip('مستقيم', _simT == 0, () => _simT = 0, icon: '↑'),
+                      chip('يمين', _simT == 1, () => _simT = 1, icon: '↱'),
+                    ]),
+                  ],
+                ]),
                 card('🛡', 'القيادة الآمنة', [
                   Row(children: [
                     Expanded(child: Text('تنبيه السرعة (نغمة هادئة مرة وحدة)', style: tx(13, c: Colors.white70))),
@@ -1373,6 +1412,29 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
         ),
       ]);
 
+  /// العنوان والصورة: فوق الكلمات إذا موجودة، وينزلون لتحت إذا اللطمية بلا كلمات (بدون ما يتحرك المشهد)
+  Widget _titleBlock(Track? t, List<Lyric> lines, double base, {double? height}) {
+    final has = lines.isNotEmpty;
+    return SizedBox(
+      height: height,
+      child: LayoutBuilder(builder: (_, c) {
+        final hh = c.maxHeight.isFinite ? c.maxHeight : 120.0;
+        return Stack(children: [
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOutCubic,
+            left: 0,
+            right: 0,
+            top: has ? 0 : hh - 58,
+            height: 58,
+            child: _titleRow(t),
+          ),
+          Positioned(left: 0, right: 0, top: 58, bottom: 0, child: AnimatedOpacity(opacity: has ? 1 : 0, duration: const Duration(milliseconds: 300), child: has ? LyricStrip(lines: lines, base: base) : const SizedBox())),
+        ]);
+      }),
+    );
+  }
+
   String _fmt(Duration d) => '${d.inMinutes}:${_two(d.inSeconds % 60)}';
 
   Widget _progress() => StreamBuilder<Duration>(
@@ -1530,7 +1592,7 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
             if (land) {
               final pw = w * 0.42, sw = w - pw, u = _cl(h * 0.17, 50, 84);
               final g = _cl(math.min(sw * 0.36, h * 0.3), 90, 170);
-              final hz = math.max(h * 0.36, top + 44 + g * 0.7 + 4), carY = h - pad.bottom - h * 0.05, cw = math.min(sw * 0.36, (carY - hz) * 0.85);
+              final hz = math.max(h * 0.36, top + 66 + g * 0.7 + 4), carY = h - pad.bottom - h * 0.05, cw = math.min(sw * 0.36, (carY - hz) * 0.85);
               return Stack(children: [
                 Positioned.fill(child: _scene(_Stage(hz, sw * 0.5, carY, cw, dpr))),
                 Positioned(
@@ -1540,7 +1602,7 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
                     width: pw + 40,
                     child: const IgnorePointer(child: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.centerLeft, end: Alignment.centerRight, colors: [Color(0x00000000), Color(0xB3000000), Color(0xD9000000)], stops: [0, 0.25, 1]))))),
                 Positioned(left: 0, width: sw, top: 0, bottom: 0, child: _overlays(carY - cw * 0.4)),
-                Positioned(top: top + 44, left: sw * 0.5 - g / 2, child: _speedo(g)),
+                Positioned(top: top + 66, left: sw * 0.5 - g / 2, child: _speedo(g)),
                 Positioned(top: top - 4, left: 0, right: 0, child: _topBar()),
                 Positioned(left: 0, width: sw, top: hz + 8, child: _bannerW()),
                 Positioned(
@@ -1549,18 +1611,17 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
                   top: top + 50,
                   bottom: pad.bottom + 8,
                   child: Column(children: [
-                    _titleRow(t),
-                    Expanded(child: ly.isEmpty ? const SizedBox() : LyricStrip(lines: ly, base: 20)),
+                    Expanded(child: _titleBlock(t, ly, 20)),
                     _progress(),
                     _controls(t, u),
                   ]),
                 ),
               ]);
             }
-            final u = _cl(w * 0.19, 58, 88), lyH = ly.isEmpty ? 0.0 : _cl(h * 0.1, 54, 96);
+            final u = _cl(w * 0.19, 58, 88), lyH = _cl(h * 0.1, 54, 96);
             final panel = 58 + lyH + 30 + u * 1.3 + u * 0.16 + u * 0.64 + 14 + pad.bottom;
             final g = _cl(math.min(w * 0.44, h * 0.2), 100, 200);
-            final hz = math.max(h * 0.3, top + 46 + g * 0.7 + 6), carY = h - panel - 4;
+            final hz = math.max(h * 0.3, top + 66 + g * 0.7 + 6), carY = h - panel - 4;
             final cw = math.min(w * 0.4, (carY - hz) * 0.85);
             return Stack(children: [
               Positioned.fill(child: _scene(_Stage(hz, w / 2, carY, cw, dpr))),
@@ -1571,7 +1632,7 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
                   height: panel + 50,
                   child: const IgnorePointer(child: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x00000000), Color(0xCC000000), Color(0xF2000000)], stops: [0, 0.2, 1]))))),
               Positioned.fill(child: _overlays(carY - cw * 0.4)),
-              Positioned(top: top + 44, left: (w - g) / 2, child: _speedo(g)),
+              Positioned(top: top + 66, left: (w - g) / 2, child: _speedo(g)),
               Positioned(top: top - 4, left: 0, right: 0, child: _topBar()),
               Positioned(left: 0, right: 0, top: hz + 6, child: _bannerW()),
               Positioned(
@@ -1582,8 +1643,7 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(18, 4, 18, 14 + pad.bottom),
                   child: Column(children: [
-                    _titleRow(t),
-                    SizedBox(height: lyH, child: ly.isEmpty ? null : LyricStrip(lines: ly, base: 22)),
+                    _titleBlock(t, ly, 22, height: 58.0 + lyH),
                     _progress(),
                     _controls(t, u),
                   ]),
