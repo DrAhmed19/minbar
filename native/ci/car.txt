@@ -1,0 +1,35 @@
+wait 14
+until "الدخول كضيف"
+wait 8
+text "الإعدادات"
+wait 4
+swipe 540 1800 540 700 400
+wait 3
+text "وضع السيارة"
+wait 10
+shot c01-real
+dump c01
+text "°"
+wait 6
+shot c02-clear
+text "تجربة"
+text "تجربة"
+wait 7
+shot c03-rain
+text "تجربة"
+wait 7
+shot c04-storm
+text "تجربة"
+wait 7
+shot c05-fog
+text "تجربة"
+wait 7
+shot c06-dust
+text "تجربة"
+wait 7
+shot c07-snow
+text "تجربة"
+wait 2
+back
+wait 3
+shot c08-after-back
