@@ -287,13 +287,28 @@ class _Art {
 
   /// غيمة ركامية من كتل بتدرّج دائري ناعم (بلا تمويه): قمة مضاءة وقاعدة رمادية
   static ui.Picture cloud(int v, Color lit, Color base, double a) {
-    final key = 'c$v|${lit.value}|${base.value}|${(a * 10).round()}';
+    final key = 'c$v|${lit.value}|${base.value}|${(a * 5).round()}';
     return _pics[key] ??= () {
       if (_pics.length > 60) _pics.clear();
       final rec = ui.PictureRecorder(), c = Canvas(rec), r = math.Random(70 + v);
-      for (int i = 0; i < 10; i++) {
-        final x = 80 + i * 38.0 + r.nextDouble() * 20, rad = 30 + r.nextDouble() * 44 * (1 - (i - 4.5).abs() / 6.5), y = 150 - rad * 0.5;
-        c.drawCircle(Offset(x, y), rad, Paint()..shader = ui.Gradient.radial(Offset(x, y - rad * 0.3), rad * 1.15, [lit.withOpacity(a), _mix(lit, base, 0.6).withOpacity(a * 0.9), base.withOpacity(0)], [0, 0.6, 1]));
+      // غيمة ركامية: قاعدة مسطحة عريضة + قمم متدرجة؛ كتل معتمة بحواف ناعمة، الأعلى أفتح
+      final blobs = <(double, double, double)>[];
+      for (int i = 0; i < 14; i++) {
+        final rad = 22 + r.nextDouble() * 16;
+        blobs.add((60 + i * 28 + r.nextDouble() * 14, 150 - rad * 0.35, rad));
+      }
+      for (int i = 0; i < 9; i++) {
+        final t = i / 8, rad = (30 + r.nextDouble() * 30) * (1 - (t - 0.5).abs() * 0.9);
+        blobs.add((110 + t * 290 + r.nextDouble() * 20, 140 - rad * 0.9 - r.nextDouble() * 10, rad));
+      }
+      for (int i = 0; i < 5; i++) {
+        final t = i / 4, rad = (26 + r.nextDouble() * 20) * (1 - (t - 0.5).abs());
+        blobs.add((170 + t * 170 + r.nextDouble() * 15, 105 - rad * 0.7, rad));
+      }
+      blobs.sort((p, q) => q.$2.compareTo(p.$2));
+      for (final b in blobs) {
+        final k = _cl((155 - b.$2) / 110), cc = _mix(base, lit, 0.35 + 0.65 * k), hi = _mix(cc, Colors.white, 0.25 * k);
+        c.drawCircle(Offset(b.$1, b.$2), b.$3, Paint()..shader = ui.Gradient.radial(Offset(b.$1 - b.$3 * 0.2, b.$2 - b.$3 * 0.35), b.$3 * 1.05, [hi.withOpacity(a), cc.withOpacity(a), cc.withOpacity(a), cc.withOpacity(0)], [0, 0.6, 0.78, 1]));
       }
       return rec.endRecording();
     }();
@@ -1570,7 +1585,7 @@ class _World extends CustomPainter {
       c.save();
       c.translate(x, y);
       c.scale(cw0 / 512);
-      c.drawPicture(_Art.cloud(i % 3, _mix(cLit, Colors.white, s.flash), cBase, 0.55 + 0.4 * s.cloud));
+      c.drawPicture(_Art.cloud(i % 3, _mix(cLit, Colors.white, s.flash), cBase, 0.85 + 0.15 * s.cloud));
       c.restore();
     }
     if (over > 0.55) {
@@ -1855,11 +1870,16 @@ class _World extends CustomPainter {
         c.drawRect(rr, Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [hor.withOpacity(0), _mix(hor, Colors.grey, 0.4).withOpacity(0.25 * s.rain), hor.withOpacity(0)]).createShader(rr));
       }
     }
-    for (final o in wetRefl) {
-      final rr = Rect.fromLTRB(o.dx - 4, o.dy, o.dx + 4, math.min(h, o.dy + (h - o.dy) * 0.4));
-      c.drawRect(rr, Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [lampC.withOpacity(0.38 * wet * lightsOn), lampC.withOpacity(0)]).createShader(rr));
+    // انعكاسات الإنارة على الأسفلت المبلل: بقع ممدودة ناعمة
+    if (wetRefl.isNotEmpty && _Art.ready) {
+      final rp = Paint()
+        ..filterQuality = FilterQuality.low
+        ..colorFilter = ColorFilter.mode(lampC.withOpacity(_cl(0.55 * wet * lightsOn)), BlendMode.modulate);
+      for (final o in wetRefl) {
+        final len = (h - o.dy) * 0.32, wd = math.max(4.0, len * 0.09);
+        c.drawImageRect(_Art.dot, _r64, Rect.fromLTWH(o.dx - wd / 2, o.dy - len * 0.2, wd, len), rp);
+      }
     }
-
     // ---------- ضوء السيارة الأمامي ----------
     final beamOn = math.max(lightsOn, murk * 0.8);
     if (beamOn > 0.05) {
