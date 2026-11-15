@@ -180,32 +180,41 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
         ]),
       );
 
-  /// عدّاد السرعة: اضغطه لتشغيل/إيقاف السرعة الحقيقية
-  Widget _speedo(double s) => GestureDetector(
+  /// عدّاد السرعة بوسط السماء: اضغطه لتشغيل/إيقاف السرعة الحقيقية (GPS)
+  Widget _speedo(double g) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: () {
           HapticFeedback.selectionClick();
           gps ? _gpsOff() : _gpsOn();
         },
         child: SizedBox(
-          width: s,
-          height: s,
+          width: g,
+          height: g * 0.72,
           child: AnimatedBuilder(
             animation: _frame,
-            builder: (_, __) => CustomPaint(
-              painter: _GaugePainter(gps ? _sc.kmh : 0, gps),
-              child: Center(
-                child: gps
-                    ? Column(mainAxisSize: MainAxisSize.min, children: [
-                        Text('${_sc.kmh.round()}', style: tx(s * 0.3, c: _sc.kmh > 120 ? const Color(0xFFFF6B6B) : Colors.white, h: 1).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
-                        Text('كم/س', style: tx(s * 0.1, c: Colors.white54, h: 1.2)),
-                        if (_trip > 100) Text('${(_trip / 1000).toStringAsFixed(1)} كم', style: tx(s * 0.085, c: kGold, h: 1.4)),
-                      ])
-                    : Column(mainAxisSize: MainAxisSize.min, children: [
-                        PIcon(Ic.speed, color: kGold, size: s * 0.26),
-                        Text('اضغط للسرعة', style: tx(s * 0.095, c: Colors.white60, h: 1.5)),
-                      ]),
-              ),
-            ),
+            builder: (_, __) {
+              final k = gps ? _sc.kmh : 0.0, hot = k > 120;
+              final col = !gps ? Colors.white38 : (hot ? const Color(0xFFFF5A64) : Colors.white);
+              return CustomPaint(
+                painter: _GaugePainter(k, gps),
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: Padding(
+                    padding: EdgeInsets.only(top: g * 0.17),
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      Directionality(
+                        textDirection: TextDirection.ltr,
+                        child: Text('${k.round()}',
+                            style: tx(g * 0.27, c: col, h: 1).copyWith(fontFeatures: const [FontFeature.tabularFigures()], shadows: gps ? [Shadow(color: hot ? const Color(0xFFFF5A64) : _RoadPainter.neon, blurRadius: 18)] : null)),
+                      ),
+                      Text('كم/س', style: tx(g * 0.075, c: _RoadPainter.neon.withOpacity(gps ? 0.9 : 0.5), h: 1.3)),
+                      if (!gps) Text('اضغط لتفعيل السرعة', style: tx(g * 0.062, c: Colors.white54, h: 1.4)),
+                      if (gps && _trip > 100) Text('${(_trip / 1000).toStringAsFixed(1)} كم', style: tx(g * 0.066, c: kGold, h: 1.4)),
+                    ]),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       );
@@ -218,7 +227,7 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
           animation: _frame,
           builder: (_, child) => Transform.rotate(angle: _sc.spin, child: child),
           child: Container(
-            decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0x66E8C468), width: 2), boxShadow: const [BoxShadow(color: Color(0x55000000), blurRadius: 14)]),
+            decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0x9935E3C1), width: 2), boxShadow: const [BoxShadow(color: Color(0x4435E3C1), blurRadius: 16)]),
             child: Stack(alignment: Alignment.center, children: [
               ClipOval(child: Cover(t?.coverUrl ?? '', size: s - 4, radius: 0)),
               Container(width: s * 0.16, height: s * 0.16, decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF04140F), border: Border.all(color: kGold, width: 1.5))),
@@ -228,13 +237,19 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
       );
 
   Widget _scene(Track? t) => LayoutBuilder(builder: (_, c) {
-        final g = math.min(c.maxWidth * 0.3, c.maxHeight * 0.46).clamp(72.0, 150.0).toDouble();
+        final w = c.maxWidth, h = c.maxHeight, hz = h * 0.42;
+        final g = math.min(w * 0.46, hz * 1.5).clamp(110.0, 240.0).toDouble();
+        final cs = math.min(w * 0.19, hz * 0.6).clamp(50.0, 118.0).toDouble();
         return ClipRRect(
           borderRadius: BorderRadius.circular(22),
           child: Stack(children: [
             Positioned.fill(child: RepaintBoundary(child: CustomPaint(painter: _RoadPainter(_sc, _frame)))),
-            Positioned(left: 10, top: 10, child: Directionality(textDirection: TextDirection.rtl, child: _speedo(g))),
-            Positioned(right: 10, top: 10, child: _disc(t, g)),
+            Positioned(top: 4, left: (w - g) / 2, child: _speedo(g)),
+            Positioned(
+                left: 10,
+                top: 10,
+                child: SizedBox(width: cs, height: cs, child: ValueListenableBuilder<DateTime>(valueListenable: _clock, builder: (_, d, __) => CustomPaint(painter: _ClockPainter(d))))),
+            Positioned(right: 10, top: 10, child: _disc(t, cs)),
           ]),
         );
       });
@@ -355,75 +370,142 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
   }
 }
 
-/// عدّاد دائري: قوس ذهبي يمتلئ مع السرعة (حتى 160)
+/// عدّاد علوي: قوس بشرطات تضيء مع السرعة (حتى 160)
 class _GaugePainter extends CustomPainter {
   final double kmh;
   final bool on;
   _GaugePainter(this.kmh, this.on);
   @override
   void paint(Canvas c, Size s) {
-    final ctr = s.center(Offset.zero), r = s.width / 2 - 5;
-    c.drawCircle(ctr, r + 4, Paint()..color = const Color(0xB3020B08));
-    const a0 = math.pi * 0.75, sw = math.pi * 1.5;
-    final bg = Paint()
+    const neon = _RoadPainter.neon;
+    final ctr = Offset(s.width / 2, s.width * 0.52), r = s.width * 0.46;
+    const a0 = math.pi * 1.06, sw = math.pi * 0.88;
+    final gr = Rect.fromCircle(center: ctr, radius: r);
+    c.drawCircle(ctr, r * 0.75, Paint()..shader = RadialGradient(colors: [neon.withOpacity(on ? 0.22 : 0.1), neon.withOpacity(0)]).createShader(Rect.fromCircle(center: ctr, radius: r * 0.75)));
+    c.drawArc(gr, a0, sw, false, Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 5
-      ..strokeCap = StrokeCap.round
-      ..color = const Color(0x26FFFFFF);
-    c.drawArc(Rect.fromCircle(center: ctr, radius: r), a0, sw, false, bg);
-    for (int i = 0; i <= 8; i++) {
-      final a = a0 + sw * i / 8, d = Offset(math.cos(a), math.sin(a));
-      c.drawLine(ctr + d * (r - 9), ctr + d * (r - 4), Paint()..color = const Color(0x55FFFFFF)..strokeWidth = 1.4);
+      ..strokeWidth = 1.4
+      ..color = neon.withOpacity(0.35));
+    final f = on ? (kmh / 160).clamp(0.0, 1.0).toDouble() : 0.0;
+    const n = 32;
+    for (int i = 0; i <= n; i++) {
+      final a = a0 + sw * i / n, d = Offset(math.cos(a), math.sin(a)), lg = i % 4 == 0, act = on && i / n <= f + 0.001;
+      final p = Paint()
+        ..strokeWidth = lg ? 2.4 : 1.6
+        ..strokeCap = StrokeCap.round
+        ..color = act ? Color.lerp(neon, const Color(0xFFFF5A64), (i / n - 0.6).clamp(0.0, 0.4).toDouble() * 2.5)! : Colors.white.withOpacity(0.28);
+      if (act) c.drawLine(ctr + d * (r * (lg ? 0.8 : 0.85)), ctr + d * (r * 0.94), Paint()..strokeWidth = 6..color = p.color.withOpacity(0.35)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4));
+      c.drawLine(ctr + d * (r * (lg ? 0.8 : 0.85)), ctr + d * (r * 0.94), p);
     }
-    if (!on) return;
-    final f = (kmh / 160).clamp(0.0, 1.0).toDouble();
-    final fg = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 5
-      ..strokeCap = StrokeCap.round
-      ..shader = SweepGradient(startAngle: 0, endAngle: math.pi * 2, colors: const [kGold, kGold2, Color(0xFFFF6B6B)], stops: const [0, 0.6, 1], transform: const GradientRotation(a0)).createShader(Rect.fromCircle(center: ctr, radius: r));
-    c.drawArc(Rect.fromCircle(center: ctr, radius: r), a0, sw * f, false, fg);
+    if (f > 0) {
+      c.drawArc(gr.inflate(3), a0, sw * f, false, Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3
+        ..strokeCap = StrokeCap.round
+        ..color = neon
+        ..maskFilter = const MaskFilter.blur(BlurStyle.solid, 3));
+    }
   }
 
   @override
   bool shouldRepaint(covariant _GaugePainter o) => o.kmh != kmh || o.on != on;
 }
 
-/// المشهد: سماء ليلية، أفق بقباب ومنارات، طريق بمنظور يتحرك، وسيارة من الخلف
+/// ساعة عقارب بزجاج داكن
+class _ClockPainter extends CustomPainter {
+  final DateTime t;
+  _ClockPainter(this.t);
+  @override
+  void paint(Canvas c, Size s) {
+    const neon = _RoadPainter.neon;
+    final ctr = s.center(Offset.zero), r = s.width / 2 - 2, rc = Rect.fromCircle(center: ctr, radius: r);
+    c.drawCircle(ctr, r, Paint()..shader = const RadialGradient(colors: [Color(0xE60C2A26), Color(0xF2020B08)]).createShader(rc));
+    c.drawCircle(ctr, r, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.6
+      ..color = neon.withOpacity(0.6));
+    for (int i = 0; i < 60; i++) {
+      final a = i * math.pi / 30, d = Offset(math.sin(a), -math.cos(a)), lg = i % 5 == 0;
+      c.drawLine(ctr + d * (r * (lg ? 0.78 : 0.86)), ctr + d * (r * 0.92), Paint()
+        ..strokeWidth = lg ? 2 : 0.8
+        ..color = Colors.white.withOpacity(lg ? 0.85 : 0.35));
+    }
+    void hand(double a, double len, double wd, Color col) {
+      final d = Offset(math.sin(a), -math.cos(a));
+      c.drawLine(ctr - d * (r * 0.12), ctr + d * (r * len), Paint()
+        ..strokeWidth = wd
+        ..strokeCap = StrokeCap.round
+        ..color = col);
+    }
+    final hr = (t.hour % 12 + t.minute / 60) * math.pi / 6, mn = (t.minute + t.second / 60) * math.pi / 30, sc = t.second * math.pi / 30;
+    hand(hr, 0.48, r * 0.07, Colors.white);
+    hand(mn, 0.7, r * 0.045, Colors.white);
+    hand(sc, 0.8, r * 0.022, kGold);
+    c.drawCircle(ctr, r * 0.07, Paint()..color = kGold);
+  }
+
+  @override
+  bool shouldRepaint(covariant _ClockPainter o) => o.t != t;
+}
+
+/// المشهد: سماء ونجوم، جبال وأفق قباب ومنارات، أرضية شبكية، طريق مرتفع بحواف مضيئة،
+/// خطوط سرعة تتدفق، ضوء أمامي، وسيارة رياضية لامعة بشريط إضاءة خلفي
 class _RoadPainter extends CustomPainter {
   final _Scene sc;
   _RoadPainter(this.sc, Listenable r) : super(repaint: r);
+  static const neon = Color(0xFF35E3C1);
+  static TextPainter? _plate;
+  static double _plateW = 0;
 
   @override
   void paint(Canvas c, Size s) {
-    final w = s.width, h = s.height, hz = h * 0.44, cx = w / 2;
+    final w = s.width, h = s.height, hz = h * 0.42, cx = w / 2, H = h - hz, v = sc.v, full = Offset.zero & s;
     // السماء
-    c.drawRect(Offset.zero & s, Paint()..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF020B08), Color(0xFF07261C), Color(0xFF0E4636)], stops: [0, 0.3, 0.46]).createShader(Offset.zero & s));
-    // نجوم ثابتة تومض بهدوء
+    c.drawRect(full, Paint()..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF010708), Color(0xFF04201F), Color(0xFF0A403A)], stops: [0, 0.25, 0.42]).createShader(full));
+    final sky = Rect.fromLTRB(0, 0, w, hz);
+    c.drawRect(sky, Paint()..shader = const RadialGradient(center: Alignment(0.55, -1.2), radius: 1.2, colors: [Color(0x3384EAD8), Color(0x00000000)]).createShader(sky));
     final rnd = math.Random(7);
-    for (int i = 0; i < 46; i++) {
-      final x = rnd.nextDouble() * w, y = rnd.nextDouble() * hz * 0.8, tw = 0.35 + 0.35 * math.sin(sc.sway * 0.8 + i * 1.7);
-      c.drawCircle(Offset(x, y), 0.6 + rnd.nextDouble() * 0.9, Paint()..color = Colors.white.withOpacity(tw.clamp(0.1, 0.8).toDouble()));
+    for (int i = 0; i < 64; i++) {
+      final x = rnd.nextDouble() * w, y = rnd.nextDouble() * hz * 0.85, rr = 0.5 + rnd.nextDouble(), tw = 0.32 + 0.35 * math.sin(sc.sway * 0.8 + i * 1.7);
+      c.drawCircle(Offset(x, y), rr, Paint()..color = Colors.white.withOpacity(tw.clamp(0.06, 0.75).toDouble()));
     }
     // وهج الأفق
-    c.drawRect(Rect.fromLTRB(0, hz - h * 0.2, w, hz + 2), Paint()..shader = RadialGradient(center: Alignment.bottomCenter, radius: 0.9, colors: [const Color(0x80E8C468), const Color(0x00E8C468)]).createShader(Rect.fromLTRB(0, hz - h * 0.2, w, hz + 2)));
-    // أفق المدينة: قباب ومنارات
+    final hgr = Rect.fromCenter(center: Offset(cx, hz), width: w * 1.3, height: H * 0.9);
+    c.drawOval(hgr, Paint()..shader = RadialGradient(colors: [neon.withOpacity(0.38), neon.withOpacity(0)]).createShader(hgr));
+    // جبال بعيدة
+    final mt = Path()..moveTo(0, hz);
+    for (double x = 0; x <= w + 1; x += w / 48) {
+      mt.lineTo(x, hz - H * 0.07 - math.sin(x / w * 7 + 1) * H * 0.035 - math.sin(x / w * 19) * H * 0.012);
+    }
+    mt
+      ..lineTo(w, hz)
+      ..close();
+    c.drawPath(mt, Paint()..color = const Color(0xFF07302C));
+    // أفق المدينة: قباب ومنارات بحافة مضيئة
     final sk = Path()..moveTo(0, hz);
-    final u = w / 24;
+    final u = w / 24, tips = <Offset>[];
     void dome(double x, double r) {
       sk.lineTo(x - r, hz);
       sk.lineTo(x - r, hz - r * 0.5);
       sk.quadraticBezierTo(x - r, hz - r * 1.5, x, hz - r * 1.9);
       sk.quadraticBezierTo(x + r, hz - r * 1.5, x + r, hz - r * 0.5);
       sk.lineTo(x + r, hz);
+      tips.add(Offset(x, hz - r * 1.9));
     }
     void minaret(double x, double hh) {
       final m = u * 0.22;
       sk.lineTo(x - m, hz);
       sk.lineTo(x - m, hz - hh);
-      sk.lineTo(x, hz - hh - m * 3);
+      sk.lineTo(x - m * 1.6, hz - hh);
+      sk.lineTo(x - m * 1.6, hz - hh - m * 0.8);
+      sk.lineTo(x - m, hz - hh - m * 0.8);
+      sk.lineTo(x, hz - hh - m * 3.4);
+      sk.lineTo(x + m, hz - hh - m * 0.8);
+      sk.lineTo(x + m * 1.6, hz - hh - m * 0.8);
+      sk.lineTo(x + m * 1.6, hz - hh);
       sk.lineTo(x + m, hz - hh);
       sk.lineTo(x + m, hz);
+      tips.add(Offset(x, hz - hh - m * 3.4));
     }
     void block(double x, double bw, double bh) {
       sk.lineTo(x, hz);
@@ -431,7 +513,7 @@ class _RoadPainter extends CustomPainter {
       sk.lineTo(x + bw, hz - bh);
       sk.lineTo(x + bw, hz);
     }
-    block(u * 0.5, u * 1.6, u * 0.9);
+    block(u * 0.4, u * 1.6, u * 0.9);
     minaret(u * 3.2, u * 2.6);
     dome(u * 5, u * 1.2);
     minaret(u * 6.8, u * 2.6);
@@ -441,93 +523,275 @@ class _RoadPainter extends CustomPainter {
     dome(u * 19, u * 1.5);
     minaret(u * 21, u * 3.2);
     block(u * 21.8, u * 1.8, u * 1);
-    sk.lineTo(w, hz);
-    sk.close();
-    c.drawPath(sk, Paint()..color = const Color(0xFF031510));
-    // الأرض
-    c.drawRect(Rect.fromLTRB(0, hz, w, h), Paint()..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF06221A), Color(0xFF020B08)]).createShader(Rect.fromLTRB(0, hz, w, h)));
-    // الطريق
-    final top = w * 0.035, bot = w * 0.62;
-    final road = Path()
-      ..moveTo(cx - top, hz)
-      ..lineTo(cx + top, hz)
-      ..lineTo(cx + bot, h)
-      ..lineTo(cx - bot, h)
+    sk
+      ..lineTo(w, hz)
       ..close();
-    c.drawPath(road, Paint()..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF0B1512), Color(0xFF1A2622)]).createShader(Rect.fromLTRB(0, hz, w, h)));
-    double py(double z) => hz + (h - hz) * z * z; // z: 0 الأفق … 1 القريب
-    double pw(double z) => top + (bot - top) * z * z;
-    // حافتا الطريق المضيئتان
-    final edge = Paint()
+    c.drawPath(sk, Paint()..color = const Color(0xFF021614));
+    c.drawPath(sk, Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.2
-      ..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x33E8C468), kGold]).createShader(Rect.fromLTRB(0, hz, w, h))
-      ..maskFilter = const MaskFilter.blur(BlurStyle.solid, 3);
-    c.drawLine(Offset(cx - top, hz), Offset(cx - bot, h), edge);
-    c.drawLine(Offset(cx + top, hz), Offset(cx + bot, h), edge);
-    // خطوط المسار وأعمدة الإنارة تتحرك نحونا
-    const n = 9;
-    final ph = sc.phase % 1;
-    for (int k = 0; k < n; k++) {
-      final z0 = (k + ph) / n, z1 = math.min(1.0, z0 + 0.45 / n);
-      if (z0 <= 0.02) continue;
-      final y0 = py(z0), y1 = py(z1), a = (z0 * 1.6).clamp(0.0, 1.0).toDouble();
-      final lw0 = pw(z0) * 0.035, lw1 = pw(z1) * 0.035;
-      c.drawPath(
-          Path()
-            ..moveTo(cx - lw0, y0)
-            ..lineTo(cx + lw0, y0)
-            ..lineTo(cx + lw1, y1)
-            ..lineTo(cx - lw1, y1)
-            ..close(),
-          Paint()..color = Colors.white.withOpacity(0.75 * a));
-      // أعمدة إنارة على الجانبين
+      ..strokeWidth = 1
+      ..color = neon.withOpacity(0.45)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.solid, 2));
+    for (final t in tips) {
+      c.drawCircle(t, 1.6, Paint()..color = kGold2..maskFilter = const MaskFilter.blur(BlurStyle.solid, 2));
+    }
+    // الأرض
+    final gr = Rect.fromLTRB(0, hz, w, h);
+    c.drawRect(gr, Paint()..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF05211D), Color(0xFF010807)]).createShader(gr));
+    // الإسقاط: u مسافة للأمام، X عرضي، Y ارتفاع
+    double f(double q) => 1 / (1 + q);
+    Offset P(double X, double q, [double Y = 0]) {
+      final ff = f(q);
+      return Offset(cx + X * ff, hz + (H - Y) * ff);
+    }
+    final rb = w * 0.5, ph = sc.phase % 1, vp = Offset(cx, hz);
+    // الشبكة الأرضية
+    final gp = Paint()..strokeWidth = 1;
+    for (int i = -9; i <= 9; i++) {
+      gp.color = neon.withOpacity(0.07);
+      c.drawLine(vp, Offset(cx + i * rb / 2.4, h), gp);
+    }
+    for (int k = 0; k < 30; k++) {
+      final y = hz + H * f(k + 1 - ph);
+      gp.color = neon.withOpacity(0.04 + 0.16 * f(k + 1 - ph));
+      c.drawLine(Offset(0, y), Offset(w, y), gp);
+    }
+    // جانبا الطريق المرتفع
+    for (final sd in const [-1.0, 1.0]) {
+      final face = Path()
+        ..moveTo(vp.dx, vp.dy)
+        ..lineTo(cx + sd * rb, h)
+        ..lineTo(cx + sd * rb * 1.08, h + H * 0.12)
+        ..close();
+      c.drawPath(face, Paint()..color = const Color(0xFF0B3A33));
+    }
+    // سطح الطريق
+    final road = Path()
+      ..moveTo(vp.dx, vp.dy)
+      ..lineTo(cx + rb, h)
+      ..lineTo(cx - rb, h)
+      ..close();
+    c.drawPath(road, Paint()..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF0C2E2A), Color(0xFF153F39)]).createShader(gr));
+    // ضوء أمامي ينير الطريق
+    final carU = 0.12, beamTop = P(0, 10).dy, beamBot = P(0, carU + 0.9).dy;
+    final beam = Path()
+      ..moveTo(P(-rb * 0.32, carU + 0.9).dx, beamBot)
+      ..lineTo(P(rb * 0.32, carU + 0.9).dx, beamBot)
+      ..lineTo(P(rb * 0.55, 10).dx, beamTop)
+      ..lineTo(P(-rb * 0.55, 10).dx, beamTop)
+      ..close();
+    c.drawPath(beam, Paint()..shader = LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [Colors.white.withOpacity(0.1 + 0.14 * v.clamp(0.0, 1.0)), Colors.white.withOpacity(0)]).createShader(Rect.fromLTRB(0, beamTop, w, beamBot)));
+    // شبكة سطح الطريق
+    for (int k = 0; k < 24; k++) {
+      final q = k + 1 - ph, ff = f(q);
+      c.drawLine(P(-rb, q), P(rb, q), Paint()
+        ..strokeWidth = 1
+        ..color = neon.withOpacity(0.05 + 0.2 * ff));
+    }
+    for (int i = -2; i <= 2; i++) {
+      if (i == 0) continue;
+      c.drawLine(vp, Offset(cx + i * rb / 3, h), Paint()
+        ..strokeWidth = 1
+        ..color = neon.withOpacity(0.1));
+    }
+    // خطوط المسارات المتقطعة
+    for (int k = 0; k < 16; k++) {
+      final q0 = k + 1 - ph, q1 = q0 + 0.45;
       for (final sd in const [-1.0, 1.0]) {
-        final x = cx + sd * pw(z0) * 1.18, ph2 = (h - hz) * 0.5 * z0 * z0 + 3;
-        c.drawLine(Offset(x, y0), Offset(x, y0 - ph2), Paint()..color = Color.fromRGBO(120, 150, 138, 0.6 * a)..strokeWidth = 1 + 2 * z0);
-        c.drawCircle(Offset(x, y0 - ph2), 1.5 + 5 * z0 * z0, Paint()..color = kGold2.withOpacity(0.9 * a)..maskFilter = MaskFilter.blur(BlurStyle.normal, 2 + 6 * z0));
+        final X = sd * rb / 3, dw = rb * 0.022;
+        final a = P(X - dw, q0), b = P(X + dw, q0), cc = P(X + dw, q1), d = P(X - dw, q1);
+        c.drawPath(
+            Path()
+              ..moveTo(a.dx, a.dy)
+              ..lineTo(b.dx, b.dy)
+              ..lineTo(cc.dx, cc.dy)
+              ..lineTo(d.dx, d.dy)
+              ..close(),
+            Paint()..color = Colors.white.withOpacity(0.85 * math.sqrt(f(q0))));
       }
     }
-    // السيارة (من الخلف) — تهتز بخفة مع الحركة
-    final cw = math.min(w * 0.3, (h - hz) * 0.62), chh = cw * 0.62;
-    final bob = math.sin(sc.sway * 9) * 0.6 * sc.v, sx = math.sin(sc.sway * 0.7) * w * 0.012 * sc.v;
-    final ox = cx + sx, by = h - (h - hz) * 0.1 + bob; // أسفل العجلات
-    // ظل
-    c.drawOval(Rect.fromCenter(center: Offset(ox, by), width: cw * 1.15, height: chh * 0.22), Paint()..color = const Color(0x99000000)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8));
-    // العجلات
-    final wh = Paint()..color = const Color(0xFF050807);
-    c.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(ox - cw * 0.47, by - chh * 0.26, cw * 0.17, chh * 0.26), const Radius.circular(4)), wh);
-    c.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(ox + cw * 0.30, by - chh * 0.26, cw * 0.17, chh * 0.26), const Radius.circular(4)), wh);
-    // الهيكل
-    final body = RRect.fromRectAndCorners(Rect.fromLTWH(ox - cw / 2, by - chh * 0.62, cw, chh * 0.5), topLeft: Radius.circular(cw * 0.12), topRight: Radius.circular(cw * 0.12), bottomLeft: Radius.circular(cw * 0.05), bottomRight: Radius.circular(cw * 0.05));
-    c.drawRRect(body, Paint()..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF1C6B55), Color(0xFF0A3B2D), Color(0xFF052016)]).createShader(body.outerRect));
-    // المقصورة والزجاج الخلفي
-    final cab = Path()
-      ..moveTo(ox - cw * 0.40, by - chh * 0.60)
-      ..quadraticBezierTo(ox - cw * 0.34, by - chh * 0.98, ox - cw * 0.24, by - chh)
-      ..lineTo(ox + cw * 0.24, by - chh)
-      ..quadraticBezierTo(ox + cw * 0.34, by - chh * 0.98, ox + cw * 0.40, by - chh * 0.60)
-      ..close();
-    c.drawPath(cab, Paint()..color = const Color(0xFF0C4A39));
-    final glass = Path()
-      ..moveTo(ox - cw * 0.33, by - chh * 0.64)
-      ..quadraticBezierTo(ox - cw * 0.29, by - chh * 0.92, ox - cw * 0.22, by - chh * 0.93)
-      ..lineTo(ox + cw * 0.22, by - chh * 0.93)
-      ..quadraticBezierTo(ox + cw * 0.29, by - chh * 0.92, ox + cw * 0.33, by - chh * 0.64)
-      ..close();
-    c.drawPath(glass, Paint()..shader = const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF244E44), Color(0xFF07130F)]).createShader(glass.getBounds()));
-    // خط ذهبي ولوحة
-    c.drawLine(Offset(ox - cw * 0.46, by - chh * 0.36), Offset(ox + cw * 0.46, by - chh * 0.36), Paint()..color = const Color(0x99E8C468)..strokeWidth = 1.2);
-    c.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(ox, by - chh * 0.24), width: cw * 0.24, height: chh * 0.1), const Radius.circular(2)), Paint()..color = const Color(0xFFE9E4D4));
-    // الأضواء الخلفية: تتوهج أقوى عند التوقف (فرامل)
-    final br = sc.brake, lc = Color.lerp(const Color(0xFFB3261E), const Color(0xFFFF3B30), br)!;
+    // الحواف المضيئة
     for (final sd in const [-1.0, 1.0]) {
-      final r = Rect.fromCenter(center: Offset(ox + sd * cw * 0.36, by - chh * 0.47), width: cw * 0.2, height: chh * 0.1);
-      c.drawRRect(RRect.fromRectAndRadius(r.inflate(2 + 6 * br), const Radius.circular(8)), Paint()..color = lc.withOpacity(0.35 + 0.45 * br)..maskFilter = MaskFilter.blur(BlurStyle.normal, 6 + 12 * br));
-      c.drawRRect(RRect.fromRectAndRadius(r, const Radius.circular(4)), Paint()..color = lc);
+      final e = Offset(cx + sd * rb, h);
+      c.drawLine(vp, e, Paint()
+        ..strokeWidth = 8
+        ..color = neon.withOpacity(0.3)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6));
+      c.drawLine(vp, e, Paint()
+        ..strokeWidth = 2.2
+        ..color = neon);
     }
-    // انعكاس الأضواء على الطريق
-    c.drawOval(Rect.fromCenter(center: Offset(ox, by + chh * 0.05), width: cw * 0.9, height: chh * 0.12), Paint()..color = lc.withOpacity(0.12 + 0.2 * br)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10));
+    // خطوط السرعة: تتدفق على الجانبين وتزيد مع السرعة
+    if (v > 0.03) {
+      final sp = Paint()..strokeCap = StrokeCap.round;
+      final vv = v.clamp(0.0, 1.0).toDouble();
+      for (int i = 0; i < 28; i++) {
+        final sd = i.isEven ? 1.0 : -1.0, X = sd * rb * (1.2 + ((i * 0.37) % 1) * 2.4), Y = H * (((i * 0.61) % 1) * 1.7 - 0.1);
+        final q = ((i * 3.7) % 14 - sc.phase * 2.6) % 14, len = 0.25 + 2.4 * v;
+        final ff = f(q);
+        sp
+          ..strokeWidth = 1 + 2.6 * ff
+          ..color = (i % 3 == 0 ? kGold2 : neon).withOpacity(vv * (0.2 + 0.65 * ff));
+        c.drawLine(P(X, q + len, Y), P(X, q, Y), sp);
+      }
+    }
+    // السيارة
+    final cw = math.min(w * 0.36, H * 1.3), by = h - H * 0.09;
+    final sx = math.sin(sc.sway * 0.7) * w * 0.01 * v, bob = math.sin(sc.sway * 9) * 0.6 * v;
+    // وهج المصابيح الأمامية فوق السيارة
+    final gl = Rect.fromCenter(center: Offset(cx + sx, by - cw * 0.66), width: cw * 1.5, height: cw * 0.7);
+    c.drawOval(gl, Paint()..shader = RadialGradient(colors: [Colors.white.withOpacity(0.22 + 0.2 * v.clamp(0.0, 1.0)), Colors.white.withOpacity(0)]).createShader(gl));
+    _car(c, cx + sx, by + bob, cw, sc.brake);
+  }
+
+  void _car(Canvas c, double ox, double by, double cw, double br) {
+    final ch = cw * 0.6;
+    Offset p(double x, double y) => Offset(ox + x * cw, by + y * ch);
+    void mv(Path pa, double x, double y) {
+      final o = p(x, y);
+      pa.moveTo(o.dx, o.dy);
+    }
+    void ln(Path pa, double x, double y) {
+      final o = p(x, y);
+      pa.lineTo(o.dx, o.dy);
+    }
+    void cb(Path pa, double x1, double y1, double x2, double y2, double x3, double y3) {
+      final a = p(x1, y1), b = p(x2, y2), d = p(x3, y3);
+      pa.cubicTo(a.dx, a.dy, b.dx, b.dy, d.dx, d.dy);
+    }
+    void qd(Path pa, double x1, double y1, double x2, double y2) {
+      final a = p(x1, y1), b = p(x2, y2);
+      pa.quadraticBezierTo(a.dx, a.dy, b.dx, b.dy);
+    }
+    final lc = Color.lerp(const Color(0xFFB3141F), const Color(0xFFFF2B3A), br)!;
+    // الظل وانعكاس الأضواء على الطريق
+    c.drawOval(Rect.fromCenter(center: p(0, 0.01), width: cw * 1.15, height: ch * 0.22), Paint()
+      ..color = const Color(0xD9000000)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10));
+    for (final sd in const [-1.0, 1.0]) {
+      final r = Rect.fromLTRB(ox + sd * cw * 0.34 - cw * 0.08, by, ox + sd * cw * 0.34 + cw * 0.08, by + ch * 0.55);
+      c.drawRect(r, Paint()
+        ..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [lc.withOpacity(0.28 + 0.32 * br), lc.withOpacity(0)]).createShader(r)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5));
+    }
+    // العجلات
+    for (final sd in const [-1.0, 1.0]) {
+      c.drawRRect(RRect.fromRectAndRadius(Rect.fromPoints(p(sd * 0.33, -0.18), p(sd * 0.475, 0.0)), Radius.circular(cw * 0.03)), Paint()..color = const Color(0xFF030505));
+    }
+    // الهيكل: خلفية سيارة رياضية بأوراك عريضة ومقصورة منحنية
+    final b = Path();
+    mv(b, -0.44, -0.05);
+    ln(b, -0.485, -0.15);
+    cb(b, -0.515, -0.27, -0.515, -0.43, -0.475, -0.52);
+    cb(b, -0.45, -0.585, -0.40, -0.62, -0.32, -0.64);
+    cb(b, -0.28, -0.655, -0.26, -0.70, -0.245, -0.76);
+    cb(b, -0.20, -0.93, -0.10, -1.0, 0, -1.0);
+    cb(b, 0.10, -1.0, 0.20, -0.93, 0.245, -0.76);
+    cb(b, 0.26, -0.70, 0.28, -0.655, 0.32, -0.64);
+    cb(b, 0.40, -0.62, 0.45, -0.585, 0.475, -0.52);
+    cb(b, 0.515, -0.43, 0.515, -0.27, 0.485, -0.15);
+    ln(b, 0.44, -0.05);
+    qd(b, 0, -0.01, -0.44, -0.05);
+    b.close();
+    final bb = b.getBounds();
+    c.drawPath(b, Paint()..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF46B89D), Color(0xFF16675A), Color(0xFF0B3E34), Color(0xFF041A15)], stops: [0, 0.3, 0.62, 1]).createShader(bb));
+    // لمعان الطلاء
+    c.save();
+    c.clipPath(b);
+    c.drawOval(Rect.fromCenter(center: p(0, -0.9), width: cw * 0.42, height: ch * 0.18), Paint()
+      ..color = Colors.white.withOpacity(0.3)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, cw * 0.04));
+    for (final sd in const [-1.0, 1.0]) {
+      c.drawOval(Rect.fromCenter(center: p(sd * 0.4, -0.57), width: cw * 0.2, height: ch * 0.07), Paint()
+        ..color = Colors.white.withOpacity(0.28)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, cw * 0.025));
+    }
+    c.restore();
+    c.drawPath(b, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2
+      ..color = neon.withOpacity(0.4));
+    // الزجاج الخلفي
+    final g = Path();
+    mv(g, -0.205, -0.705);
+    cb(g, -0.18, -0.86, -0.09, -0.935, 0, -0.935);
+    cb(g, 0.09, -0.935, 0.18, -0.86, 0.205, -0.705);
+    qd(g, 0, -0.67, -0.205, -0.705);
+    g.close();
+    c.drawPath(g, Paint()..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF2A524C), Color(0xFF03100D)]).createShader(g.getBounds()));
+    c.save();
+    c.clipPath(g);
+    final st = Path();
+    mv(st, -0.1, -1.0);
+    ln(st, 0.0, -1.0);
+    ln(st, -0.12, -0.6);
+    ln(st, -0.22, -0.6);
+    st.close();
+    c.drawPath(st, Paint()..color = Colors.white.withOpacity(0.12));
+    c.restore();
+    // ضوء الفرامل العلوي
+    final tb = RRect.fromRectAndRadius(Rect.fromPoints(p(-0.075, -0.915), p(0.075, -0.893)), const Radius.circular(3));
+    if (br > 0.05) c.drawRRect(tb.inflate(3), Paint()..color = lc.withOpacity(0.5 * br)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5));
+    c.drawRRect(tb, Paint()..color = Color.lerp(const Color(0xFF3A0A0E), lc, 0.3 + 0.7 * br)!);
+    // شبك المحرك
+    for (int k = 0; k < 4; k++) {
+      final y = -0.57 - k * 0.024;
+      c.drawLine(p(-0.13, y), p(0.13, y), Paint()
+        ..strokeWidth = math.max(1.0, ch * 0.009)
+        ..color = Colors.black.withOpacity(0.45));
+    }
+    // المرايا
+    for (final sd in const [-1.0, 1.0]) {
+      c.drawOval(Rect.fromCenter(center: p(sd * 0.335, -0.70), width: cw * 0.09, height: ch * 0.06), Paint()..color = const Color(0xFF0F5446));
+    }
+    // شريط الإضاءة الخلفي الكامل
+    final lb = Path();
+    mv(lb, -0.46, -0.49);
+    qd(lb, 0, -0.535, 0.46, -0.49);
+    c.drawPath(lb, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = ch * (0.08 + 0.06 * br)
+      ..strokeCap = StrokeCap.round
+      ..color = lc.withOpacity(0.35 + 0.4 * br)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 7 + 8 * br));
+    c.drawPath(lb, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = ch * 0.032
+      ..strokeCap = StrokeCap.round
+      ..color = lc);
+    c.drawPath(lb, Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = ch * 0.01
+      ..strokeCap = StrokeCap.round
+      ..color = Color.lerp(lc, Colors.white, 0.55)!);
+    for (final sd in const [-1.0, 1.0]) {
+      c.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: p(sd * 0.41, -0.495), width: cw * 0.1, height: ch * 0.055), Radius.circular(ch * 0.03)), Paint()..color = lc);
+    }
+    c.drawCircle(p(0, -0.45), cw * 0.017, Paint()..color = kGold);
+    // المصد والناشر والعادم
+    c.drawLine(p(-0.47, -0.25), p(0.47, -0.25), Paint()
+      ..strokeWidth = 1
+      ..color = Colors.white.withOpacity(0.14));
+    c.drawRRect(RRect.fromRectAndRadius(Rect.fromPoints(p(-0.40, -0.19), p(0.40, -0.045)), Radius.circular(cw * 0.025)), Paint()..color = const Color(0xFF051210));
+    for (double x = -0.24; x <= 0.241; x += 0.08) {
+      c.drawLine(p(x, -0.17), p(x, -0.06), Paint()
+        ..strokeWidth = 1
+        ..color = Colors.white.withOpacity(0.08));
+    }
+    for (final sd in const [-1.0, 1.0]) {
+      final ex = Rect.fromCenter(center: p(sd * 0.3, -0.115), width: cw * 0.085, height: ch * 0.06);
+      c.drawRRect(RRect.fromRectAndRadius(ex, Radius.circular(ch * 0.03)), Paint()..shader = const LinearGradient(colors: [Color(0xFFB9C4C0), Color(0xFF3A4442)], begin: Alignment.topCenter, end: Alignment.bottomCenter).createShader(ex));
+      c.drawRRect(RRect.fromRectAndRadius(ex.deflate(ch * 0.012), Radius.circular(ch * 0.02)), Paint()..color = const Color(0xFF070909));
+    }
+    // اللوحة
+    final pl = Rect.fromCenter(center: p(0, -0.32), width: cw * 0.24, height: ch * 0.095);
+    c.drawRRect(RRect.fromRectAndRadius(pl, Radius.circular(ch * 0.015)), Paint()..color = const Color(0xFFEDEAE0));
+    if (_plate == null || (_plateW - cw).abs() > 1) {
+      _plateW = cw;
+      _plate = TextPainter(text: TextSpan(text: 'منبر', style: TextStyle(fontFamily: 'Cairo', fontSize: ch * 0.068, fontWeight: FontWeight.w700, color: kGreen, height: 1)), textDirection: TextDirection.rtl)..layout();
+    }
+    final tp = _plate!;
+    tp.paint(c, pl.center - Offset(tp.width / 2, tp.height / 2));
   }
 
   @override
