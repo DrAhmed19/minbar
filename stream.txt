@@ -1,0 +1,170 @@
+--------- beginning of system
+11-15 13:46:47.051 I/ActivityManager(  511): Start proc 5357:com.minbar.minbar_native/u0a174 for next-top-activity {com.minbar.minbar_native/com.minbar.minbar_native.MainActivity}
+--------- beginning of main
+11-15 13:46:47.497 I/flutter ( 5357): [IMPORTANT:flutter/shell/platform/android/android_context_gl_impeller.cc(105)] Using the Impeller rendering backend (OpenGLES).
+11-15 13:46:47.501 W/ActivityManager(  511): Unable to start service Intent { act=com.google.android.play.core.splitinstall.BIND_SPLIT_INSTALL_SERVICE pkg=com.android.vending } U=0: not found
+11-15 13:46:47.796 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 4345) has died: fg  RCVR
+11-15 13:46:47.877 I/ActivityManager(  511): Start proc 5414:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:46:48.051 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 5414) has died: fg  RCVR
+11-15 13:46:50.258 W/libc    ( 1178): Access denied finding property "ro.vendor.aware_available"
+11-15 13:46:50.297 W/libc    ( 1178): Access denied finding property "ro.vendor.aware_available"
+11-15 13:46:50.304 W/libc    ( 1178): Access denied finding property "ro.vendor.aware_available"
+11-15 13:46:52.488 I/lowmemorykiller(  147): lmkd data connection established
+11-15 13:46:52.540 I/lowmemorykiller(  147): Using psi monitors for memory pressure detection
+11-15 13:46:52.540 I/lowmemorykiller(  147): Properties reinitilized
+11-15 13:46:52.551 I/lowmemorykiller( 5576): lmkd updated properties successfully
+11-15 13:46:52.551 I/lowmemorykiller(  147): lmkd data connection dropped
+11-15 13:46:52.551 I/lowmemorykiller(  147): closing lmkd data connection
+11-15 13:46:52.657 I/ActivityManager(  511): Background started FGS: Allowed [callingPackage: com.google.android.inputmethod.latin; callingUid: 10135; uidState: IMPB; intent: Intent { cmp=com.google.android.inputmethod.latin/com.google.android.apps.inputmethod.libs.dataservice.superpacks.SuperpacksForegroundTaskService }; code:BOOT_COMPLETED; tempAllowListReason:<broadcast:1000:android.intent.action.BOOT_COMPLETED,reason:,reasonCode:BOOT_COMPLETED,duration:20000,callingUid:1000>; targetSdkVersion:33; callerTargetSdkVersion:33; startForegroundCount:0; bindFromPackage:null]
+11-15 13:46:52.681 W/ActivityManager(  511): Foreground service started from background can not have location/camera/microphone access: service com.google.android.inputmethod.latin/com.google.android.apps.inputmethod.libs.dataservice.superpacks.SuperpacksForegroundTaskService
+11-15 13:46:55.526 I/ActivityManager(  511): Start proc 5594:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:46:55.734 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 5594) has died: fg  RCVR
+11-15 13:46:55.791 I/ActivityManager(  511): Start proc 5613:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:46:55.958 W/ActivityManager(  511): Slow operation: 55ms so far, now at attachApplicationLocked: after sendPendingBroadcastsLocked
+11-15 13:46:56.491 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 5613) has died: fg  RCVR
+11-15 13:46:56.565 W/ActivityManager(  511): Slow operation: 64ms so far, now at startProcess: asking zygote to start proc
+11-15 13:46:56.586 W/ActivityManager(  511): Slow operation: 85ms so far, now at startProcess: returned from zygote!
+11-15 13:46:56.586 W/ActivityManager(  511): Slow operation: 85ms so far, now at startProcess: done updating battery stats
+11-15 13:46:56.586 W/ActivityManager(  511): Slow operation: 85ms so far, now at startProcess: building log message
+11-15 13:46:56.586 I/ActivityManager(  511): Start proc 5633:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:46:56.586 W/ActivityManager(  511): Slow operation: 85ms so far, now at startProcess: starting to update pids map
+11-15 13:46:56.586 W/ActivityManager(  511): Slow operation: 85ms so far, now at startProcess: done updating pids map
+11-15 13:46:57.048 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 5633) has died: fg  RCVR
+11-15 13:46:57.179 I/ActivityManager(  511): Start proc 5672:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:46:57.794 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 5672) has died: fg  RCVR
+11-15 13:46:57.829 I/ActivityManager(  511): Start proc 5697:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:46:58.264 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 5697) has died: fg  RCVR
+11-15 13:46:58.544 I/ActivityManager(  511): Start proc 5718:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:46:58.911 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 5718) has died: fg  RCVR
+11-15 13:46:59.019 I/ActivityManager(  511): Start proc 5737:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:46:59.353 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 5737) has died: fg  RCVR
+11-15 13:46:59.671 I/ActivityManager(  511): Start proc 5755:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:46:59.947 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 5755) has died: fg  RCVR
+11-15 13:47:00.109 I/ActivityManager(  511): Start proc 5778:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:47:00.374 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 5778) has died: fg  RCVR
+11-15 13:47:00.565 I/ActivityManager(  511): Start proc 5801:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:47:00.769 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 5801) has died: fg  RCVR
+11-15 13:47:00.939 I/ActivityManager(  511): Start proc 5822:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:47:01.488 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 5822) has died: fg  RCVR
+11-15 13:47:01.545 I/ActivityManager(  511): Start proc 5844:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:47:02.008 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 5844) has died: fg  RCVR
+11-15 13:47:02.084 I/ActivityManager(  511): Start proc 5881:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:47:02.335 I/lowmemorykiller(  147): lmkd data connection established
+11-15 13:47:02.404 I/lowmemorykiller(  147): Using psi monitors for memory pressure detection
+11-15 13:47:02.404 I/lowmemorykiller(  147): Properties reinitilized
+11-15 13:47:02.404 I/lowmemorykiller( 5899): lmkd updated properties successfully
+11-15 13:47:02.405 I/lowmemorykiller(  147): lmkd data connection dropped
+11-15 13:47:02.405 I/lowmemorykiller(  147): closing lmkd data connection
+11-15 13:47:02.547 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 5881) has died: fg  RCVR
+11-15 13:47:02.701 I/ActivityManager(  511): Start proc 5904:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:47:03.099 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 5904) has died: fg  RCVR
+11-15 13:47:03.362 W/ActivityManager(  511): Unable to start service Intent { cmp=com.google.android.apps.tachyon/.clientapi.ClientApiService } U=0: not found
+11-15 13:47:03.614 I/ActivityManager(  511): Start proc 5931:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:47:04.313 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 5931) has died: fg  RCVR
+11-15 13:47:04.695 I/ActivityManager(  511): Start proc 5973:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:47:05.016 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 5973) has died: fg  RCVR
+11-15 13:47:05.299 I/ActivityManager(  511): Start proc 5992:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:47:05.490 I/flutter ( 5357): MBPERF auto: jank 182/182
+11-15 13:47:05.714 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 5992) has died: fg  RCVR
+11-15 13:47:05.788 I/ActivityManager(  511): Start proc 6011:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:47:05.798 W/ActivityManager(  511): Unable to start service Intent { cmp=com.google.android.apps.tachyon/.clientapi.ClientApiService } U=0: not found
+11-15 13:47:06.252 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 6011) has died: fg  RCVR
+11-15 13:47:11.522 I/ActivityManager(  511): Start proc 6110:com.google.android.webview/u0a123 for broadcast {com.google.android.webview/com.google.android.libraries.phenotype.client.stable.PhenotypeUpdateBackgroundBroadcastReceiver}
+11-15 13:47:12.667 I/ActivityManager(  511): Killing 4738:com.google.android.settings.intelligence/u0a107 (adj 0): change com.google.android.settings.intelligence
+11-15 13:47:12.668 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.settings.intelligence/.modules.routines.impl.ComputeNewInferencesJobService in 1000ms for connection
+11-15 13:47:12.669 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.settings.intelligence/.modules.routines.impl.RoutinesJobIntentService in 11000ms for connection
+11-15 13:47:12.669 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.settings.intelligence/.modules.routines.impl.PruneDatabaseJobService in 21000ms for connection
+11-15 13:47:13.716 I/ActivityManager(  511): Start proc 6140:com.google.android.settings.intelligence/u0a107 for service {com.google.android.settings.intelligence/com.google.android.settings.intelligence.modules.routines.impl.ComputeNewInferencesJobService}
+11-15 13:47:16.288 W/ActivityManager(  511): Unable to start service Intent { cmp=com.google.android.apps.tachyon/.clientapi.ClientApiService } U=0: not found
+11-15 13:47:23.313 I/ActivityManager(  511): Start proc 6263:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:47:23.622 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 6263) has died: fg  RCVR
+11-15 13:47:23.664 I/ActivityManager(  511): Start proc 6287:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:47:23.917 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 6287) has died: fg  RCVR
+11-15 13:47:23.946 I/ActivityManager(  511): Start proc 6305:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:47:24.062 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 6305) has died: fg  RCVR
+11-15 13:47:24.107 I/ActivityManager(  511): Start proc 6324:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:47:24.143 W/libc    ( 2790): Access denied finding property "persist.adb.tls_server.enable"
+11-15 13:47:24.144 W/libc    ( 2790): Access denied finding property "service.adb.tls.port"
+11-15 13:47:24.340 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 6324) has died: fg  RCVR
+11-15 13:47:27.058 W/ActivityManager(  511): Unable to start service Intent { cmp=com.google.android.apps.tachyon/.clientapi.ClientApiService } U=0: not found
+11-15 13:47:28.042 I/ActivityManager(  511): Start proc 6436:com.google.android.apps.messaging:rcs/u0a112 for service {com.google.android.apps.messaging/com.google.android.ims.binding.SystemBindingService}
+11-15 13:47:28.707 I/ActivityManager(  511): Process com.google.android.gms.ui (pid 4907) has died: cch+99 CEM 
+11-15 13:47:28.732 I/ActivityManager(  511): Process com.google.android.gms.persistent (pid 1141) early provider death
+11-15 13:47:28.740 I/ActivityManager(  511): Process com.google.android.gms.persistent (pid 1141) has died: fg  BFGS
+11-15 13:47:28.753 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/.chimera.PersistentDirectBootAwareApiService in 1000ms for connection
+11-15 13:47:28.753 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/.chimera.PersistentApiService in 11000ms for connection
+11-15 13:47:28.753 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/.fido.fido2.pollux.CableAuthenticatorService in 21000ms for start-requested
+11-15 13:47:28.753 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/com.google.android.location.internal.server.GoogleLocationService in 31000ms for start-requested
+11-15 13:47:28.753 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/.chimera.PersistentIntentOperationService in 41000ms for start-requested
+11-15 13:47:28.753 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/.nearby.exposurenotification.service.ExposureMatchingService in 51000ms for start-requested
+11-15 13:47:28.753 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/.clearcut.debug.ClearcutDebugDumpService in 61000ms for start-requested
+11-15 13:47:28.753 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/.nearby.sharing.ReceiveSurfaceService in 71000ms for start-requested
+11-15 13:47:28.753 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/.gcm.GcmService in 81000ms for start-requested
+11-15 13:47:28.753 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/com.google.android.location.internal.server.HardwareArProviderService in 91000ms for connection
+11-15 13:47:28.753 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/com.google.android.contextmanager.service.ContextManagerService in 101000ms for start-requested
+11-15 13:47:28.753 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/.location.geocode.GeocodeService in 111000ms for connection
+11-15 13:47:28.753 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/.nearby.messages.service.NearbyMessagesService in 121000ms for start-requested
+11-15 13:47:28.753 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/.thunderbird.EmergencyPersistentService in 131000ms for start-requested
+11-15 13:47:28.753 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/com.google.android.location.reporting.service.ReportingAndroidService in 141000ms for connection
+11-15 13:47:28.753 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/.chimera.PersistentBoundBrokerService in 151000ms for connection
+11-15 13:47:28.753 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/.common.stats.GmsCoreStatsService in 161000ms for start-requested
+11-15 13:47:28.753 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/.gcm.nts.SchedulerService in 171000ms for start-requested
+11-15 13:47:28.753 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/.deviceconnection.service.DeviceConnectionWatcherService in 181000ms for start-requested
+11-15 13:47:28.753 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/.auth.setup.devicesignals.LockScreenService in 191000ms for start-requested
+11-15 13:47:28.753 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/com.google.android.location.internal.GoogleLocationManagerService in 201000ms for start-requested
+11-15 13:47:28.753 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/com.google.android.location.fused.FusedLocationService in 211000ms for connection
+11-15 13:47:28.753 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/.geotimezone.GeoTimeZoneService in 221000ms for connection
+11-15 13:47:28.753 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/com.google.android.location.network.NetworkLocationService in 231000ms for connection
+11-15 13:47:28.753 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/.location.persistent.LocationPersistentService in 241000ms for start-requested
+11-15 13:47:28.755 W/ActivityManager(  511): ProcessRecord{5ca6f7b 0:com.google.android.gms.persistent/u0a119} is attached to a previous process 1141
+11-15 13:47:28.756 W/ActivityManager(  511): ProcessRecord{5ca6f7b 0:com.google.android.gms.persistent/u0a119} is attached to a previous process 1141
+11-15 13:47:28.766 I/ActivityManager(  511): Process com.google.android.gms (pid 1402) has died: fg  IMPF
+11-15 13:47:28.767 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/.chimera.GmsApiService in 250987ms for connection
+11-15 13:47:28.767 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/.chimera.GmsBoundBrokerService in 260987ms for connection
+11-15 13:47:28.767 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/.chimera.GmsIntentOperationService in 270987ms for start-requested
+11-15 13:47:28.767 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/.wallet.service.PaymentService in 280987ms for connection
+11-15 13:47:28.767 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/.chimera.container.ExternalFileApkService in 290987ms for start-requested
+11-15 13:47:28.767 W/ActivityManager(  511): Scheduling restart of crashed service com.google.android.gms/.icing.service.IndexService in 300986ms for connection
+11-15 13:47:28.770 I/ActivityManager(  511): Start proc 6509:com.google.android.gms.persistent/u0a119 for content provider {com.google.android.gms/com.google.android.gms.chimera.container.GmsModuleProvider}
+11-15 13:47:28.781 W/ActivityManager(  511): Rescheduling restart of crashed service com.google.android.gms/.chimera.GmsApiService in 986ms for other
+11-15 13:47:28.781 W/ActivityManager(  511): Rescheduling restart of crashed service com.google.android.gms/.chimera.GmsBoundBrokerService in 10986ms for other
+11-15 13:47:28.781 W/ActivityManager(  511): Rescheduling restart of crashed service com.google.android.gms/.chimera.GmsIntentOperationService in 20986ms for other
+11-15 13:47:28.781 W/ActivityManager(  511): Rescheduling restart of crashed service com.google.android.gms/.wallet.service.PaymentService in 30986ms for other
+11-15 13:47:28.781 W/ActivityManager(  511): Rescheduling restart of crashed service com.google.android.gms/.chimera.container.ExternalFileApkService in 40986ms for other
+11-15 13:47:28.781 W/ActivityManager(  511): Rescheduling restart of crashed service com.google.android.gms/.icing.service.IndexService in 50986ms for other
+11-15 13:47:29.014 I/ActivityManager(  511): Start proc 6595:com.google.android.gms/u0a119 for service {com.google.android.gms/com.google.android.gms.chimera.GmsIntentOperationService}
+11-15 13:47:29.172 W/ActivityManager(  511): Unable to start service Intent { act=com.google.android.gms.home.service.START pkg=com.google.android.gms } U=0: not found
+11-15 13:47:29.172 W/ActivityManager(  511): Unbind failed: could not find connection for android.os.BinderProxy@84399d
+11-15 13:47:29.739 I/ActivityManager(  511): Start proc 6768:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:47:29.798 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 6768) has died: fg  RCVR
+11-15 13:47:29.807 I/ActivityManager(  511): Start proc 6790:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:47:29.850 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 6790) has died: fg  RCVR
+11-15 13:47:30.125 W/libc    ( 2790): Access denied finding property "persist.adb.tls_server.enable"
+11-15 13:47:30.125 W/libc    ( 2790): Access denied finding property "service.adb.tls.port"
+11-15 13:47:34.255 W/libc    ( 2790): Access denied finding property "persist.adb.tls_server.enable"
+11-15 13:47:34.256 W/libc    ( 2790): Access denied finding property "service.adb.tls.port"
+11-15 13:47:34.316 W/libc    ( 6595): Access denied finding property "ro.hardware.chipname"
+11-15 13:47:34.903 W/libc    ( 2790): Access denied finding property "persist.adb.tls_server.enable"
+11-15 13:47:34.903 W/libc    ( 2790): Access denied finding property "service.adb.tls.port"
+11-15 13:47:36.488 W/ActivityManager(  511): Unable to start service Intent { cmp=com.google.android.apps.tachyon/.clientapi.ClientApiService } U=0: not found
+11-15 13:47:39.829 I/ActivityManager(  511): Start proc 7039:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:47:39.959 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 7039) has died: fg  RCVR
+11-15 13:47:39.970 I/ActivityManager(  511): Start proc 7062:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:47:40.375 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 7062) has died: fg  RCVR
+11-15 13:47:40.404 I/ActivityManager(  511): Start proc 7145:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:47:40.492 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 7145) has died: fg  RCVR
+11-15 13:47:40.758 I/ActivityManager(  511): Start proc 7165:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:47:40.954 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 7165) has died: fg  RCVR
+11-15 13:47:44.758 I/ActivityManager(  511): Start proc 7204:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:47:45.077 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 7204) has died: fg  RCVR
+11-15 13:47:45.115 I/ActivityManager(  511): Start proc 7223:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:47:45.339 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 7223) has died: fg  RCVR
+11-15 13:47:45.356 I/ActivityManager(  511): Start proc 7243:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:47:45.366 I/flutter ( 5357): car wx fail SocketException: HTTP connection timed out after 0:00:08.000000, host: api.open-meteo.com, port: 443
+11-15 13:47:45.445 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 7243) has died: fg  RCVR
+11-15 13:47:45.522 I/ActivityManager(  511): Start proc 7262:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:47:45.686 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 7262) has died: fg  RCVR
+11-15 13:47:45.734 I/ActivityManager(  511): Start proc 7281:com.google.android.apps.maps:server_recovery_process/u0a138 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-15 13:47:45.886 I/ActivityManager(  511): Process com.google.android.apps.maps:server_recovery_process (pid 7281) has died: fg  RCVR
+11-15 13:47:48.754 I/flutter ( 5357): MBCAR q=1 med=178.4ms p90=214.6ms
+11-15 13:47:51.011 W/ActivityManager(  511): Unable to start service Intent { cmp=com.google.android.apps.tachyon/.clientapi.ClientApiService } U=0: not found
