@@ -968,6 +968,7 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
       }
     } catch (_) {}
     if (!mounted) return;
+    _tk.muted = true; // إيقاف رسم المشهد خلف النافذة لتوفير المعالج
     Future<void> save(String k, Object v) async {
       final p = await SharedPreferences.getInstance();
       if (v is String) p.setString(k, v);
@@ -1206,6 +1207,7 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
         );
       }),
     );
+    _tk.muted = false;
     if (mounted) setState(() {});
   }
 

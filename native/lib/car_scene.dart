@@ -1336,6 +1336,8 @@ class _World extends CustomPainter {
 class _CarPreview extends CustomPainter {
   final String model, color;
   _CarPreview(this.model, this.color);
+  static ui.Picture? _pic;
+  static String _key = '';
   @override
   void paint(Canvas c, Size z) {
     final cw = math.min(z.width * 0.62, z.height * 1.05);
@@ -1344,17 +1346,23 @@ class _CarPreview extends CustomPainter {
     c.drawOval(Rect.fromCenter(center: Offset(z.width / 2, z.height * 0.86), width: z.width * 0.9, height: z.height * 0.3), Paint()..shader = RadialGradient(colors: [const Color(0x40E8C468), const Color(0x00E8C468)]).createShader(Rect.fromCenter(center: Offset(z.width / 2, z.height * 0.86), width: z.width * 0.9, height: z.height * 0.3)));
     c.save();
     c.translate(z.width / 2, z.height * 0.86);
-    final m = _carModels[model] ?? _carModels['sport']!;
-    _World.carBody(c, m, _carColors[color] ?? _carColors['green']!, cw, 1);
-    for (final sd in const [-1.0, 1.0]) {
-      c.drawPath(_cpath(m.lamp, cw, sx: sd), Paint()..color = const Color(0xFFE0202E));
+    final key = '$model|$color|${cw.round()}';
+    if (_key != key) {
+      final rec = ui.PictureRecorder(), pc = Canvas(rec), m = _carModels[model] ?? _carModels['sport']!;
+      _World.carBody(pc, m, _carColors[color] ?? _carColors['green']!, cw, 1);
+      for (final sd in const [-1.0, 1.0]) {
+        pc.drawPath(_cpath(m.lamp, cw, sx: sd), Paint()..color = const Color(0xFFE0202E));
+      }
+      pc.drawPath(
+          _cpath(m.led, cw, close: false),
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = cw * 0.007
+            ..color = const Color(0xFFFF6070));
+      _pic = rec.endRecording();
+      _key = key;
     }
-    c.drawPath(
-        _cpath(m.led, cw, close: false),
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = cw * 0.007
-          ..color = const Color(0xFFFF6070));
+    c.drawPicture(_pic!);
     c.restore();
   }
 
