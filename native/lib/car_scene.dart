@@ -1376,3 +1376,53 @@ class _CarPreview extends CustomPainter {
   @override
   bool shouldRepaint(covariant _CarPreview o) => o.model != model || o.color != color;
 }
+
+/// نقطة دخول لتصوير فيديو إعلان وضع السيارة خارج الشاشة (اختبار الرسم فقط)
+class AdScene {
+  static final _rp = ValueNotifier<int>(0);
+  static Future<void> init() async {
+    _Art.ensure();
+    while (!_Art.ready) {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    }
+    _World.q = 2;
+  }
+
+  static void paint(Canvas c, Size z, Map<String, dynamic> p) {
+    double d(String k) => (p[k] as num?)?.toDouble() ?? 0.0;
+    final s = _Scene()
+      ..t = d('t')
+      ..q = d('q')
+      ..v = d('v')
+      ..a = d('a')
+      ..brake = d('brake')
+      ..tail = d('tail')
+      ..curv = d('curv')
+      ..lean = d('lean')
+      ..blink = d('blink')
+      ..pitch = d('pitch')
+      ..spin = d('spin')
+      ..flash = d('flash')
+      ..splash = d('splash')
+      ..sunEl = d('sunEl')
+      ..sunAz = d('sunAz')
+      ..moonEl = d('moonEl')
+      ..moonAz = d('moonAz')
+      ..moonPh = d('moonPh')
+      ..heading = d('heading')
+      ..rain = d('rain')
+      ..snow = d('snow')
+      ..cloud = d('cloud')
+      ..fog = d('fog')
+      ..dust = d('dust')
+      ..storm = d('storm')
+      ..wind = d('wind')
+      ..biome = (p['biome'] as num).toInt()
+      ..temp = d('temp')
+      ..bolt = (p['bolt'] as num).toInt()
+      ..model = p['model'] as String
+      ..color = p['color'] as String
+      ..marks = [for (final m in (p['marks'] as List)) ((m[0] as num).toDouble(), (m[1] as num).toDouble(), (m[2] as num).toInt())];
+    _World(s, _Stage(d('hz'), d('cx'), d('carY'), d('cw'), d('dpr')), _rp).paint(c, z);
+  }
+}

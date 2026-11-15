@@ -1,0 +1,30 @@
+# يرسم مشاهد إعلان وضع السيارة بنفس كود الرسم الحقيقي ويرفعها لفرع ci-ad
+name: مشاهد الإعلان
+on:
+  workflow_dispatch:
+    inputs:
+      frames:
+        description: عدد الإطارات (فارغ = الكل)
+        default: ''
+permissions:
+  contents: write
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 200
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: { channel: stable, cache: true }
+      - name: مشروع
+        working-directory: native
+        run: flutter create --org com.minbar --project-name minbar_native --platforms android --no-pub . && flutter pub get
+      - name: رسم
+        working-directory: native
+        env: { AD_FRAMES: '${{ inputs.frames }}', AD_OUT: '/tmp/scene.mp4' }
+        run: flutter test test/ad_test.dart 2>&1 | tail -40
+      - name: رفع
+        run: |
+          mkdir -p /tmp/o && cp /tmp/scene.mp4 /tmp/o/ 2>/dev/null; cp /tmp/f*.png /tmp/o/ 2>/dev/null; ls -la /tmp/o
+          cd /tmp/o && git init -q -b ci-ad && git config user.email a@b && git config user.name ci && git add -A && git commit -qm scene
+          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" ci-ad
