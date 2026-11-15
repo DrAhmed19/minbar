@@ -22,7 +22,9 @@ s = re.sub(r'android:label="[^"]*"', 'android:label="منبر"', s, count=1)
 # نبقي MainActivity (ترث AudioServiceActivity) لأن فيها قناة المؤثرات والويدجت
 # singleTask: فتح التطبيق بعد التحديث لا يُنشئ نسخة ثانية في قائمة التطبيقات
 s = s.replace('android:launchMode="singleTop"', 'android:launchMode="singleTask"')
-svc = '''        <receiver android:name=".MinbarWidget" android:exported="false">
+svc = '''        <meta-data android:name="com.google.android.gms.car.application" android:resource="@xml/automotive_app_desc" />
+        <meta-data android:name="com.google.android.gms.car.notification.SmallIcon" android:resource="@drawable/ic_stat_minbar" />
+        <receiver android:name=".MinbarWidget" android:exported="false">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/minbar_widget_info" />
         </receiver>
@@ -152,6 +154,17 @@ class MainActivity : AudioServiceActivity() {
                     }
                     "widget" -> { MinbarWidget.refresh(this); result.success(true) }
                     "bg" -> { moveTaskToBack(true); result.success(true) }
+                    // اسم جهاز البلوتوث الصوتي المتصل حالياً (لفتح وضع السيارة تلقائياً)
+                    "btOut" -> {
+                        var name: String? = null
+                        if (Build.VERSION.SDK_INT >= 23) {
+                            val am = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
+                            for (d in am.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS)) {
+                                if (d.type == android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP) { name = d.productName?.toString(); break }
+                            }
+                        }
+                        result.success(name)
+                    }
                     else -> result.notImplemented()
                 }
             } catch (e: Exception) { result.success(false) }

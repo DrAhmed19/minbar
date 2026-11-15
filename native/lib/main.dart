@@ -5,7 +5,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
-import 'package:just_audio_background/just_audio_background.dart';
+import 'package:audio_service/audio_service.dart' show AudioService, AudioServiceConfig;
+import 'aa.dart';
+import 'carauto.dart';
 import 'pages.dart';
 import 'state.dart';
 import 'audio.dart';
@@ -42,11 +44,16 @@ Future<void> _start() async {
     }
   });
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(statusBarColor: Colors.transparent, systemNavigationBarColor: kCream));
-  await JustAudioBackground.init(
-    androidNotificationChannelId: 'com.minbar.app.audio',
-    androidNotificationChannelName: 'منبر',
-    androidNotificationOngoing: true,
-    androidNotificationIcon: 'drawable/ic_stat_minbar',
+  // خدمة الصوت: إشعار وشاشة القفل وأزرار السماعة + Android Auto (تصفح وتشغيل وبحث صوتي)
+  await AudioService.init(
+    builder: () => MinbarHandler(app.player.p),
+    config: const AudioServiceConfig(
+      androidNotificationChannelId: 'com.minbar.app.audio',
+      androidNotificationChannelName: 'منبر',
+      androidNotificationOngoing: true,
+      androidNotificationIcon: 'drawable/ic_stat_minbar',
+      androidBrowsableRootExtras: {'android.media.browse.CONTENT_STYLE_BROWSABLE_HINT': 1, 'android.media.browse.CONTENT_STYLE_PLAYABLE_HINT': 1},
+    ),
   );
   await Firebase.initializeApp(
     options: const FirebaseOptions(
@@ -64,6 +71,7 @@ Future<void> _start() async {
     await ses.configure(const AudioSessionConfiguration.music());
   } catch (_) {}
   app.player.init();
+  CarAuto.I.start();
   auLoad();
   app.repo.init();
   app.auth.init();
