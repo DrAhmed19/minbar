@@ -397,9 +397,6 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
   DateTime? _backAt;
   // GPS
   Position? _lp;
-  bool _sim = false; // محاكاة: تجربة السرعة والانعطاف بدون قيادة
-  double _simV = 0;
-  int _simT = 0;
   double _lt = 0, _rawV = 0, _turn = 0, _acc = 99, _fixAt = -99, _blinkHold = 0;
   double _lat = 32.616, _lon = 44.024; // كربلاء افتراضياً
   // الطقس والوقت
@@ -713,11 +710,8 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
     final s = _sc, playing = app.player.p.playing;
     s.t += dt;
     double target;
-    final gp = gps || _sim;
-    if (_sim) {
-      target = _simV;
-      _turn += (_simT * 0.3 - _turn) * math.min(1.0, dt * 2);
-    } else if (gps) {
+    final gp = gps;
+    if (gps) {
       final age = _now - _fixAt;
       target = age < 5 ? _rawV : _rawV * _cl(1 - (age - 5) / 5); // فقدان الإشارة: تباطؤ تدريجي
     } else {
@@ -1139,38 +1133,6 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
                       }),
                   ]),
                 ], note: 'المكتشفة: $detected'),
-                card('🎮', 'تجربة بدون قيادة', [
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: _sim,
-                    activeColor: kGold,
-                    onChanged: (v) => upd(() {
-                      _sim = v;
-                      if (!v) {
-                        _simV = 0;
-                        _simT = 0;
-                      }
-                    }),
-                    title: Text('محاكاة السرعة والانعطاف', style: tx(14, c: Colors.white)),
-                    subtitle: Text('تشوف تأثير السرعة والتفافة السيارة والإشارة والفرامل وإنت واقف', style: tx(12, c: Colors.white54, h: 1.5)),
-                  ),
-                  if (_sim) ...[
-                    Row(children: [
-                      Expanded(child: Text('السرعة', style: tx(13, c: Colors.white70))),
-                      Text('${(_simV * 3.6).round()} كم/س', style: tx(14, c: kGold)),
-                    ]),
-                    SliderTheme(
-                      data: SliderTheme.of(c).copyWith(activeTrackColor: kGold, thumbColor: kGold, inactiveTrackColor: Colors.white12, overlayColor: const Color(0x22E8C468)),
-                      child: Slider(value: _simV * 3.6, min: 0, max: 160, onChanged: (v) => set(() => _simV = v / 3.6)),
-                    ),
-                    label('الانعطاف'),
-                    wrap([
-                      chip('يسار', _simT == -1, () => _simT = -1, icon: '↰'),
-                      chip('مستقيم', _simT == 0, () => _simT = 0, icon: '↑'),
-                      chip('يمين', _simT == 1, () => _simT = 1, icon: '↱'),
-                    ]),
-                  ],
-                ]),
                 card('🛡', 'القيادة الآمنة', [
                   Row(children: [
                     Expanded(child: Text('تنبيه السرعة (نغمة هادئة مرة وحدة)', style: tx(13, c: Colors.white70))),
