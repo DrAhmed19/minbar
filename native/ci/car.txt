@@ -6,7 +6,13 @@ wait 4
 swipe 540 1800 540 700 400
 wait 3
 text "وضع السيارة"
-wait 15
+wait 10
+text "إعدادات السيارة"
+wait 3
+text "عالية"
+wait 2
+back
+wait 8
 shot c01-real
 text "إعدادات السيارة"
 wait 3
