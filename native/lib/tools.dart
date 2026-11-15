@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -115,6 +116,69 @@ class Majlis extends ChangeNotifier {
   Map<String, dynamic>? d;
   int _push = 0, _sk = 0;
   String? _lastTrack;
+  // ساعة الخادم (نفس طريقة الويب): نرصد لحظة تغيّر الثانية في ترويسة Date فتتطابق الأجهزة حتى لو ساعاتها مختلفة
+  static double _off = 0;
+  static int _offAt = 0;
+  static bool clockOk = false;
+  int now() => DateTime.now().millisecondsSinceEpoch + _off.round();
+  int listeners = 0;
+  double? err; // انحراف المزامنة بالمللي ثانية (للضيف)
+  int _hostAt = 0;
+  List<int> _gl = [];
+  StreamSubscription? _gs;
+  Timer? _hb, _ui;
+  final List<double> _dq = [];
+
+  Future<void> _clock() async {
+    if (clockOk && DateTime.now().millisecondsSinceEpoch - _offAt < 120000) return;
+    final ests = <double>[];
+    int? prevD;
+    double prevMid = 0;
+    final hc = HttpClient()..connectionTimeout = const Duration(seconds: 4);
+    try {
+      for (var i = 0; i < 40 && ests.length < 3; i++) {
+        final t0 = DateTime.now().millisecondsSinceEpoch;
+        int? dd;
+        try {
+          final rq = await hc.headUrl(Uri.parse('${kBase}media/__clk?r=${math.Random().nextInt(1 << 30)}'));
+          rq.headers.set('cache-control', 'no-cache');
+          final rs = await rq.close();
+          await rs.drain();
+          dd = rs.headers.date?.millisecondsSinceEpoch;
+        } catch (_) {
+          break;
+        }
+        final t1 = DateTime.now().millisecondsSinceEpoch;
+        if (dd == null) break;
+        final mid = (t0 + t1) / 2;
+        if (prevD != null && dd > prevD && t1 - t0 < 400) ests.add(dd - (prevMid + mid) / 2);
+        prevD = dd;
+        prevMid = mid;
+        await Future.delayed(const Duration(milliseconds: 60));
+      }
+    } finally {
+      hc.close(force: true);
+    }
+    if (ests.isNotEmpty) {
+      ests.sort();
+      _off = ests[ests.length ~/ 2];
+      clockOk = true;
+      _offAt = DateTime.now().millisecondsSinceEpoch;
+    }
+  }
+
+  /// نص حالة المجلس + لونها: live / wait / warn
+  (String, String) get status {
+    if (!on) return ('', '');
+    if (host) return (listeners > 0 ? 'مباشر · $listeners حاضر' : 'مباشر · بانتظار الحضور', 'live');
+    final x = d;
+    if (x == null) return ('جارٍ الاتصال…', 'wait');
+    if (x['playing'] == true && _hostAt > 0 && now() - _hostAt > 25000) return ('المضيف غير متصل', 'warn');
+    if (x['playing'] != true) return ('متزامن · متوقف', 'live');
+    final e = err;
+    if (e == null) return ('جارٍ ضبط التوقيت…', 'wait');
+    return ('متزامن · ±${e.round()} م.ث', e < 120 ? 'live' : 'wait');
+  }
 
   Future<void> start(BuildContext ctx, bool asHost, String c) async {
     stop(quiet: true);
@@ -126,12 +190,32 @@ class Majlis extends ChangeNotifier {
     on = true;
     host = asHost;
     code = c;
+    err = null;
+    listeners = 0;
+    _hostAt = 0;
+    _dq.clear();
     final db = FirebaseFirestore.instance;
+    notifyListeners();
+    await _clock();
+    if (!on || code != c) return;
+    _ui = Timer.periodic(const Duration(seconds: 2), (_) {
+      if (host) {
+        final n0 = DateTime.now().millisecondsSinceEpoch;
+        listeners = _gl.where((x) => n0 - x < 45000).length;
+      }
+      notifyListeners();
+    });
     if (host) {
       _ps = app.player.p.playerStateStream.listen((_) => push(true));
       _iv = Timer.periodic(const Duration(seconds: 4), (_) => push(false));
       push(true);
       _toast(ctx, 'بدأ المجلس — رمزك $code');
+      _gs = db.collection('majlis/$code/g').snapshots().listen((q) {
+        _gl = [for (final d in q.docs) ((d.data()['at'] as Timestamp?)?.millisecondsSinceEpoch ?? DateTime.now().millisecondsSinceEpoch)];
+        final n0 = DateTime.now().millisecondsSinceEpoch;
+        listeners = _gl.where((x) => n0 - x < 45000).length;
+        notifyListeners();
+      }, onError: (_) {});
       var first = true;
       _sug = db.collection('majlis/$code/sug').snapshots().listen((q) {
         sug = [for (final d in q.docs) {...d.data(), 'id': d.id}];
@@ -153,19 +237,28 @@ class Majlis extends ChangeNotifier {
           return;
         }
         if (x['ref'] is! num) return;
+        _hostAt = (x['at'] as Timestamp?)?.millisecondsSinceEpoch ?? _hostAt;
         _follow(x);
       }, onError: (_) {
         if (ctx.mounted) _toast(ctx, 'تعذّر الاتصال بالمجلس');
       });
       _iv = Timer.periodic(const Duration(milliseconds: 400), (_) => _tick());
+      _beat();
+      _hb = Timer.periodic(const Duration(seconds: 15), (_) => _beat());
       _toast(ctx, 'انضممت إلى المجلس $code');
     }
     notifyListeners();
   }
 
+  void _beat() {
+    final u = FirebaseAuth.instance.currentUser;
+    if (!on || host || u == null) return;
+    FirebaseFirestore.instance.doc('majlis/$code/g/${u.uid}').set({'at': FieldValue.serverTimestamp(), 'off': _off.round()}).catchError((_) {});
+  }
+
   void push(bool force) {
     if (!on || !host) return;
-    final n = DateTime.now().millisecondsSinceEpoch;
+    final n = now();
     if (!force && n - _push < 4000) return;
     _push = n;
     final pl = app.player, t = pl.cur, u = FirebaseAuth.instance.currentUser;
@@ -193,7 +286,7 @@ class Majlis extends ChangeNotifier {
     final x = d;
     if (x == null) return null;
     final pos = (x['pos'] as num).toDouble(), ref = (x['ref'] as num).toDouble(), rate = (x['rate'] as num?)?.toDouble() ?? 1;
-    return pos + (x['playing'] == true ? math.max(0.0, DateTime.now().millisecondsSinceEpoch - ref) / 1000 * rate : 0.0);
+    return pos + (x['playing'] == true ? math.max(0.0, now() - ref) / 1000 * rate : 0.0);
   }
 
   void _follow(Map<String, dynamic> x) {
@@ -226,8 +319,14 @@ class Majlis extends ChangeNotifier {
     if (!pl.p.playing) pl.p.play();
     final n = DateTime.now().millisecondsSinceEpoch;
     if (n - _sk < 1600) return;
-    if ((e - cur).abs() > 0.45) {
+    _dq.add(e - cur);
+    if (_dq.length > 5) _dq.removeAt(0);
+    if (_dq.length < 3 && (e - cur).abs() < 2) return;
+    final m = (List<double>.of(_dq)..sort())[_dq.length >> 1];
+    err = m.abs() * 1000;
+    if (m.abs() > 0.2) {
       _sk = n;
+      _dq.clear();
       pl.seek(e + 0.08);
     }
   }
@@ -259,6 +358,16 @@ class Majlis extends ChangeNotifier {
 
   void stop({bool quiet = false}) {
     final wasHost = on && host;
+    final u = FirebaseAuth.instance.currentUser;
+    if (on && !host && u != null) FirebaseFirestore.instance.doc('majlis/$code/g/${u.uid}').delete().catchError((_) {});
+    _hb?.cancel();
+    _ui?.cancel();
+    _gs?.cancel();
+    _hb = _ui = null;
+    _gs = null;
+    _gl = [];
+    listeners = 0;
+    err = null;
     _un?.cancel();
     _ps?.cancel();
     _sug?.cancel();
@@ -298,6 +407,8 @@ void showMajlisSheet(BuildContext context) {
               decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), color: const Color(0x14E8C468), border: Border.all(color: kGold)),
               child: Column(children: [
                 Text(majlis.host ? 'مجلسك قائم' : 'أنت في المجلس', style: tx(14, c: Colors.white70)),
+                const SizedBox(height: 6),
+                const MajlisStatus(),
                 Text(majlis.code, textDirection: TextDirection.ltr, style: tx(34, c: kGold)),
                 const SizedBox(height: 10),
                 Container(
@@ -634,4 +745,53 @@ bool _near(String a, String b) {
     }
   }
   return e + (a.length - i) + (b.length - j) <= 1;
+}
+
+/// مؤشر حيّ لحالة المجلس (نقطة نابضة + نص)
+class MajlisStatus extends StatefulWidget {
+  const MajlisStatus({super.key});
+  @override
+  State<MajlisStatus> createState() => _MajlisStatusState();
+}
+
+class _MajlisStatusState extends State<MajlisStatus> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))..repeat(reverse: true);
+  @override
+  void initState() {
+    super.initState();
+    majlis.addListener(_r);
+  }
+
+  void _r() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    majlis.removeListener(_r);
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final (t, k) = majlis.status;
+    final col = k == 'live' ? const Color(0xFF4ADE80) : k == 'warn' ? const Color(0xFFF07878) : kGold;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), color: Colors.white.withOpacity(.07)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        AnimatedBuilder(
+          animation: _c,
+          builder: (_, __) => Container(
+            width: 9,
+            height: 9,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: col.withOpacity(k == 'warn' ? 1 : .45 + .55 * _c.value)),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(t, style: tx(12.5, w: FontWeight.w700, c: col)),
+      ]),
+    );
+  }
 }

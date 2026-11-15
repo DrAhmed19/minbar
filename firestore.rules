@@ -115,15 +115,36 @@ service cloud.firestore { match /databases/{db}/documents {
     allow read: if true;
     allow write: if isAdmin();
   }
-  // وضع المجلس: الجميع يقرأ برمز المجلس، والمضيف وحده يحدّث أو ينهي
+  // وضع المجلس: الرمز 6 أرقام. الغرفة تُقرأ بالرمز فقط (لا قائمة)، والمضيف وحده يكتب ويُنهي، والحقول محدّدة الأنواع والأحجام
+  function mjOk(d) {
+    return d.keys().hasOnly(['uid','ended','q','qs','track','pos','ref','playing','rate','at','ly'])
+      && d.uid is string
+      && d.ended is bool && d.playing is bool
+      && d.q is list && d.q.size() <= 300
+      && d.track is string && d.track.size() < 64
+      && d.pos is number && d.pos >= 0 && d.pos <= 36000
+      && d.ref is number
+      && d.rate is number && d.rate >= 0.25 && d.rate <= 4
+      && (!('qs' in d) || (d.qs is string && d.qs.size() < 120))
+      && (!('ly' in d) || (d.ly is string && d.ly.size() < 90000));
+  }
   match /majlis/{code} {
-    allow read: if true;
-    allow create: if signed() && request.resource.data.uid == request.auth.uid;
-    allow update: if isAdmin() || (signed() && resource.data.uid == request.auth.uid && request.resource.data.uid == request.auth.uid);
+    allow get: if true;
+    allow create: if signed() && code.matches('^[0-9]{6}$') && request.resource.data.uid == request.auth.uid && mjOk(request.resource.data);
+    allow update: if isAdmin() || (signed() && resource.data.uid == request.auth.uid && request.resource.data.uid == request.auth.uid && mjOk(request.resource.data));
     allow delete: if isAdmin() || (signed() && resource.data.uid == request.auth.uid);
+    // حضور الضيوف: نبضة كل ~15 ثانية من كل ضيف، والمضيف وحده يقرأها لعدّ المستمعين
+    match /g/{gid} {
+      allow read: if signed() && get(/databases/$(db)/documents/majlis/$(code)).data.uid == request.auth.uid;
+      allow create, update: if signed() && gid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['at','off'])
+        && request.resource.data.at == request.time
+        && request.resource.data.off is number && request.resource.data.off > -100000 && request.resource.data.off < 100000;
+      allow delete: if signed() && gid == request.auth.uid;
+    }
     // اقتراحات الحضور: كل مستخدم يقترح قصيدة (وثيقة واحدة لكل قصيدة)، والمضيف يقرأ ويحذف
     match /sug/{sid} {
-      allow read: if signed();
+      allow read: if signed() && get(/databases/$(db)/documents/majlis/$(code)).data.uid == request.auth.uid;
       allow create: if signed() && request.resource.data.keys().hasOnly(['track','by','at'])
         && request.resource.data.by == request.auth.uid
         && request.resource.data.track is string && request.resource.data.track.size() < 64
