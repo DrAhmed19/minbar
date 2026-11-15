@@ -685,37 +685,37 @@ class _World extends CustomPainter {
     final b = s.biome;
     // (عمق، نوع، فهرس، جانب، إزاحة عرضية)
     final objs = <(double, int, int, double, double)>[];
-    void every(double period, double phase, int type, double Function(int i) xOf, {double prob = 1, int salt = 0, double maxQ = qMax}) {
+    void every(double period, double phase, int type, double Function(int i) xOf, {double prob = 1, int salt = 0, double maxQ = 42}) {
       final i0 = ((s.q - phase) / period).floor();
       for (int k = -1; k < (maxQ / period).ceil() + 2; k++) {
         final idx = i0 + k, q = idx * period + phase - s.q;
         if (q <= qMin || q >= maxQ) continue;
-        if (prob < 1 && _hash(idx * 31 + salt) > prob) continue;
+        if (_hash(idx * 31 + salt) > prob * (type >= 100 ? 1 : (q >= 2 ? 1 : (q == 1 ? 0.6 : 0.35)))) continue;
         final xm = xOf(idx);
         objs.add((q, type, idx, xm.sign, xm));
       }
     }
 
     // أعمدة إنارة: كل المناطق عدا الجبال الوعرة (أقل)، المدينة أكثر
-    every(b == _bCity ? 10 : 14, 3, 100, (i) => half + shoulder + (b == _bCity ? 0.5 : 0.9), prob: b == _bMount ? 0.5 : 1, salt: 1);
-    every(b == _bCity ? 10 : 14, 3, 100, (i) => -(half + shoulder + (b == _bCity ? 0.5 : 0.9)), prob: b == _bMount ? 0.5 : 1, salt: 2);
+    every(b == _bCity ? 10 : 14, 3, 100, (i) => half + shoulder + (b == _bCity ? 0.5 : 0.9), prob: b == _bMount ? 0.5 : 1, salt: 1, maxQ: qMax);
+    every(b == _bCity ? 10 : 14, 3, 100, (i) => -(half + shoulder + (b == _bCity ? 0.5 : 0.9)), prob: b == _bMount ? 0.5 : 1, salt: 2, maxQ: qMax);
     switch (b) {
       case _bCity:
         // عمارات متلاصقة على الجانبين + نخيل رصيف
-        every(9, 0, 200, (i) => half + shoulder + 3.2, salt: 3);
-        every(9, 4.5, 200, (i) => -(half + shoulder + 3.2), salt: 4);
+        every(9, 0, 200, (i) => half + shoulder + 3.2, salt: 3, maxQ: 60);
+        every(9, 4.5, 200, (i) => -(half + shoulder + 3.2), salt: 4, maxQ: 60);
         every(7, 2, 10, (i) => (i.isEven ? 1 : -1) * (half + shoulder + 1.6), prob: 0.5, salt: 5);
       case _bDesert:
         every(2.2, 0, 3, (i) => (i.isEven ? 1 : -1) * (half + shoulder + 3 + _hash(i) * 40), prob: 0.7, salt: 6);
         every(3.1, 1, 5, (i) => (i.isEven ? 1 : -1) * (half + shoulder + 4 + _hash(i + 3) * 35), prob: 0.5, salt: 7);
-        every(48, 10, 300, (i) => -(half + shoulder + 22), salt: 8);
+        every(48, 10, 300, (i) => -(half + shoulder + 22), salt: 8, maxQ: qMax);
         every(20, 7, 10, (i) => (i.isEven ? 1 : -1) * (half + shoulder + 15 + _hash(i) * 30), prob: 0.35, salt: 9);
       case _bFarm:
         every(3, 0, 10, (i) => (i.isEven ? 1 : -1) * (half + shoulder + 4 + _hash(i) * 9), salt: 10);
         every(4, 1.5, 10, (i) => (i.isEven ? 1 : -1) * (half + shoulder + 16 + _hash(i + 1) * 25), salt: 11);
         every(5, 2, 0, (i) => (i.isEven ? -1 : 1) * (half + shoulder + 3.5 + _hash(i + 2) * 4), prob: 0.5, salt: 12);
         every(22, 9, 6, (i) => (i.isEven ? 1 : -1) * (half + shoulder + 14 + _hash(i) * 12), prob: 0.6, salt: 13);
-        every(48, 20, 300, (i) => -(half + shoulder + 30), salt: 14);
+        every(48, 20, 300, (i) => -(half + shoulder + 30), salt: 14, maxQ: qMax);
       case _bMount:
         every(2.6, 0, 1, (i) => (i.isEven ? 1 : -1) * (half + shoulder + 4 + _hash(i) * 30), prob: 0.8, salt: 15);
         every(3.4, 1, 2, (i) => (i.isEven ? -1 : 1) * (half + shoulder + 5 + _hash(i + 1) * 30), prob: 0.7, salt: 16);
@@ -1045,16 +1045,15 @@ class _World extends CustomPainter {
     Shader linX(double x0, double x1, List<Color> cols, [List<double>? st]) => LinearGradient(colors: cols, stops: st).createShader(r(x0, -1, x1, 0));
     final ti0 = m.tire[0], ti1 = m.tire[1], th = m.tire[2], top = -m.height, bot = m.body[0][2], bp = m.bumper;
     // ظلال التلامس
-    c.drawOval(r(-0.62, -0.045, 0.62, 0.075), Paint()
-      ..color = Colors.black.withOpacity(0.6)
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, cw * 0.04));
+    final shR = r(-0.66, -0.06, 0.66, 0.09);
+    c.drawOval(shR, Paint()..shader = RadialGradient(colors: [Colors.black.withOpacity(0.7), Colors.black.withOpacity(0.45), Colors.black.withOpacity(0)], stops: const [0, 0.65, 1]).createShader(shR));
     c.drawRect(r(-ti1, -th * 0.6, ti1, 0.0), Paint()
       ..color = Colors.black.withOpacity(0.92)
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, cw * 0.012));
+      );
     for (final sd in const [-1.0, 1.0]) {
       c.drawOval(r(sd * (ti0 - 0.025), -0.022, sd * (ti1 + 0.02), 0.026), Paint()
         ..color = Colors.black
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, cw * 0.007));
+        );
     }
     // الإطارات: مطاط بجانب مظلل ومداس وحافة لامعة
     for (final sd in const [-1.0, 1.0]) {
@@ -1086,7 +1085,7 @@ class _World extends CustomPainter {
           Path()
             ..moveTo(sd * b[2][5] * cw, b[2][6] * cw)
             ..cubicTo(sd * b[3][1] * cw, b[3][2] * cw, sd * b[3][3] * cw, b[3][4] * cw, sd * b[3][5] * cw, b[3][6] * cw),
-          stroke(Colors.white.withOpacity(0.12 + 0.4 * light), 0.009)..maskFilter = MaskFilter.blur(BlurStyle.normal, cw * 0.004));
+          stroke(Colors.white.withOpacity(0.12 + 0.4 * light), 0.009));
       c.drawPath(
           Path()
             ..moveTo(sd * 0.5 * cw, (bp + 0.03) * cw)
