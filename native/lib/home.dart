@@ -388,7 +388,7 @@ class _HomeShellState extends State<HomeShell> {
             for (final e in _sorts.entries)
               ListTile(
                 dense: true,
-                title: Text(e.value, style: tx(14.5, w: _sort == e.key ? FontWeight.w800 : FontWeight.w500, c: _sort == e.key ? kGreen : null)),
+                title: Text(e.value, style: tx(14.5, w: _sort == e.key ? FontWeight.w800 : FontWeight.w500, c: _sort == e.key ? kGreen : kInk)),
                 trailing: _sort == e.key ? const Icon(Icons.check_rounded, color: kGreen) : null,
                 onTap: () {
                   setState(() => _sort = e.key);
