@@ -17,6 +17,8 @@ import 'lyrics.dart';
 import 'state.dart';
 import 'ui.dart';
 
+part 'car_scene.dart';
+
 /// وضع السيارة: مشهد قيادة حيّ بكامل الشاشة.
 /// - السرعة من GPS مع تنقية (دقة السرعة، رفض القفزات، حساب احتياطي من المسافة/الزمن).
 /// - الطريق يتحرك بالسرعة الحقيقية (بالمتر)، ينعطف مع اتجاه السيارة، الفرامل تضيء عند التباطؤ والتوقف، والإشارة عند الانعطاف.
@@ -87,7 +89,6 @@ final _presets = <_Wx?>[
   _Wx.preset(0, dust: 0.85, cloud: 0.2, wind: 9),
   _Wx.preset(73, snow: 0.8, cloud: 0.95),
 ];
-const _timeNames = ['الوقت الحقيقي', 'نهار', 'غروب', 'ليل'];
 const _modelNames = {'sport': 'رياضية', 'sedan': 'سيدان', 'suv': 'دفع رباعي'};
 const _colorNames = {'green': 'أخضر منبر', 'black': 'أسود', 'white': 'أبيض', 'silver': 'فضي', 'red': 'أحمر', 'blue': 'أزرق', 'gold': 'ذهبي'};
 
@@ -96,7 +97,9 @@ class _Scene {
   double t = 0, q = 0, v = 0, a = 0, brake = 0, tail = 0.3, curv = 0, lean = 0, blink = 0, pitch = 0, spin = 0, flash = 0, splash = 0;
   double sunEl = 45, sunAz = 180, moonEl = -20, moonAz = 0, moonPh = 0.5, heading = 180;
   double rain = 0, snow = 0, cloud = 0, fog = 0, dust = 0, storm = 0, wind = 0;
-  double holyB = 0, holyD = 0; // اتجاه ومسافة حرم الإمام الحسين (ع)
+  int biome = 2; // نوع المنطقة الحالية
+  double temp = double.nan;
+  List<(double, double, int)> marks = const []; // معالم قريبة: (اتجاه، كم، نوع)
   int bolt = 0;
   bool over = false; // تجاوز حد السرعة
   String model = 'sport', color = 'green';
@@ -403,6 +406,28 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
   // الإعدادات
   int _limit = 0; // 0 = بلا تنبيه
   int _qMode = 0; // جودة الرسوم: 0 تلقائي، 1 عالية، 2 متوسطة، 3 خفيفة
+  int _bMode = -1; // المنطقة: -1 تلقائي
+  _Region? _region;
+  bool _hasPos = false, _geoBusy = false;
+  double _gLat = 0, _gLon = 0;
+
+  void _applyBiome() => _sc.biome = _bMode >= 0 ? _bMode : (_region?.biome ?? _bFarm);
+
+  /// اسم المحافظة والحي ونوع المكان: عند أول موقع وكل ما تتحرك 2 كم
+  Future<void> _geo({bool force = false}) async {
+    if (!_hasPos || _geoBusy) return;
+    if (!force && _region != null && Geolocator.distanceBetween(_gLat, _gLon, _lat, _lon) < 2000) return;
+    _geoBusy = true;
+    final r = await _reverse(_lat, _lon);
+    _geoBusy = false;
+    if (r == null || !mounted) return;
+    _gLat = _lat;
+    _gLon = _lon;
+    setState(() {
+      _region = r;
+      _applyBiome();
+    });
+  }
   bool _restOn = true;
   // الرحلة
   final DateTime _start = DateTime.now();
@@ -458,6 +483,7 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
     _ct = Timer.periodic(const Duration(seconds: 1), (_) {
       _clock.value = DateTime.now();
       if (DateTime.now().second % 20 == 0) _env();
+      if (DateTime.now().second == 30) _geo();
     });
     SharedPreferences.getInstance().then((p) async {
       _wMode = (p.getInt('car.wx') ?? 0) % _presets.length;
@@ -469,6 +495,8 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
       _limit = p.getInt('car.limit') ?? 0;
       _restOn = p.getBool('car.rest') ?? true;
       _qMode = p.getInt('car.q') ?? 0;
+      _bMode = p.getInt('car.biome') ?? -1;
+      _applyBiome();
       if (_qMode != 0) _World.q = 3 - _qMode;
       _env();
       if (mounted) setState(() {});
@@ -513,6 +541,11 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
     _lt = now;
     _lat = p.latitude;
     _lon = p.longitude;
+    if (!_hasPos) {
+      _hasPos = true;
+      _env();
+      _geo();
+    }
     if (sp == null) return;
     if (sp < 0.6) sp = 0; // ضجيج التوقف
     _rawV = sp;
@@ -527,7 +560,9 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
         if (p != null) {
           _lat = p.latitude;
           _lon = p.longitude;
+          _hasPos = true;
           _env();
+          _geo();
         }
       }
     } catch (_) {}
@@ -555,7 +590,9 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
       if (lp != null) {
         _lat = lp.latitude;
         _lon = lp.longitude;
+        _hasPos = true;
         _env();
+        _geo();
       }
     } catch (_) {
       if (ask) _say('تعذّر تشغيل عدّاد السرعة');
@@ -586,10 +623,19 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
       ..moonEl = me
       ..moonAz = ma
       ..moonPh = ph;
-    const kLat = 32.6164 * rad, kLon = 44.0324 * rad;
-    final la1 = _lat * rad, dl = kLon - _lon * rad;
-    _sc.holyB = (math.atan2(math.sin(dl) * math.cos(kLat), math.cos(la1) * math.sin(kLat) - math.sin(la1) * math.cos(kLat) * math.cos(dl)) / rad + 360) % 360;
-    _sc.holyD = Geolocator.distanceBetween(_lat, _lon, 32.6164, 44.0324) / 1000;
+    // معالم قريبة باتجاهها الحقيقي (فقط إذا موقعك معروف)
+    final la1 = _lat * rad;
+    double brg(double la, double lo) {
+      final dl = (lo - _lon) * rad, l2 = la * rad;
+      return (math.atan2(math.sin(dl) * math.cos(l2), math.cos(la1) * math.sin(l2) - math.sin(la1) * math.cos(l2) * math.cos(dl)) / rad + 360) % 360;
+    }
+
+    _sc.marks = !_hasPos
+        ? const []
+        : [
+            for (final m in _landmarks)
+              if (Geolocator.distanceBetween(_lat, _lon, m.$1, m.$2) < 45000) (brg(m.$1, m.$2), Geolocator.distanceBetween(_lat, _lon, m.$1, m.$2) / 1000, m.$3),
+          ];
     final h = _sc.heading;
     switch (_tMode) {
       case 1:
@@ -643,6 +689,7 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
         final d = ((aq['current'] as Map<String, dynamic>)['dust'] as num?)?.toDouble() ?? 0.0;
         w.dust = _cl((d - 120) / 600);
       } catch (_) {}
+      _sc.temp = w.temp;
       if (mounted) setState(() => _wx = w);
     } catch (e) {
       debugPrint('car wx fail $e');
@@ -912,6 +959,14 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
   void _settings() async {
     final cars = await CarAuto.cars();
     var auto = await CarAuto.enabled();
+    String? lastTrip;
+    try {
+      final p = await SharedPreferences.getInstance(), j = p.getString('car.lastTrip');
+      if (j != null) {
+        final m = jsonDecode(j) as Map<String, dynamic>;
+        lastTrip = '${((m['d'] as num) / 1000).toStringAsFixed(1)} كم · ${_dur((m['t'] as num).toDouble())} · ${m['n']} قصيدة';
+      }
+    } catch (_) {}
     if (!mounted) return;
     Future<void> save(String k, Object v) async {
       final p = await SharedPreferences.getInstance();
@@ -923,114 +978,228 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF0B1F19),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      backgroundColor: Colors.transparent,
       builder: (c) => StatefulBuilder(builder: (c, set) {
-        Widget chip(String label, bool on, VoidCallback f) => GestureDetector(
-              onTap: () {
-                HapticFeedback.selectionClick();
-                f();
-                set(() {});
-                setState(() {});
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                decoration: BoxDecoration(color: on ? const Color(0x33E8C468) : const Color(0x14FFFFFF), borderRadius: BorderRadius.circular(18), border: Border.all(color: on ? kGold : const Color(0x26FFFFFF))),
-                child: Text(label, style: tx(13, c: on ? kGold : Colors.white)),
+        void upd(VoidCallback f) {
+          HapticFeedback.selectionClick();
+          f();
+          set(() {});
+          setState(() {});
+        }
+
+        Widget chip(String label, bool on, VoidCallback f, {String? icon}) => GestureDetector(
+              onTap: () => upd(f),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+                decoration: BoxDecoration(color: on ? const Color(0x2EE8C468) : const Color(0x0FFFFFFF), borderRadius: BorderRadius.circular(14), border: Border.all(color: on ? kGold : const Color(0x1FFFFFFF))),
+                child: Text('${icon == null ? '' : '$icon '}$label', style: tx(13, c: on ? kGold : Colors.white70)),
               ),
             );
-        Widget head(String t) => Padding(padding: const EdgeInsets.only(top: 16, bottom: 8), child: Align(alignment: Alignment.centerRight, child: Text(t, style: tx(14, c: Colors.white70))));
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Text('إعدادات وضع السيارة', style: tx(17, c: kGold)),
-                head('شكل السيارة'),
-                Wrap(spacing: 8, runSpacing: 8, children: [
-                  for (final e in _modelNames.entries)
-                    chip(e.value, _sc.model == e.key, () {
-                      _sc.model = e.key;
-                      save('car.model', e.key);
-                    }),
+        Widget card(String icon, String title, List<Widget> kids, {String? note}) => Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x17FFFFFF), Color(0x08FFFFFF)]),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0x1AFFFFFF)),
+              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Container(width: 30, height: 30, alignment: Alignment.center, decoration: BoxDecoration(color: const Color(0x26E8C468), borderRadius: BorderRadius.circular(10)), child: Text(icon, style: const TextStyle(fontSize: 15))),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(title, style: tx(15, c: Colors.white))),
+                  if (note != null) Text(note, style: tx(12, c: kGold)),
                 ]),
-                head('اللون'),
-                Wrap(spacing: 10, runSpacing: 10, children: [
-                  for (final e in _carColors.entries)
-                    GestureDetector(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        _sc.color = e.key;
-                        save('car.color', e.key);
-                        set(() {});
-                      },
-                      child: Tooltip(
-                        message: _colorNames[e.key] ?? '',
-                        child: Container(
-                          width: 38,
-                          height: 38,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(e.value[0]), Color(e.value[1]), Color(e.value[2])]),
-                            border: Border.all(color: _sc.color == e.key ? kGold : const Color(0x33FFFFFF), width: _sc.color == e.key ? 3 : 1),
+                const SizedBox(height: 12),
+                ...kids,
+              ]),
+            );
+        Widget label(String t) => Padding(padding: const EdgeInsets.only(top: 10, bottom: 7), child: Text(t, style: tx(12, c: Colors.white54)));
+        Widget wrap(List<Widget> k) => Wrap(spacing: 7, runSpacing: 7, children: k);
+        Widget stat(String v, String l) => Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                decoration: BoxDecoration(color: const Color(0x0FFFFFFF), borderRadius: BorderRadius.circular(12)),
+                child: Column(children: [Text(v, style: tx(16, c: Colors.white, h: 1.2)), Text(l, style: tx(11, c: Colors.white54))]),
+              ),
+            );
+        final total = DateTime.now().difference(_start).inSeconds.toDouble(), avg = _moveSec > 30 ? _dist / _moveSec * 3.6 : 0.0;
+        final detected = _region == null ? 'غير محددة' : (_biomeNames[_region!.biome] ?? '');
+        return DraggableScrollableSheet(
+          initialChildSize: 0.86,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (c, sc) => Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF10261F), Color(0xFF07140F)]),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+              border: Border(top: BorderSide(color: Color(0x40E8C468))),
+            ),
+            child: Directionality(
+              textDirection: TextDirection.rtl,
+              child: ListView(controller: sc, padding: const EdgeInsets.fromLTRB(16, 10, 16, 24), children: [
+                Center(child: Container(width: 42, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)))),
+                const SizedBox(height: 12),
+                Row(children: [
+                  Expanded(child: Text('إعدادات وضع السيارة', style: tx(19, c: kGold))),
+                  IconButton(onPressed: () => Navigator.pop(c), icon: const PIcon(Ic.x, color: Colors.white70, size: 22)),
+                ]),
+                const SizedBox(height: 6),
+                card('🚗', 'سيارتك', [
+                  Container(
+                    height: 170,
+                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: const Color(0xFF0B1F19)),
+                    child: ClipRRect(borderRadius: BorderRadius.circular(16), child: CustomPaint(painter: _CarPreview(_sc.model, _sc.color), size: Size.infinite)),
+                  ),
+                  label('الشكل'),
+                  Row(children: [
+                    for (final e in _modelNames.entries)
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 3),
+                          child: GestureDetector(
+                            onTap: () => upd(() {
+                              _sc.model = e.key;
+                              save('car.model', e.key);
+                            }),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(color: _sc.model == e.key ? const Color(0x2EE8C468) : const Color(0x0FFFFFFF), borderRadius: BorderRadius.circular(14), border: Border.all(color: _sc.model == e.key ? kGold : const Color(0x1FFFFFFF))),
+                              child: Text(e.value, style: tx(13, c: _sc.model == e.key ? kGold : Colors.white70)),
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                  ]),
+                  label('اللون: ${_colorNames[_sc.color] ?? ''}'),
+                  wrap([
+                    for (final e in _carColors.entries)
+                      Semantics(
+                        label: _colorNames[e.key],
+                        button: true,
+                        child: GestureDetector(
+                          onTap: () => upd(() {
+                            _sc.color = e.key;
+                            save('car.color', e.key);
+                          }),
+                          child: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(e.value[0]), Color(e.value[1]), Color(e.value[3])]),
+                              border: Border.all(color: _sc.color == e.key ? kGold : const Color(0x33FFFFFF), width: _sc.color == e.key ? 3 : 1),
+                              boxShadow: _sc.color == e.key ? const [BoxShadow(color: Color(0x66E8C468), blurRadius: 10)] : null,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ]),
                 ]),
-                head('تنبيه السرعة (نغمة هادئة مرة وحدة)'),
-                Wrap(spacing: 8, runSpacing: 8, children: [
-                  for (final v in const [0, 80, 100, 110, 120, 140])
-                    chip(v == 0 ? 'إيقاف' : '$v', _limit == v, () {
-                      _limit = v;
-                      _alertArmed = true;
-                      save('car.limit', v);
-                      if (v > 0 && !gps) _gpsOn();
-                    }),
-                ]),
-                head('جودة الرسوم'),
-                Wrap(spacing: 8, runSpacing: 8, children: [
-                  for (final e in const {0: 'تلقائي', 1: 'عالية', 2: 'متوسطة', 3: 'خفيفة'}.entries)
-                    chip(e.value, _qMode == e.key, () {
-                      _qMode = e.key;
-                      save('car.q', e.key);
-                      _World.q = e.key == 0 ? (app.player.perf == 0 ? 2 : 1) : 3 - e.key;
-                    }),
-                ]),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: _restOn,
-                  activeColor: kGold,
-                  onChanged: (v) {
-                    _restOn = v;
-                    save('car.rest', v);
-                    set(() {});
-                  },
-                  title: Text('تذكير بالاستراحة كل ساعتين قيادة', style: tx(14, c: Colors.white)),
-                ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: auto,
-                  activeColor: kGold,
-                  onChanged: (v) {
-                    auto = v;
-                    CarAuto.setEnabled(v);
-                    set(() {});
-                  },
-                  title: Text('فتح وضع السيارة تلقائياً مع بلوتوث السيارة', style: tx(14, c: Colors.white)),
-                  subtitle: Text(cars.isEmpty ? 'أول ما تتصل ببلوتوث سيارتك نسألك عنه' : cars.join('، '), style: tx(12, c: Colors.white54)),
-                ),
-                if (cars.isNotEmpty)
-                  Wrap(spacing: 8, children: [
-                    for (final n in [...cars])
-                      chip('✕ $n', false, () {
-                        CarAuto.forget(n);
-                        cars.remove(n);
+                card('🗺', 'المشهد', [
+                  label('المنطقة'),
+                  wrap([
+                    for (final e in _biomeNames.entries)
+                      chip(e.value, _bMode == e.key, () {
+                        _bMode = e.key;
+                        save('car.biome', e.key);
+                        _applyBiome();
                       }),
                   ]),
-                const SizedBox(height: 10),
-                Text('Android Auto: افتح منبر من شاشة السيارة لتصفح المفضلة والإصدارات والتحكم بالتشغيل.', style: tx(12, c: Colors.white54, h: 1.6)),
+                  label('الوقت'),
+                  wrap([
+                    for (int i = 0; i < 4; i++)
+                      chip(const ['تلقائي', 'نهار', 'غروب', 'ليل'][i], _tMode == i, () {
+                        _tMode = i;
+                        save('car.tm', i);
+                        _env();
+                      }, icon: const ['🕒', '☀', '🌇', '🌙'][i]),
+                  ]),
+                  label('الطقس'),
+                  wrap([
+                    for (int i = 0; i < _presets.length; i++)
+                      chip(i == 0 ? 'الحقيقي' : _presets[i]!.label, _wMode == i, () {
+                        _wMode = i;
+                        save('car.wx', i);
+                      }, icon: i == 0 ? '📡' : _presets[i]!.icon(false)),
+                  ]),
+                  label('جودة الرسوم'),
+                  wrap([
+                    for (final e in const {0: 'تلقائية', 1: 'عالية', 2: 'متوسطة', 3: 'خفيفة'}.entries)
+                      chip(e.value, _qMode == e.key, () {
+                        _qMode = e.key;
+                        save('car.q', e.key);
+                        _World.q = e.key == 0 ? (app.player.perf == 0 ? 2 : 1) : 3 - e.key;
+                      }),
+                  ]),
+                ], note: 'المكتشفة: $detected'),
+                card('🛡', 'القيادة الآمنة', [
+                  Row(children: [
+                    Expanded(child: Text('تنبيه السرعة (نغمة هادئة مرة وحدة)', style: tx(13, c: Colors.white70))),
+                    Text(_limit == 0 ? 'إيقاف' : '$_limit كم/س', style: tx(14, c: kGold)),
+                  ]),
+                  SliderTheme(
+                    data: SliderTheme.of(c).copyWith(activeTrackColor: kGold, thumbColor: kGold, inactiveTrackColor: Colors.white12, overlayColor: const Color(0x22E8C468)),
+                    child: Slider(
+                      value: _limit.toDouble(),
+                      min: 0,
+                      max: 160,
+                      divisions: 16,
+                      onChanged: (v) {
+                        _limit = v.round();
+                        _alertArmed = true;
+                        set(() {});
+                      },
+                      onChangeEnd: (v) {
+                        save('car.limit', _limit);
+                        if (_limit > 0 && !gps) _gpsOn();
+                      },
+                    ),
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: _restOn,
+                    activeColor: kGold,
+                    onChanged: (v) => upd(() {
+                      _restOn = v;
+                      save('car.rest', v);
+                    }),
+                    title: Text('تذكير بالاستراحة كل ساعتين قيادة', style: tx(14, c: Colors.white)),
+                  ),
+                ]),
+                card('🔵', 'الاتصال بالسيارة', [
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: auto,
+                    activeColor: kGold,
+                    onChanged: (v) => upd(() {
+                      auto = v;
+                      CarAuto.setEnabled(v);
+                    }),
+                    title: Text('فتح وضع السيارة تلقائياً مع بلوتوث السيارة', style: tx(14, c: Colors.white)),
+                    subtitle: Text(cars.isEmpty ? 'أول ما تتصل ببلوتوث سيارتك نسألك عنه' : 'السيارات المحفوظة:', style: tx(12, c: Colors.white54)),
+                  ),
+                  if (cars.isNotEmpty)
+                    wrap([
+                      for (final n in [...cars])
+                        chip(n, true, () {
+                          CarAuto.forget(n);
+                          cars.remove(n);
+                        }, icon: '✕'),
+                    ]),
+                  const SizedBox(height: 8),
+                  Text('Android Auto: افتح منبر من شاشة السيارة لتصفح المفضلة والإصدارات والتحكم بالتشغيل.', style: tx(12, c: Colors.white54, h: 1.6)),
+                ]),
+                card('📊', 'الرحلة الحالية', [
+                  Row(children: [stat(gps ? '${(_dist / 1000).toStringAsFixed(1)}' : '—', 'كم'), stat(_dur(total), 'المدة'), stat('${_heard.length}', 'قصائد')]),
+                  const SizedBox(height: 6),
+                  Row(children: [stat(gps ? '${avg.round()}' : '—', 'المعدل'), stat(gps ? '${(_maxV * 3.6).round()}' : '—', 'الأعلى'), stat(gps ? _dur(_moveSec) : '—', 'الحركة')]),
+                  if (lastTrip != null) ...[label('آخر رحلة'), Text(lastTrip, style: tx(13, c: Colors.white70))],
+                ]),
               ]),
             ),
           ),
@@ -1076,48 +1245,60 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
 
   Widget _topBar() {
     final w = _wxNow, night = _sc.sunEl < -4;
-    final t = w.temp.isNaN ? '' : ' ${w.temp.round()}°';
+    final t = w.temp.isNaN ? '' : '${w.temp.round()}° ';
+    final place = _region?.place ?? (_hasPos ? 'جارِ تحديد المنطقة…' : 'حدّد موقعك');
+    final sub = _region?.sub ?? '';
+    Widget roundBtn(Widget child, {VoidCallback? onTap, VoidCallback? onLong, String? sem}) => Semantics(
+          label: sem,
+          button: true,
+          child: GestureDetector(
+            onTap: onTap,
+            onLongPress: onLong,
+            child: Container(width: 42, height: 42, alignment: Alignment.center, decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0x1FFFFFFF)), child: child),
+          ),
+        );
+    Widget div() => Container(width: 1, height: 28, margin: const EdgeInsets.symmetric(horizontal: 8), color: const Color(0x26FFFFFF));
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 4, 12, 0),
-      child: Row(children: [
-        GestureDetector(
-          onTap: () => _say('اضغط مطولاً على ✕ للخروج'),
-          onLongPress: () {
+      padding: const EdgeInsets.fromLTRB(10, 6, 10, 0),
+      child: Container(
+        height: 58,
+        padding: const EdgeInsets.symmetric(horizontal: 7),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(colors: [Color(0x8C000000), Color(0x66000000)]),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0x26FFFFFF)),
+        ),
+        child: Row(children: [
+          roundBtn(const PIcon(Ic.x, color: Colors.white, size: 22), onTap: () => _say('اضغط مطولاً على ✕ للخروج'), onLong: () {
             HapticFeedback.heavyImpact();
             _exit();
-          },
-          child: const Padding(padding: EdgeInsets.all(10), child: PIcon(Ic.x, color: Colors.white, size: 26)),
-        ),
-        Flexible(
-          flex: 5,
-          child: _chip(Text('${w.icon(night)}$t  ${w.label}${_wMode == 0 ? '' : ' (تجربة)'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(13, c: Colors.white)), () {
-            setState(() => _wMode = (_wMode + 1) % _presets.length);
-            SharedPreferences.getInstance().then((p) => p.setInt('car.wx', _wMode));
-            _say(_wMode == 0 ? 'الطقس الحقيقي' : 'تجربة: ${_presets[_wMode]!.label}');
           }),
-        ),
-        const SizedBox(width: 6),
-        _chip(Row(mainAxisSize: MainAxisSize.min, children: [
-          PIcon(Ic.moon, color: _tMode == 0 ? Colors.white : kGold, size: 16),
-          const SizedBox(width: 4),
-          Text(const ['تلقائي', 'نهار', 'غروب', 'ليل'][_tMode], style: tx(12, c: _tMode == 0 ? Colors.white : kGold)),
-        ]), () {
-          setState(() => _tMode = (_tMode + 1) % 4);
-          SharedPreferences.getInstance().then((p) => p.setInt('car.tm', _tMode));
-          _env();
-          _say(_timeNames[_tMode]);
-        }),
-        const SizedBox(width: 6),
-        Semantics(label: 'إعدادات السيارة', button: true, child: _chip(const PIcon(Ic.more, color: Colors.white, size: 18), _settings)),
-        const Spacer(),
-        ValueListenableBuilder<DateTime>(
-          valueListenable: _clock,
-          builder: (_, d, __) => Directionality(
-            textDirection: TextDirection.ltr,
-            child: Text('${_two(d.hour)}:${_two(d.minute)}', style: tx(22, c: Colors.white).copyWith(fontFeatures: const [FontFeature.tabularFigures()], shadows: const [Shadow(color: Color(0x99000000), blurRadius: 8)])),
+          div(),
+          Expanded(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                if (!gps) _gpsOn();
+                _geo(force: true);
+              },
+              child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('📍 $place${sub.isEmpty ? '' : ' · $sub'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(14, c: Colors.white, h: 1.25)),
+                Text('${w.icon(night)} $t${w.label}${_wMode == 0 ? '' : ' (معاينة)'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(12, c: Colors.white70, h: 1.3)),
+              ]),
+            ),
           ),
-        ),
-      ]),
+          div(),
+          ValueListenableBuilder<DateTime>(
+            valueListenable: _clock,
+            builder: (_, d, __) => Directionality(
+              textDirection: TextDirection.ltr,
+              child: Text('${_two(d.hour)}:${_two(d.minute)}', style: tx(21, c: Colors.white).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
+            ),
+          ),
+          const SizedBox(width: 8),
+          roundBtn(const PIcon(Ic.more, color: Colors.white, size: 20), onTap: _settings, sem: 'إعدادات السيارة'),
+        ]),
+      ),
     );
   }
 
@@ -1471,798 +1652,4 @@ Path _cpath(List<List<double>> cmds, double cw, {double sx = 1, bool close = tru
   }
   if (close) pa.close();
   return pa;
-}
-
-/// العالم: سماء حقيقية، أرض بنسيج رمل، طريق بنسيج أسفلت بمنظور هندسي بالأمتار، نخيل وأعمدة إنارة، طقس، وسيارة
-class _World extends CustomPainter {
-  /// مستوى الجودة يتكيّف مع قدرة الجهاز: 2 كامل، 1 بلا أنسجة وجزيئات أقل، 0 أخف ما يمكن
-  static int q = 2;
-  final _Scene s;
-  final _Stage g;
-  _World(this.s, this.g, Listenable r) : super(repaint: r);
-  static TextPainter? _plate, _holyTp;
-  static double _plateW = 0;
-  static int _holyKm = -1;
-  static const _r64 = Rect.fromLTWH(0, 0, 64, 64);
-
-  // دفعة توهّجات تُرسم بنداء واحد (إضافي) بدل تمويه كل ضوء على حدة
-  final _gT = <RSTransform>[], _gC = <Color>[];
-  void _glow(Offset o, double r, Color col) {
-    if (r < 0.5 || col.alpha < 3) return;
-    _gT.add(RSTransform.fromComponents(rotation: 0, scale: r / 32, anchorX: 32, anchorY: 32, translateX: o.dx, translateY: o.dy));
-    _gC.add(col);
-  }
-
-  void _flush(Canvas c) {
-    if (_gT.isEmpty) return;
-    if (_Art.ready) c.drawAtlas(_Art.dot, _gT, List.filled(_gT.length, _r64), _gC, BlendMode.modulate, null, Paint());
-    _gT.clear();
-    _gC.clear();
-  }
-
-  @override
-  void paint(Canvas c, Size z) {
-    _Art.ensure();
-    final w = z.width, h = z.height, hz = g.hz, cx = g.cx, hh = h - hz;
-    // الإسقاط: عرض السيارة 1.85 م، وحدة العمق 2.5 م
-    final fc = _cl((g.carY - hz) / hh, 0.05, 0.95), s0 = g.cw / (1.85 * fc), qc = 1 / fc - 1;
-    final el = s.sunEl, day = _sm(-7, 7, el), golden = el > -6 ? _cl(1 - (el - 2).abs() / 10) : 0.0;
-    final over = _cl(s.cloud * 0.75 + s.rain * 0.25);
-    final light0 = _cl((0.06 + 0.94 * day) * (1 - 0.35 * over));
-    final light = _cl(light0 + s.flash * 0.6);
-    final lightsOn = 1 - _sm(-3, 5, el);
-    final murk = math.max(s.fog, s.dust);
-    double f(double q) => 1 / (1 + q);
-    double off(double q) {
-      final d = q - qc;
-      return s.curv * 3.125 * d * d / (1 + d.abs() / 30);
-    }
-
-    double X(double xm, double q) => cx + (xm + off(q)) * s0 * f(q);
-    double Y(double q, [double ym = 0]) => hz + (hh - ym * s0) * f(q);
-    double sxOf(double az) => cx + (((az - s.heading + 540) % 360) - 180) / 55 * (w / 2);
-
-    // ---------- السماء: ثلاث درجات + طقس ----------
-    var top = _mix(const Color(0xFF01040B), const Color(0xFF2A64B8), day), hor = _mix(const Color(0xFF0D1B2F), const Color(0xFFB7D8F0), day);
-    top = _mix(top, const Color(0xFF2E3A66), golden * 0.55);
-    hor = _mix(hor, const Color(0xFFF28A50), golden * 0.85);
-    top = _mix(top, _mix(const Color(0xFF0D1115), const Color(0xFF6F7B87), day), over);
-    hor = _mix(hor, _mix(const Color(0xFF171C21), const Color(0xFFA7AFB7), day), over);
-    final dustC = _mix(const Color(0xFF2A2014), const Color(0xFFC99A5A), day);
-    top = _mix(top, dustC, s.dust * 0.85);
-    hor = _mix(hor, _mix(dustC, const Color(0xFFE0B676), day), s.dust);
-    final mid = _mix(_mix(top, hor, 0.55), const Color(0xFFE8A070), golden * 0.25);
-    final sky = Rect.fromLTRB(0, 0, w, hz + 2);
-    c.drawRect(sky, Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [_mix(top, Colors.white, s.flash * 0.5), _mix(mid, Colors.white, s.flash * 0.45), _mix(hor, Colors.white, s.flash * 0.4)], stops: const [0, 0.6, 1]).createShader(sky));
-    // النجوم تتلألأ (ثلاث دفعات نقاط)
-    final st = (1 - day) * (1 - over) * (1 - s.dust);
-    if (st > 0.02) {
-      final b = [<Offset>[], <Offset>[], <Offset>[]];
-      for (int i = 0; i < 120; i++) {
-        final y = _hash(i + 500) * hz * 0.92;
-        b[((_hash(i) * 7 + s.t * (0.2 + _hash(i + 9) * 0.5)) % 3).floor()].add(Offset(_hash(i) * w, y));
-      }
-      for (int k = 0; k < 3; k++) {
-        c.drawPoints(ui.PointMode.points, b[k], Paint()
-          ..strokeWidth = 1.2 + k * 0.7
-          ..strokeCap = StrokeCap.round
-          ..color = Colors.white.withOpacity(_cl(st * (0.35 + k * 0.3))));
-      }
-    }
-    double skyY(double e) => hz - _cl(e / 42, -0.1, 1.1) * hz * 0.95;
-    // الشمس بتوهّج حقيقي
-    if (el > -3) {
-      final x = sxOf(s.sunAz), y = skyY(el), rs = w * 0.035, vis = _cl(1 - over * 0.85 - s.dust * 0.55);
-      if (x > -w * 0.4 && x < w * 1.4) {
-        final sc = _mix(const Color(0xFFFF8A40), const Color(0xFFFFF6DE), _sm(0, 22, el));
-        _glow(Offset(x, y), rs * 9, sc.withOpacity(0.35 * vis + 0.08));
-        _glow(Offset(x, y), rs * 3, sc.withOpacity(0.6 * vis + 0.1));
-        _flush(c);
-        c.drawCircle(Offset(x, y), rs, Paint()..color = _mix(sc, Colors.white, 0.3).withOpacity(_cl(vis + 0.2)));
-      }
-    }
-    // القمر بطوره الحقيقي
-    if (s.moonEl > -2 && day < 0.85) {
-      final x = sxOf(s.moonAz), y = skyY(s.moonEl), rm = w * 0.026, vis = _cl((1 - day) * (1 - over * 0.8));
-      if (x > -rm && x < w + rm && vis > 0.03) {
-        _glow(Offset(x, y), rm * 6, const Color(0xFFF3EEDB).withOpacity(0.22 * vis));
-        _flush(c);
-        final disk = Path()..addOval(Rect.fromCircle(center: Offset(x, y), radius: rm));
-        final ph = s.moonPh, k = ph < 0.5 ? -ph * 4 * rm : (1 - ph) * 4 * rm;
-        final shd = Path()..addOval(Rect.fromCircle(center: Offset(x + k, y), radius: rm * 1.02));
-        c.drawPath(disk, Paint()..color = const Color(0xFF2A2F38).withOpacity(0.55 * vis));
-        c.drawPath(Path.combine(PathOperation.difference, disk, shd), Paint()..color = const Color(0xFFF3EEDB).withOpacity(vis));
-        c.drawCircle(Offset(x - rm * 0.3, y - rm * 0.2), rm * 0.22, Paint()..color = const Color(0xFFCFC8B0).withOpacity(0.35 * vis));
-      }
-    }
-    // الغيوم: كتل ركامية ملوّنة حسب الضوء، تنساب مع الريح
-    final cLit = _mix(_mix(_mix(Colors.white, const Color(0xFFFFC090), golden * 0.7), const Color(0xFFA2ABB4), over * 0.8), const Color(0xFF1B2128), 1 - light0);
-    final cBase = _mix(_mix(const Color(0xFF8E98A3), const Color(0xFF5A6370), over), const Color(0xFF0B0E12), 1 - light0);
-    final nCl = (2 + s.cloud * 10).round();
-    for (int i = 0; i < nCl; i++) {
-      final cw0 = w * (0.35 + _hash(i + 40) * 0.45) * (1 - _hash(i + 30) * 0.4);
-      final x = ((_hash(i + 20) * (w + cw0) + s.t * (2 + s.wind * 1.5) * (0.4 + _hash(i))) % (w + cw0 * 2)) - cw0, y = _hash(i + 30) * hz * 0.6 - cw0 * 0.12;
-      c.save();
-      c.translate(x, y);
-      c.scale(cw0 / 512);
-      c.drawPicture(_Art.cloud(i % 3, _mix(cLit, Colors.white, s.flash), cBase, 0.85 + 0.15 * s.cloud));
-      c.restore();
-    }
-    if (over > 0.55) {
-      c.drawRect(Rect.fromLTRB(0, 0, w, hz * 0.7), Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [top.withOpacity(0.8 * (over - 0.55) / 0.45), top.withOpacity(0)]).createShader(Rect.fromLTRB(0, 0, w, hz * 0.7)));
-    }
-
-    // ---------- الأرض البعيدة: طبقتا جبال بمنظور جوي + أضواء مدن + الحرم ----------
-    var land = _mix(const Color(0xFF0E0C09), const Color(0xFFC9A46C), light);
-    land = _mix(land, _mix(const Color(0xFF16130E), const Color(0xFFA9845A), light), s.rain * 0.6);
-    land = _mix(land, _mix(const Color(0xFF2A2D33), const Color(0xFFE9EDF0), light), s.snow);
-    final hp = s.heading * math.pi / 180 * 3;
-    for (int layer = 0; layer < 2; layer++) {
-      final hills = Path()..moveTo(0, hz);
-      final amp = layer == 0 ? 0.07 : 0.035, fr = layer == 0 ? 3.0 : 7.0;
-      for (int i = 0; i <= 64; i++) {
-        final x = w * i / 64;
-        hills.lineTo(x, hz - hh * (amp * (0.55 + 0.45 * math.sin(x / w * fr + 1 + hp * (layer + 1)) + 0.12 * math.sin(x / w * 23 + hp * 2))));
-      }
-      hills
-        ..lineTo(w, hz)
-        ..close();
-      final hc0 = _mix(land, hor, layer == 0 ? 0.72 : 0.5);
-      c.drawPath(hills, Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [_mix(hc0, Colors.white, 0.06 * light), _mix(hc0, Colors.black, 0.08)]).createShader(Rect.fromLTRB(0, hz - hh * 0.1, w, hz)));
-    }
-    if (lightsOn > 0.1) {
-      for (int i = 0; i < 80; i++) {
-        final x = (_hash(i + 900) * w * 4 - s.heading / 360 * w * 4) % (w * 4);
-        if (x > w) continue;
-        final y = hz - hh * (0.003 + _hash(i + 901) * 0.012);
-        _glow(Offset(x, y), 1.5 + _hash(i + 902) * 2.5, _mix(const Color(0xFFFFC27A), Colors.white, _hash(i + 903)).withOpacity(lightsOn * (0.4 + 0.5 * _hash(i + 904)) * (1 - murk)));
-      }
-      _flush(c);
-    }
-    if (s.holyD > 2) _shrine(c, sxOf(s.holyB), hz, hh, w, light, lightsOn, hor, murk);
-
-    // ---------- الأرض: رمل بنسيج ----------
-    final gr = Rect.fromLTRB(0, hz, w, h);
-    c.drawRect(gr, Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [_mix(land, hor, 0.5), land, _mix(land, Colors.black, 0.25)], stops: const [0, 0.35, 1]).createShader(gr));
-    const half = 5.4, shoulder = 1.6, qMin = -0.9, qMax = 70.0;
-    void strip(double x0, double x1, double q0, double q1, Paint p, [int n = 36]) {
-      final pa = Path(), f0 = f(q0), f1 = f(q1);
-      final qs = List<double>.generate(n + 1, (i) => 1 / (f0 * math.pow(f1 / f0, i / n)) - 1);
-      for (int i = 0; i <= n; i++) {
-        i == 0 ? pa.moveTo(X(x0, qs[i]), Y(qs[i])) : pa.lineTo(X(x0, qs[i]), Y(qs[i]));
-      }
-      for (int i = n; i >= 0; i--) {
-        pa.lineTo(X(x1, qs[i]), Y(qs[i]));
-      }
-      pa.close();
-      c.drawPath(pa, p);
-    }
-
-    // نسيج بمنظور: شرائح عرضية، كل شريحة بمصفوفة تقريبية لعمقها (يتحرك مع المسافة الحقيقية)
-    void tex(ui.Image img, double kTex, double alpha, {double? xl, double? xr}) {
-      final nb = q >= 2 ? 16 : 10;
-      final travel = (s.q * 2.5) % (256 / kTex), f0 = f(qMin), f1 = f(36.0);
-      final p = Paint()..color = Colors.white.withOpacity(_cl(alpha));
-      for (int i = 0; i < nb; i++) {
-        final qa = 1 / (f0 * math.pow(f1 / f0, i / nb)) - 1, qb = 1 / (f0 * math.pow(f1 / f0, (i + 1) / nb)) - 1;
-        final qm = (qa + qb) / 2, fm = f(qm), dz = -hh * fm * fm / 2.5;
-        final a = s0 * fm / kTex, e = dz / kTex, tx = cx + off(qm) * s0 * fm, ty = Y(qm) + (-travel - qm * 2.5) * dz;
-        p.shader = ImageShader(img, TileMode.repeated, TileMode.repeated, Float64List.fromList([a, 0, 0, 0, 0, e, 0, 0, 0, 0, 1, 0, tx, ty, 0, 1]), filterQuality: FilterQuality.low);
-        if (xl == null) {
-          c.drawRect(Rect.fromLTRB(0, Y(qb), w, Y(qa) + 0.6), p);
-        } else {
-          strip(xl, xr!, qa, qb, p, 3);
-        }
-      }
-    }
-
-    if (q >= 2 && _Art.ready) tex(_Art.sand, 40, 0.3 + 0.45 * light * (1 - s.snow));
-
-    // ---------- الطريق: 3 مسارات × 3.6 م، كتف 1.6 م ----------
-    final wet = _cl(s.rain * 1.4 + s.snow * 0.5);
-    var asph = _mix(const Color(0xFF0D0F11), const Color(0xFF4C4F53), light);
-    asph = _mix(asph, _mix(const Color(0xFF06080A), const Color(0xFF2A2D31), light), wet);
-    strip(-half - shoulder, half + shoulder, qMin, qMax, Paint()..color = _mix(asph, land, 0.3), 48);
-    strip(-half, half, qMin, qMax, Paint()..color = asph, 48);
-    if (q >= 1 && _Art.ready) tex(_Art.asphalt, 70, (0.75 - 0.35 * wet) * (0.4 + 0.6 * light), xl: -half - shoulder, xr: half + shoulder);
-    // آثار العجلات: داكنة جافة، لامعة مبللة
-    for (final lcn in const [-3.6, 0.0, 3.6]) {
-      for (final o in const [-0.8, 0.8]) {
-        strip(lcn + o - 0.3, lcn + o + 0.3, qMin, 40, Paint()..color = wet > 0.3 ? hor.withOpacity(0.08 * wet) : Colors.black.withOpacity(0.05 + 0.07 * light), 40);
-      }
-    }
-    // رقع وشقوق
-    for (int k = -1; k < 12; k++) {
-      final idx = (s.q / 4).floor() + k, q = idx * 4 - s.q + _hash(idx + 11) * 2;
-      if (q + 1 < qMin || q > 36) continue;
-      final hsh = _hash(idx * 3 + 1);
-      if (hsh < 0.3) {
-        final x0 = -half + 0.3 + _hash(idx) * (2 * half - 3), q0 = math.max(q, qMin);
-        strip(x0, x0 + 0.8 + _hash(idx + 4) * 1.6, q0, q0 + 0.3 + _hash(idx + 9) * 0.6, Paint()..color = Colors.black.withOpacity(0.07 + 0.06 * light), 6);
-      } else if (hsh > 0.82 && q > qMin) {
-        strip(-half, half, q, q + 0.025, Paint()..color = Colors.black.withOpacity(0.25), 2);
-      }
-    }
-    if (wet > 0.05) strip(-half, half, 2, qMax, Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [hor.withOpacity(0.3 * wet), hor.withOpacity(0.04 * wet)]).createShader(Rect.fromLTRB(0, hz, w, g.carY)), 30);
-    if (s.snow > 0.3) {
-      for (final sd in const [-1.0, 1.0]) {
-        strip(sd * half, sd * (half + shoulder), qMin, qMax, Paint()..color = Colors.white.withOpacity(0.75 * s.snow * (0.4 + 0.6 * light)), 40);
-      }
-    }
-    final lineC = _mix(const Color(0xFF3A3C3E), const Color(0xFFF0F0EC), _cl(light + 0.25));
-    for (final xm in const [-half + 0.2, half - 0.2]) {
-      strip(xm - 0.08, xm + 0.08, qMin, qMax, Paint()..color = lineC.withOpacity(0.92), 48);
-    }
-    // الخطوط المتقطعة: 3 م خط / 9 م فراغ
-    const per = 4.8, dash = 1.2;
-    final base = s.q % per;
-    for (final xm in const [-1.8, 1.8]) {
-      for (int k = 0; k < 40; k++) {
-        final q0 = k * per - base - 0.6;
-        if (q0 + dash < qMin) continue;
-        if (q0 > qMax || f(math.max(q0, qMin)) * s0 * 0.16 < 0.5) break;
-        strip(xm - 0.075, xm + 0.075, math.max(q0, qMin), q0 + dash, Paint()..color = lineC.withOpacity(0.88), 6);
-      }
-    }
-    // برك ماء تعكس السماء وحلقات قطرات المطر
-    if (s.rain > 0.12) {
-      for (int k = -1; k < 10; k++) {
-        final idx = (s.q / 6).floor() + k, q = idx * 6 - s.q + _hash(idx + 21) * 3;
-        if (q < qMin + 0.2 || q > 34 || _hash(idx + 22) > 0.25 + s.rain * 0.5) continue;
-        final xm = -half + 0.6 + _hash(idx + 23) * (2 * half - 1.2), wm = 0.9 + _hash(idx + 24) * 1.8, dm = 0.25 + _hash(idx + 25) * 0.5;
-        final rc = Rect.fromLTRB(X(xm - wm / 2, q), Y(q + dm), X(xm + wm / 2, q), Y(math.max(q - dm, qMin)));
-        c.drawOval(rc, Paint()..shader = RadialGradient(colors: [_mix(hor, top, 0.4).withOpacity(0.6 * s.rain), hor.withOpacity(0.35 * s.rain), hor.withOpacity(0)], stops: const [0, 0.7, 1]).createShader(rc));
-        for (int j = 0; j < 3; j++) {
-          final life = (s.t * 1.6 + _hash(idx * 5 + j)) % 1, cxr = rc.left + rc.width * (0.2 + 0.6 * _hash(idx * 7 + j)), cyr = rc.top + rc.height * (0.3 + 0.4 * _hash(idx * 9 + j));
-          c.drawOval(Rect.fromCenter(center: Offset(cxr, cyr), width: rc.width * 0.25 * life, height: rc.height * 0.25 * life), Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1
-            ..color = Colors.white.withOpacity(0.35 * (1 - life) * s.rain));
-        }
-      }
-      final rp = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1;
-      for (int i = 0; i < (70 * s.rain).round(); i++) {
-        final ph0 = s.t * 2.5 + _hash(i + 300), life = ph0 % 1, gen = ph0.floor();
-        final xm = -half + _hash(i * 13 + gen) * 2 * half, q = qc - 0.6 + _hash(i * 17 + gen) * 7;
-        final sc = s0 * f(q) * 0.22 * life;
-        rp.color = _mix(const Color(0xFF9AA4AE), Colors.white, light).withOpacity(0.5 * (1 - life) * s.rain);
-        c.drawOval(Rect.fromCenter(center: Offset(X(xm, q), Y(q)), width: sc, height: sc * 0.32), rp);
-      }
-    }
-    // عاكسات أرضية تلمع بالليل
-    if (lightsOn > 0.3) {
-      for (int k = 0; k < 16; k++) {
-        final q = k * per * 0.5 - (s.q % (per * 0.5));
-        if (q < qc + 0.3) continue;
-        for (final xm in const [-half + 0.2, half - 0.2]) {
-          _glow(Offset(X(xm, q), Y(q)), math.max(1.5, 0.25 * s0 * f(q)), const Color(0xFFFFC46B).withOpacity(lightsOn * _cl(f(q) * 6)));
-        }
-      }
-      _flush(c);
-    }
-
-    // ---------- النخيل وأعمدة الإنارة (من البعيد للقريب) ----------
-    final objs = <(double, int, int)>[];
-    const pp = 6.0, lp = 14.0;
-    final ip = (s.q / pp).floor(), il = (s.q / lp).floor();
-    for (int k = -1; k < 14; k++) {
-      final q = (ip + k) * pp - s.q;
-      if (q > qMin && q < qMax) objs.add((q, 0, ip + k));
-    }
-    for (int k = -1; k < 6; k++) {
-      final q = (il + k) * lp - s.q + 3;
-      if (q > qMin && q < qMax) objs.add((q, 1, il + k));
-    }
-    objs.sort((a, b) => b.$1.compareTo(a.$1));
-    final wetRefl = <Offset>[];
-    const lampC = Color(0xFFFFB45A);
-    final air = _cl(math.max(murk, s.rain * 0.7) * 1.3);
-    for (final o in objs) {
-      final q = o.$1, sc = s0 * f(q);
-      if (o.$2 == 0) {
-        final side = o.$3.isEven ? 1.0 : -1.0, xm = side * (half + shoulder + 4 + _hash(o.$3) * 7), ht = 8 + _hash(o.$3 + 3) * 4;
-        final k = ht * sc / 250, bx = X(xm, q), by = Y(q);
-        if (k * 256 < 2 || (_World.q == 0 && q > 25)) continue;
-        final sway = math.sin(s.t * 1.2 + o.$3) * (0.02 + s.wind * 0.006);
-        c.save();
-        c.translate(bx, by);
-        if (_hash(o.$3 + 8) > 0.5) c.scale(-1, 1);
-        c.skew(sway, 0);
-        c.scale(k);
-        c.translate(-128, -318);
-        c.drawPicture(_Art.palm(o.$3.abs() % 3, light0, s.dust));
-        c.restore();
-      } else {
-        for (final side in const [-1.0, 1.0]) {
-          final xm = side * (half + shoulder + 0.9), bx = X(xm, q), by = Y(q), ty0 = Y(q, 10), ax = X(xm - side * 2.4, q), ay = Y(q, 9.7);
-          final poleC = _mix(const Color(0xFF16181A), const Color(0xFF9097A0), light);
-          c.drawLine(Offset(bx, by), Offset(bx, ty0), Paint()
-            ..strokeWidth = math.max(1.0, 0.22 * sc)
-            ..color = poleC);
-          final arm = Path()
-            ..moveTo(bx, ty0)
-            ..quadraticBezierTo(bx, Y(q, 10.6), ax, ay);
-          c.drawPath(arm, Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = math.max(1.0, 0.14 * sc)
-            ..color = poleC);
-          c.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(ax, ay + 0.1 * sc), width: 0.9 * sc, height: 0.25 * sc), Radius.circular(0.1 * sc)), Paint()..color = _mix(poleC, Colors.black, 0.3));
-          if (lightsOn > 0.05) {
-            _glow(Offset(ax, ay + 0.25 * sc), math.max(3.0, 2.2 * sc), lampC.withOpacity(0.55 * lightsOn));
-            _glow(Offset(ax, ay + 0.25 * sc), math.max(1.5, 0.5 * sc), const Color(0xFFFFEBC4).withOpacity(lightsOn));
-            final px = X(xm - side * 2.4, q), y0 = Y(math.max(q - 1.6, -0.85)), y1 = Y(q + 1.6);
-            final pr = Rect.fromCenter(center: Offset(px, by), width: 9 * sc, height: (y0 - y1).abs() + 2);
-            c.drawOval(pr, Paint()..shader = RadialGradient(colors: [lampC.withOpacity(0.28 * lightsOn), lampC.withOpacity(0)]).createShader(pr));
-            if (wet > 0.1 && q > qc) wetRefl.add(Offset(px, by));
-            if (air > 0.08) {
-              final cone = Path()
-                ..moveTo(ax - 0.3 * sc, ay)
-                ..lineTo(ax + 0.3 * sc, ay)
-                ..lineTo(ax + 3 * sc, by)
-                ..lineTo(ax - 3 * sc, by)
-                ..close();
-              c.drawPath(cone, Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [lampC.withOpacity(0.24 * air * lightsOn), lampC.withOpacity(0.03 * air * lightsOn)]).createShader(Rect.fromLTRB(0, ay, w, by)));
-            }
-          }
-        }
-      }
-    }
-    _flush(c);
-
-    // ---------- الحواجز ----------
-    void ribbon(double xm, double y0, double y1, double q0, double q1, Paint p, [int n = 40]) {
-      final pa = Path(), f0 = f(q0), f1 = f(q1), qs = List<double>.generate(n + 1, (i) => 1 / (f0 * math.pow(f1 / f0, i / n)) - 1);
-      for (int i = 0; i <= n; i++) {
-        i == 0 ? pa.moveTo(X(xm, qs[i]), Y(qs[i], y1)) : pa.lineTo(X(xm, qs[i]), Y(qs[i], y1));
-      }
-      for (int i = n; i >= 0; i--) {
-        pa.lineTo(X(xm, qs[i]), Y(qs[i], y0));
-      }
-      pa.close();
-      c.drawPath(pa, p);
-    }
-
-    const gx = half + shoulder + 0.3, bxm = -(half + shoulder + 0.25);
-    final steel = _mix(const Color(0xFF16181A), const Color(0xFFB3B9BF), light), conc = _mix(const Color(0xFF1C1C1A), const Color(0xFFB7B2A6), light);
-    final postP = Paint()..color = _mix(steel, Colors.black, 0.35);
-    for (int k = 0; k < 60; k++) {
-      final q = k * 0.8 - (s.q % 0.8);
-      if (q < qMin) continue;
-      if (q > qMax || (Y(q) - Y(q + 0.8)) < 2.5) break;
-      postP.strokeWidth = math.max(1.0, 0.1 * s0 * f(q));
-      c.drawLine(Offset(X(gx, q), Y(q)), Offset(X(gx, q), Y(q, 0.75)), postP);
-    }
-    ribbon(gx, 0.5, 0.78, qMin, qMax, Paint()..color = steel);
-    ribbon(gx, 0.62, 0.66, qMin, qMax, Paint()..color = _mix(steel, Colors.black, 0.25));
-    ribbon(gx, 0.74, 0.78, qMin, qMax, Paint()..color = _mix(steel, Colors.white, 0.35 * light));
-    ribbon(bxm, 0, 0.82, qMin, qMax, Paint()..color = conc);
-    ribbon(bxm, 0, 0.18, qMin, qMax, Paint()..color = _mix(conc, Colors.black, 0.2));
-    ribbon(bxm, 0.78, 0.82, qMin, qMax, Paint()..color = _mix(conc, Colors.white, 0.25 * light));
-    if (s.snow > 0.3) {
-      ribbon(bxm, 0.8, 0.9, qMin, qMax, Paint()..color = Colors.white.withOpacity(0.85 * s.snow));
-      ribbon(gx, 0.78, 0.84, qMin, qMax, Paint()..color = Colors.white.withOpacity(0.8 * s.snow));
-    }
-    for (int k = 0; k < 24; k++) {
-      final q = k * 1.6 - (s.q % 1.6);
-      if (q < qc + 0.2) continue;
-      if (q > qMax || f(q) * s0 * 0.12 < 0.6) break;
-      final gl = _cl(0.25 + lightsOn * 0.9) * _cl(f(q) * 8), r0 = math.max(1.0, 0.12 * s0 * f(q));
-      _glow(Offset(X(gx, q), Y(q, 0.64)), r0, Colors.white.withOpacity(gl));
-      _glow(Offset(X(bxm, q), Y(q, 0.6)), r0, const Color(0xFFFFC21A).withOpacity(gl));
-    }
-    _flush(c);
-
-    // ---------- ضباب الأفق (يُخفي تلاقي الخطوط البعيدة) ----------
-    final hc = _mix(hor, land, 0.25);
-    final hb = Rect.fromLTRB(0, hz - hh * 0.07, w, hz + hh * 0.12);
-    c.drawRect(hb, Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [hc.withOpacity(0), hc.withOpacity(0.95), hc.withOpacity(0)], stops: const [0, 0.38, 1]).createShader(hb));
-    if (murk > 0.02) {
-      final mc = s.dust > s.fog ? _mix(const Color(0xFF261C10), const Color(0xFFD7A764), light) : _mix(const Color(0xFF15181B), const Color(0xFFC9CDD1), light);
-      c.drawRect(Offset.zero & z, Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [mc.withOpacity(0.35 * murk), mc.withOpacity(0.92 * murk), mc.withOpacity(0.25 * murk)], stops: [0, hz / h, 1]).createShader(Offset.zero & z));
-    }
-    if (s.rain > 0.2) {
-      // ستائر مطر بعيدة تمشي مع الريح
-      for (int i = 0; i < 3; i++) {
-        final x = ((_hash(i + 600) * w + s.t * (10 + s.wind * 4)) % (w * 1.6)) - w * 0.3, ww = w * (0.3 + _hash(i + 601) * 0.3);
-        final rr = Rect.fromLTWH(x, hz - hh * 0.25, ww, hh * 0.5);
-        c.drawRect(rr, Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [hor.withOpacity(0), _mix(hor, Colors.grey, 0.4).withOpacity(0.25 * s.rain), hor.withOpacity(0)]).createShader(rr));
-      }
-    }
-    // انعكاسات الإنارة على الأسفلت المبلل: بقع ممدودة ناعمة
-    if (wetRefl.isNotEmpty && _Art.ready) {
-      final rp = Paint()
-        ..filterQuality = FilterQuality.low
-        ..colorFilter = ColorFilter.mode(lampC.withOpacity(_cl(0.55 * wet * lightsOn)), BlendMode.modulate);
-      for (final o in wetRefl) {
-        final len = (h - o.dy) * 0.32, wd = math.max(4.0, len * 0.09);
-        c.drawImageRect(_Art.dot, _r64, Rect.fromLTWH(o.dx - wd / 2, o.dy - len * 0.2, wd, len), rp);
-      }
-    }
-    // ---------- ضوء السيارة الأمامي ----------
-    final beamOn = math.max(lightsOn, murk * 0.8);
-    if (beamOn > 0.05) {
-      final qa = qc + 0.2, qb = qc + 30, ya = Y(qa), yb = Y(qb);
-      const bc = Color(0xFFFFF1D6);
-      for (final wv in const [(7.5, 0.12), (4.5, 0.2)]) {
-        final bm = Path()
-          ..moveTo(X(-0.9, qa), ya)
-          ..lineTo(X(0.9, qa), ya)
-          ..lineTo(X(wv.$1, qb), yb)
-          ..lineTo(X(-wv.$1, qb), yb)
-          ..close();
-        c.drawPath(bm, Paint()..shader = LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [bc.withOpacity(wv.$2 * beamOn), bc.withOpacity(wv.$2 * 0.8 * beamOn), bc.withOpacity(0)], stops: const [0, 0.3, 1]).createShader(Rect.fromLTRB(0, yb, w, ya)));
-      }
-    }
-
-    // ---------- السيارة ----------
-    final m = _carModels[s.model] ?? _carModels['sport']!;
-    final cw = g.cw;
-    final bob = (math.sin(s.t * 11) * 0.5 + math.sin(s.t * 23 + 1) * 0.3) * _cl(s.v / 20) * cw * 0.004;
-    final ox = cx + off(qc) * s0 * fc + s.lean * cw * 0.06, oy = g.carY + bob + s.pitch * cw * 0.004;
-    final pic = _carPicture(cw, light0);
-    final lit = _cl(s.tail * 0.6 + s.brake * 0.9), red = Color.lerp(const Color(0xFF3A060C), const Color(0xFFFF2236), lit)!;
-    // ظل الشمس باتجاهها الحقيقي (تدرّج بدل تمويه)
-    final rel = ((s.sunAz - s.heading + 540) % 360 - 180) * math.pi / 180;
-    final shL = _cl(1 / math.tan(math.max(el, 4) * math.pi / 180), 0, 3) * 0.22, shA = day * (1 - over) * (1 - s.dust * 0.7);
-    if (shA > 0.05) {
-      final sr = Rect.fromCenter(center: Offset(ox - math.sin(rel) * shL * 0.8 * cw, oy + (0.01 + math.cos(rel) * shL * 0.3) * cw), width: cw * (1.05 + (math.sin(rel) * shL).abs() * 0.9), height: cw * (0.08 + (math.cos(rel) * shL * 0.3).abs() * 0.5));
-      c.drawOval(sr, Paint()..shader = RadialGradient(colors: [Colors.black.withOpacity(0.5 * shA), Colors.black.withOpacity(0.35 * shA), Colors.black.withOpacity(0)], stops: const [0, 0.6, 1]).createShader(sr));
-    }
-    // انعكاس السيارة وأضوائها على الأسفلت المبلل
-    if (wet > 0.2) {
-      // انعكاس مبسّط (ظل لوني للهيكل) بدل طبقة إضافية
-      final rr = Rect.fromLTWH(ox - cw * 0.5, oy, cw, cw * 0.45);
-      c.drawRect(rr, Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(_carColors[s.color]![2]).withOpacity(0.25 * wet * (0.3 + 0.7 * light0)), Colors.transparent]).createShader(rr));
-    }
-    final rl = 0.25 + 0.5 * wet;
-    for (final sd in const [-1.0, 1.0]) {
-      final rc = Rect.fromLTRB(ox + sd * cw * 0.36 - cw * 0.06, oy, ox + sd * cw * 0.36 + cw * 0.06, oy + cw * (0.2 + wet * 0.9));
-      c.drawRect(rc, Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [red.withOpacity(rl * lit), red.withOpacity(0)]).createShader(rc));
-    }
-    c.save();
-    c.translate(ox, oy);
-    c.rotate(s.lean * 0.035);
-    c.drawPicture(pic);
-    final lq = ((s.q - 3) / lp).round() * lp - s.q + 3 - qc;
-    _carLive(c, m, cw, light, lightsOn, wet, lq, red, lit);
-    c.restore();
-
-    // ---------- رذاذ الإطارات بالمطر ----------
-    if (s.splash > 0.05 && _Art.ready) {
-      final sc0 = _mix(const Color(0xFF2A2E33), const Color(0xFFDDE3E8), light);
-      final tr = <RSTransform>[], cl = <Color>[];
-      for (int i = 0; i < 30; i++) {
-        final side = i.isEven ? 1.0 : -1.0, life = (s.t * 2.2 + _hash(i)) % 1;
-        final x = ox + side * cw * (0.4 + life * 0.3 * _hash(i + 5)), y = oy - cw * 0.03 + life * cw * 0.35, rr = cw * (0.05 + life * 0.1);
-        tr.add(RSTransform.fromComponents(rotation: 0, scale: rr / 32, anchorX: 32, anchorY: 32, translateX: x, translateY: y));
-        cl.add(sc0.withOpacity(0.28 * s.splash * (1 - life)));
-      }
-      c.drawAtlas(_Art.dot, tr, List.filled(tr.length, _r64), cl, BlendMode.modulate, null, Paint());
-    }
-
-    // ---------- المطر: ثلاث طبقات عمق بخيوط ناعمة (نداء رسم واحد) ----------
-    if (s.rain > 0.02 && _Art.ready) {
-      final n = ((80 + 380 * s.rain) * (_World.q == 2 ? 1 : 0.5)).round(), rc0 = _mix(const Color(0xFF8C96A0), const Color(0xFFE6ECF2), light);
-      final tr = <RSTransform>[], cl = <Color>[];
-      final slant = s.wind * 0.035;
-      for (int i = 0; i < n; i++) {
-        final d = _hash(i + 3), len = (16 + 70 * d * d) * (1 + s.v / 28);
-        final x0 = _hash(i) * (w + 80) - 40, sp = (0.7 + 0.9 * d) * h * 1.5;
-        final y = ((_hash(i + 1) * h + s.t * sp) % (h + len)) - len * 0.5;
-        final ang = -(slant + (x0 - cx) / w * s.v * 0.035) * (0.6 + 0.4 * d);
-        tr.add(RSTransform.fromComponents(rotation: ang, scale: len / 96, anchorX: 4, anchorY: 48, translateX: x0, translateY: y));
-        cl.add(rc0.withOpacity(_cl((0.18 + 0.32 * d) * (0.6 + 0.4 * s.rain))));
-      }
-      c.drawAtlas(_Art.streak, tr, List.filled(tr.length, const Rect.fromLTWH(0, 0, 8, 96)), cl, BlendMode.modulate, null, Paint()..filterQuality = FilterQuality.low);
-      c.drawRect(Offset.zero & z, Paint()..color = _mix(const Color(0xFF0A0E12), const Color(0xFF8E99A4), light).withOpacity(0.08 * s.rain));
-    }
-    // ---------- الثلج: رقائق بعمق، تتمايل وتسقط ببطء ----------
-    if (s.snow > 0.02 && _Art.ready) {
-      final n = ((60 + 260 * s.snow) * (_World.q == 2 ? 1 : 0.5)).round();
-      final tr = <RSTransform>[], cl = <Color>[];
-      for (int i = 0; i < n; i++) {
-        final d = _hash(i + 2), sz = 2 + 9 * d * d;
-        final y = (_hash(i + 1) * h + s.t * (25 + 70 * d) * (1 + s.v / 20)) % (h + 20) - 10;
-        final x = (_hash(i) * w + math.sin(s.t * (0.6 + d) + i) * (6 + 14 * d) + (_hash(i) * w - cx) * (y / h) * s.v * 0.012) % w;
-        tr.add(RSTransform.fromComponents(rotation: 0, scale: sz / 16, anchorX: 16, anchorY: 16, translateX: x, translateY: y));
-        cl.add(Colors.white.withOpacity(0.55 + 0.4 * d));
-      }
-      c.drawAtlas(_Art.flake, tr, List.filled(tr.length, const Rect.fromLTWH(0, 0, 32, 32)), cl, BlendMode.modulate, null, Paint());
-    }
-    // رمال تتطاير مع الريح بالغبار
-    if (s.dust > 0.2) {
-      final dc = _mix(const Color(0xFF3A2A16), const Color(0xFFE2BC80), light);
-      for (int i = 0; i < 40; i++) {
-        final y = hz + (h - hz) * (0.2 + _hash(i + 700) * 0.8), len = 30 + 90 * _hash(i + 701);
-        final x = (_hash(i + 702) * (w + 300) + s.t * (80 + s.wind * 25) * (0.6 + _hash(i + 703))) % (w + 300) - 150;
-        c.drawLine(Offset(x, y), Offset(x + len, y - len * 0.04), Paint()
-          ..strokeWidth = 1 + _hash(i + 704) * 2
-          ..strokeCap = StrokeCap.round
-          ..color = dc.withOpacity(0.16 * s.dust));
-      }
-    }
-    // البرق: خط متعرج متفرع
-    if (s.flash > 0.45) {
-      final bp = Path();
-      var x = w * (0.15 + 0.7 * _hash(s.bolt * 7)), y = 0.0;
-      bp.moveTo(x, y);
-      final pts = <Offset>[];
-      for (int k = 0; k < 12; k++) {
-        x += (_hash(s.bolt * 31 + k) - 0.5) * w * 0.09;
-        y += hz * 0.085;
-        bp.lineTo(x, y);
-        pts.add(Offset(x, y));
-      }
-      bp.moveTo(pts[4].dx, pts[4].dy);
-      bp.lineTo(pts[4].dx + w * 0.06, pts[4].dy + hz * 0.12);
-      bp.lineTo(pts[4].dx + w * 0.1, pts[4].dy + hz * 0.2);
-      final a = _cl((s.flash - 0.45) / 0.55);
-      c.drawPath(bp, Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 7
-        ..color = const Color(0xFFBFD4FF).withOpacity(0.3 * a));
-      c.drawPath(bp, Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.8
-        ..color = Colors.white.withOpacity(a));
-    }
-    if (s.flash > 0.01) c.drawRect(Offset.zero & z, Paint()..color = Colors.white.withOpacity(0.3 * s.flash));
-  }
-
-  /// حرم الإمام الحسين (ع) بالأفق باتجاهه الحقيقي من موقعك
-  void _shrine(Canvas c, double hx, double hz, double hh, double w, double light, double lightsOn, Color hor, double murk) {
-    final sz = w * _cl(0.035 + 2.5 / (s.holyD + 15), 0.035, 0.13);
-    if (hx < -sz || hx > w + sz) return;
-    final haze = _cl(s.holyD / 140 + murk * 0.7, 0, 0.75), by0 = hz - hh * 0.02;
-    final gold = _mix(_mix(const Color(0xFF6B4E12), const Color(0xFFE9B949), _cl(light + lightsOn * 0.7)), hor, haze);
-    final wall = _mix(_mix(const Color(0xFF15120C), const Color(0xFFB8A27A), light), hor, haze);
-    c.drawPath(
-        Path()
-          ..addRect(Rect.fromLTRB(hx - sz * 0.9, by0 - sz * 0.32, hx + sz * 0.9, by0 + 1))
-          ..addRect(Rect.fromLTRB(hx - sz * 0.3, by0 - sz * 0.55, hx + sz * 0.3, by0)),
-        Paint()..color = wall);
-    final dome = Path()
-      ..moveTo(hx - sz * 0.34, by0 - sz * 0.55)
-      ..cubicTo(hx - sz * 0.42, by0 - sz * 0.95, hx - sz * 0.1, by0 - sz * 1.05, hx, by0 - sz * 1.22)
-      ..cubicTo(hx + sz * 0.1, by0 - sz * 1.05, hx + sz * 0.42, by0 - sz * 0.95, hx + sz * 0.34, by0 - sz * 0.55)
-      ..close();
-    if (lightsOn > 0.1) {
-      _glow(Offset(hx, by0 - sz * 0.7), sz * 1.8, const Color(0xFFFFC94D).withOpacity(0.3 * lightsOn * (1 - haze)));
-      _flush(c);
-    }
-    c.drawPath(dome, Paint()..color = gold);
-    for (final sd in const [-1.0, 1.0]) {
-      final mx = hx + sd * sz * 0.72;
-      c.drawRect(Rect.fromLTRB(mx - sz * 0.05, by0 - sz * 1.45, mx + sz * 0.05, by0 - sz * 0.3), Paint()..color = wall);
-      c.drawRect(Rect.fromLTRB(mx - sz * 0.085, by0 - sz * 1.15, mx + sz * 0.085, by0 - sz * 1.08), Paint()..color = gold);
-      c.drawPath(
-          Path()
-            ..moveTo(mx - sz * 0.05, by0 - sz * 1.45)
-            ..lineTo(mx, by0 - sz * 1.62)
-            ..lineTo(mx + sz * 0.05, by0 - sz * 1.45)
-            ..close(),
-          Paint()..color = gold);
-    }
-    if (_holyKm != s.holyD.round()) {
-      _holyKm = s.holyD.round();
-      _holyTp = TextPainter(text: TextSpan(text: 'كربلاء $_holyKm كم', style: const TextStyle(fontFamily: 'Cairo', fontSize: 11, color: Colors.white, shadows: [Shadow(color: Color(0xCC000000), blurRadius: 4)])), textDirection: TextDirection.rtl)..layout();
-    }
-    final tp = _holyTp!;
-    tp.paint(c, Offset(hx - tp.width / 2, by0 - sz * 1.62 - tp.height - 2));
-  }
-
-  /// هيكل السيارة الثابت كصورة متجهة مسجّلة (تُعاد كل إطار بلا إعادة حساب) لكل شكل/لون/حجم/مستوى ضوء
-  static ui.Picture? _carPic;
-  static String _carKey = '';
-  ui.Picture _carPicture(double cw, double light) {
-    final lq = (light * 24).round(), key = '${s.model}|${s.color}|${cw.round()}|$lq';
-    if (key != _carKey || _carPic == null) {
-      final rec = ui.PictureRecorder();
-      _carBody(Canvas(rec), _carModels[s.model] ?? _carModels['sport']!, _carColors[s.color] ?? _carColors['green']!, cw, lq / 24);
-      _carPic = rec.endRecording();
-      _carKey = key;
-    }
-    return _carPic!;
-  }
-
-  /// الأجزاء الثابتة: ظلال التلامس، الإطارات، الهيكل بتظليل أسطواني، الزجاج، المرايا، اللوحة، الناشر والعادم، وأغطية الأضواء
-  void _carBody(Canvas c, _CarM m, List<int> col, double cw, double light) {
-    Offset p(double x, double y) => Offset(x * cw, y * cw);
-    Rect r(double x0, double y0, double x1, double y1) => Rect.fromPoints(p(x0, y0), p(x1, y1));
-    Color shade(int v) => Color.lerp(Color.lerp(Color(v), Colors.black, 0.78), Color(v), light)!;
-    final ti0 = m.tire[0], ti1 = m.tire[1], th = m.tire[2];
-    // ظل التلامس: ظل عريض ناعم + ظلام كامل تحت الهيكل + ظل حاد تحت كل إطار (السيارة جالسة على الأرض)
-    c.drawOval(r(-0.62, -0.045, 0.62, 0.075), Paint()
-      ..color = Colors.black.withOpacity(0.6)
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, cw * 0.04));
-    c.drawRect(r(-ti1, -m.tire[2] * 0.6, ti1, 0.0), Paint()
-      ..color = Colors.black.withOpacity(0.92)
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, cw * 0.012));
-    for (final sd in const [-1.0, 1.0]) {
-      c.drawOval(r(sd * (ti0 - 0.025), -0.022, sd * (ti1 + 0.02), 0.026), Paint()
-        ..color = Colors.black
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, cw * 0.007));
-    }
-    // الإطارات: مطاط بتظليل وخطوط مداس
-    for (final sd in const [-1.0, 1.0]) {
-      final tr = r(sd * ti0, -th, sd * ti1, 0.004);
-      c.drawRRect(RRect.fromRectAndRadius(tr, Radius.circular(cw * 0.035)), Paint()..color = const Color(0xFF0A0B0B));
-      c.drawRRect(RRect.fromRectAndRadius(tr, Radius.circular(cw * 0.035)), Paint()..shader = LinearGradient(colors: [Colors.black.withOpacity(0.6), const Color(0xFF2A2D2E).withOpacity(0.35), Colors.black.withOpacity(0.6)]).createShader(tr));
-      for (int k = 1; k < 5; k++) {
-        final y = -th + th * k / 5.2;
-        c.drawLine(p(sd * (ti0 + 0.012), y), p(sd * (ti1 - 0.012), y), Paint()
-          ..strokeWidth = math.max(1.0, cw * 0.003)
-          ..color = Colors.black.withOpacity(0.55));
-      }
-    }
-    final body = _cpath(m.body, cw), cab = _cpath(m.cab, cw);
-    final bottom = m.body[0][2];
-    final paintSh = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [shade(col[0]), shade(col[1]), shade(col[2]), shade(col[3])], stops: const [0, 0.3, 0.62, 1]).createShader(r(-0.5, -m.height, 0.5, bottom));
-    c.drawPath(cab, Paint()..shader = paintSh);
-    c.drawPath(body, Paint()..shader = paintSh);
-    c.save();
-    c.clipPath(body);
-    c.drawRect(r(-0.52, -m.height, 0.52, 0), Paint()..shader = const LinearGradient(colors: [Color(0x8C000000), Color(0x00000000), Color(0x00000000), Color(0x8C000000)], stops: [0, 0.16, 0.84, 1]).createShader(r(-0.5, 0, 0.5, 0.01)));
-    // انعكاس الأفق على الطلاء: شريط فاتح ناعم
-    final band = r(-0.5, m.bumper - 0.09, 0.5, m.bumper - 0.03);
-    c.drawRect(band, Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.white.withOpacity(0), Colors.white.withOpacity(0.06 + 0.09 * light), Colors.white.withOpacity(0)]).createShader(band));
-    c.restore();
-    // خط لمعان الكتفين وحافة السطح العلوي
-    final b = m.body;
-    for (final sd in const [-1.0, 1.0]) {
-      final hl = Path()
-        ..moveTo(sd * b[2][5] * cw, b[2][6] * cw)
-        ..cubicTo(sd * b[3][1] * cw, b[3][2] * cw, sd * b[3][3] * cw, b[3][4] * cw, sd * b[3][5] * cw, b[3][6] * cw);
-      c.drawPath(hl, Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = cw * 0.009
-        ..strokeCap = StrokeCap.round
-        ..color = Colors.white.withOpacity(0.12 + 0.35 * light)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, cw * 0.004));
-    }
-    // الزجاج الخلفي بانعكاس مائل
-    final gl = _cpath(m.glass, cw);
-    c.drawPath(gl, Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color.lerp(const Color(0xFF101C1B), const Color(0xFF3F625E), light)!, const Color(0xFF040C0B)]).createShader(r(0, -m.height, 0.01, m.glass[0][2])));
-    c.save();
-    c.clipPath(gl);
-    c.drawPath(_cpath([[0, -0.12, -m.height], [1, -0.04, -m.height], [1, -0.16, -0.4], [1, -0.24, -0.4]], cw), Paint()..color = Colors.white.withOpacity(0.04 + 0.08 * light));
-    c.restore();
-    final rf = m.roof;
-    c.drawPath(_cpath([[0, rf[0], rf[1]], [3, rf[0] * 0.55, rf[1] - 0.02, rf[2] * 0.55, rf[1] - 0.02, rf[2], rf[1]], [3, rf[2] * 0.55, rf[1] - 0.01, rf[0] * 0.55, rf[1] - 0.01, rf[0], rf[1]]], cw), Paint()..color = Colors.white.withOpacity(0.05 + 0.12 * light));
-    if (m.rails) {
-      for (final sd in const [-1.0, 1.0]) {
-        c.drawRRect(RRect.fromRectAndRadius(r(sd * 0.3, rf[1] - 0.03, sd * 0.34, rf[1] + 0.005), Radius.circular(cw * 0.006)), Paint()..color = const Color(0xFF1A1C1E));
-      }
-    }
-    if (m.spoiler != null) {
-      final sp = m.spoiler!;
-      c.drawRRect(RRect.fromRectAndRadius(r(sp[0], sp[1] - 0.012, sp[2], sp[3]), Radius.circular(cw * 0.008)), Paint()..color = shade(col[2]));
-    }
-    if (m.trunk != null) {
-      c.drawLine(p(-0.42, m.trunk!), p(0.42, m.trunk!), Paint()
-        ..strokeWidth = math.max(1.0, cw * 0.004)
-        ..color = Colors.black.withOpacity(0.35));
-    }
-    // المرايا متصلة بالمقصورة
-    final mr = m.mirror;
-    for (final sd in const [-1.0, 1.0]) {
-      c.drawLine(p(sd * (mr[0] - 0.035), (mr[1] + mr[3]) / 2 + 0.008), p(sd * mr[0], (mr[1] + mr[3]) / 2), Paint()
-        ..strokeWidth = cw * 0.012
-        ..color = shade(col[2]));
-      c.drawRRect(RRect.fromRectAndRadius(r(sd * mr[0], mr[1], sd * mr[2], mr[3]), Radius.circular(cw * 0.018)), Paint()..color = shade(col[1]));
-    }
-    if (m.grille != null) {
-      final gr = m.grille!;
-      for (int k = 0; k < gr[3].round(); k++) {
-        c.drawLine(p(gr[0], gr[1] - k * 0.011), p(gr[2], gr[1] - k * 0.011), Paint()
-          ..strokeWidth = math.max(1.0, cw * 0.004)
-          ..color = Colors.black.withOpacity(0.5));
-      }
-    }
-    // أغطية الأضواء (مطفأة) — الإضاءة نفسها تُرسم حيّة فوقها
-    if (m.bar != null) c.drawPath(_cpath(m.bar!, cw), Paint()..color = const Color(0xFF1A0306));
-    for (final sd in const [-1.0, 1.0]) {
-      c.drawPath(_cpath(m.lamp, cw, sx: sd), Paint()..color = const Color(0xFF240407));
-    }
-    final t3 = m.third;
-    c.drawRRect(RRect.fromRectAndRadius(r(t3[0], t3[1], t3[2], t3[3]), Radius.circular(cw * 0.004)), Paint()..color = const Color(0xFF2A0508));
-    c.drawLine(p(-0.47, m.bumper), p(0.47, m.bumper), Paint()
-      ..strokeWidth = math.max(1.0, cw * 0.004)
-      ..color = Colors.black.withOpacity(0.45));
-    // اللوحة
-    final pl = r(m.plate[0], m.plate[1], m.plate[2], m.plate[3]);
-    c.drawRRect(RRect.fromRectAndRadius(pl.inflate(cw * 0.006), Radius.circular(cw * 0.01)), Paint()..color = Colors.black.withOpacity(0.35));
-    c.drawRRect(RRect.fromRectAndRadius(pl, Radius.circular(cw * 0.008)), Paint()..color = Color.lerp(const Color(0xFF3A3A36), const Color(0xFFEEEBE2), light)!);
-    if (_plate == null || (_plateW - cw).abs() > 1) {
-      _plateW = cw;
-      _plate = TextPainter(text: TextSpan(text: 'منبر', style: TextStyle(fontFamily: 'Cairo', fontSize: cw * 0.036, fontWeight: FontWeight.w700, color: kGreen, height: 1)), textDirection: TextDirection.rtl)..layout();
-    }
-    _plate!.paint(c, pl.center - Offset(_plate!.width / 2, _plate!.height / 2));
-    // الناشر والعادم
-    final df = m.diff;
-    c.drawRRect(RRect.fromRectAndRadius(r(df[0], df[1], df[2], df[3]), Radius.circular(cw * 0.02)), Paint()..color = const Color(0xFF050C0B));
-    for (double x = df[0] + 0.1; x < df[2] - 0.05; x += 0.1) {
-      c.drawLine(p(x, df[1] + 0.01), p(x, df[3] - 0.01), Paint()
-        ..strokeWidth = 1
-        ..color = Colors.white.withOpacity(0.07));
-    }
-    for (final e in m.exh) {
-      for (final sd in const [-1.0, 1.0]) {
-        final ex = r(sd * e[0], e[1], sd * e[2], e[3]);
-        c.drawRRect(RRect.fromRectAndRadius(ex, Radius.circular(cw * 0.02)), Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color.lerp(const Color(0xFF4A5452), const Color(0xFFDDE5E2), light)!, const Color(0xFF2C3433)]).createShader(ex));
-        c.drawRRect(RRect.fromRectAndRadius(ex.deflate(cw * 0.008), Radius.circular(cw * 0.014)), Paint()..color = const Color(0xFF060808));
-      }
-    }
-    c.drawPath(body, Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1
-      ..color = Colors.white.withOpacity(0.05 + 0.06 * light));
-  }
-
-  /// الأجزاء الحيّة: الأضواء (خلفية/فرامل/إشارة/لوحة)، لمعة الإنارة المارة، قطرات المطر، الثلج
-  void _carLive(Canvas c, _CarM m, double cw, double light, double lightsOn, double wet, double pass, Color red, double lit) {
-    Offset p(double x, double y) => Offset(x * cw, y * cw);
-    Rect r(double x0, double y0, double x1, double y1) => Rect.fromPoints(p(x0, y0), p(x1, y1));
-    final brake = s.brake, blinkOn = s.blink != 0 && (s.t * 1.6) % 1 < 0.55;
-    if (pass.abs() < 3 && lightsOn > 0.2 || wet > 0.3 || s.snow > 0.4) {
-      final whole = Path.combine(PathOperation.union, _cpath(m.body, cw), _cpath(m.cab, cw));
-      c.save();
-      c.clipPath(whole);
-      if (pass.abs() < 3 && lightsOn > 0.2) {
-        final k = (1 - pass.abs() / 3) * lightsOn, yy = -m.height + 0.01 + _cl((3 - pass) / 6) * 0.25;
-        final hr = Rect.fromCenter(center: p(0, yy), width: cw * 0.95, height: cw * 0.08);
-        c.drawOval(hr, Paint()..shader = RadialGradient(colors: [const Color(0xFFFFD9A0).withOpacity(0.4 * k), const Color(0x00FFD9A0)]).createShader(hr));
-      }
-      if (wet > 0.3) {
-        final pts = [for (int i = 0; i < 40; i++) p(-0.48 + _hash(i + 120) * 0.96, -m.height + _hash(i + 121) * (m.height - 0.1))];
-        c.drawPoints(ui.PointMode.points, pts, Paint()
-          ..strokeWidth = cw * 0.006
-          ..strokeCap = StrokeCap.round
-          ..color = Colors.white.withOpacity(0.3 * wet));
-      }
-      c.restore();
-    }
-    if (s.snow > 0.4) {
-      final sn = Paint()..color = Colors.white.withOpacity(0.92 * s.snow);
-      final rf = m.roof;
-      c.drawPath(_cpath([[0, rf[0] - 0.01, rf[1]], [3, rf[0] * 0.55, rf[1] - 0.035, rf[2] * 0.55, rf[1] - 0.035, rf[2] + 0.01, rf[1]], [3, rf[2] * 0.55, rf[1] - 0.008, rf[0] * 0.55, rf[1] - 0.008, rf[0] - 0.01, rf[1]]], cw), sn);
-      final top = m.body[4][2];
-      c.drawPath(_cpath([[0, -0.37, top + 0.002], [3, -0.2, top - 0.02, 0.2, top - 0.02, 0.37, top + 0.002], [3, 0.2, top - 0.006, -0.2, top - 0.006, -0.37, top + 0.002]], cw), sn);
-    }
-    // الأضواء الخلفية: تعبئة + توهّج إضافي (بلا تمويه)
-    for (final sd in const [-1.0, 1.0]) {
-      final here = blinkOn && s.blink == sd, cc = here ? const Color(0xFFFFA51F) : red, lp = _cpath(m.lamp, cw, sx: sd);
-      c.drawPath(lp, Paint()..color = cc);
-      final bnd = lp.getBounds();
-      _glow(bnd.center, bnd.width * (0.7 + 0.5 * (here ? 1 : brake)), cc.withOpacity(_cl(0.18 + 0.5 * (here ? 1 : lit))));
-    }
-    final led = _cpath(m.led, cw, close: false);
-    for (final wv in [(0.05 + 0.05 * brake, 0.12 + 0.2 * lit), (0.022 + 0.02 * brake, 0.25 + 0.4 * lit)]) {
-      c.drawPath(led, Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = cw * wv.$1
-        ..strokeCap = StrokeCap.round
-        ..color = red.withOpacity(_cl(wv.$2)));
-    }
-    c.drawPath(led, Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = cw * 0.007
-      ..strokeCap = StrokeCap.round
-      ..color = Color.lerp(red, Colors.white, 0.35 * lit)!);
-    final t3 = m.third, tb = r(t3[0], t3[1], t3[2], t3[3]);
-    if (brake > 0.05) {
-      c.drawRRect(RRect.fromRectAndRadius(tb, Radius.circular(cw * 0.004)), Paint()..color = Color.lerp(const Color(0xFF2A0508), const Color(0xFFFF4050), brake)!);
-      _glow(tb.center, tb.width * 0.9, const Color(0xFFFF2236).withOpacity(0.55 * brake));
-    }
-    if (lightsOn > 0.2) {
-      final pl = r(m.plate[0], m.plate[1], m.plate[2], m.plate[3]);
-      _glow(Offset(pl.center.dx, pl.top), pl.width * 0.7, const Color(0xFFFFF4E0).withOpacity(0.35 * lightsOn));
-    }
-    _flush(c);
-  }
-
-  @override
-  bool shouldRepaint(covariant _World o) => o.g.hz != g.hz || o.g.cx != g.cx || o.g.carY != g.carY || o.g.cw != g.cw || o.g.dpr != g.dpr;
 }
