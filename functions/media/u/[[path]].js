@@ -4,14 +4,14 @@ export async function onRequest({ request, env, params, waitUntil }) {
   if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('', { status: 405 });
   const key = [].concat(params.path || []).join('/'); const ext = (key.split('.').pop() || '').toLowerCase();
   const bucket = env.R2 || env['minbar-media'];
-  const head = { 'accept-ranges': 'bytes', 'cache-control': 'public, max-age=31536000, immutable', 'access-control-allow-origin': '*' };
+  const head = { 'accept-ranges': 'bytes', 'cache-control': 'public, max-age=31536000, immutable', 'access-control-allow-origin': '*', 'access-control-expose-headers': 'x-store' };
   const rg = /bytes=(\d*)-(\d*)/.exec(request.headers.get('range') || '');
   const hasRange = !!(rg && (rg[1] || rg[2]));
   if (bucket) {
     const meta = await bucket.head(key);
     if (meta) {
       const n = meta.size, type = (meta.httpMetadata && meta.httpMetadata.contentType) || TYPES[ext] || 'application/octet-stream';
-      const base = Object.assign({ 'content-type': type, etag: meta.httpEtag }, head);
+      const base = Object.assign({ 'content-type': type, etag: meta.httpEtag, 'x-store': 'r2' }, head);
       if (hasRange) {
         const a = rg[1] === '' ? Math.max(0, n - +rg[2]) : +rg[1], b = rg[1] === '' || rg[2] === '' ? n - 1 : Math.min(n - 1, +rg[2]);
         if (a >= n || a > b) return new Response('', { status: 416, headers: { 'content-range': 'bytes */' + n } });
@@ -32,7 +32,7 @@ export async function onRequest({ request, env, params, waitUntil }) {
     buf = r.value; type = (r.metadata && r.metadata.type) || TYPES[ext] || 'application/octet-stream';
     waitUntil(cache.put(ck, new Response(buf, { headers: { 'content-type': type, 'cache-control': 'public, max-age=31536000, immutable' } })));
   }
-  const n = buf.byteLength, base = Object.assign({ 'content-type': type }, head);
+  const n = buf.byteLength, base = Object.assign({ 'content-type': type, 'x-store': 'kv' }, head);
   if (hasRange) {
     let a = rg[1] === '' ? Math.max(0, n - +rg[2]) : +rg[1], b = rg[1] === '' || rg[2] === '' ? n - 1 : Math.min(n - 1, +rg[2]);
     if (a >= n || a > b) return new Response('', { status: 416, headers: { 'content-range': 'bytes */' + n } });
