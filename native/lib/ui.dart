@@ -163,7 +163,8 @@ class Ic {
   static const play = 'play', pause = 'pause', prev = 'prev', next = 'next', heart = 'heart', heartF = 'heartF', lib = 'lib', pulse = 'pulse', plist = 'plist',
       search = 'search', x = 'x', users = 'users', back = 'back', plus = 'plus', reset = 'reset', down = 'down', power = 'power', check = 'check', dl = 'dl', arch = 'arch', hand = 'hand',
       chat = 'chat', info = 'info', flame = 'flame', spark = 'spark', color = 'color', lay = 'lay', speed = 'speed', wave = 'wave',
-      queue = 'queue', share = 'share', eq = 'eq', more = 'more', text = 'text', moon = 'moon', rw = 'rw', fw = 'fw', rep = 'rep', shuf = 'shuf', timer = 'timer';
+      queue = 'queue', share = 'share', eq = 'eq', more = 'more', text = 'text', moon = 'moon', rw = 'rw', fw = 'fw', rep = 'rep', shuf = 'shuf', timer = 'timer',
+      filter = 'filter', sort = 'sort', folder = 'folder', music = 'music', gear = 'gear', note = 'note', user = 'user', wifiOff = 'wifiOff';
 }
 
 Map<String, String> _icons = {};
@@ -173,6 +174,12 @@ Future<void> loadIcons() async {
     _icons = m.map((k, v) => MapEntry('$k', '$v'));
     _icons['arch'] = '<path d="M5 21V11a7 7 0 0 1 14 0v10"/><path d="M9 21v-5a3 3 0 0 1 6 0v5M3 21h18M12 4V2"/>';
     _icons['hand'] = '<path d="M7 11V5.5a1.5 1.5 0 0 1 3 0V10m0-4.5v-1a1.5 1.5 0 0 1 3 0V10m0-4a1.5 1.5 0 0 1 3 0v4m0-1.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7h-1a6 6 0 0 1-5-2.7L3.6 14a1.5 1.5 0 0 1 2.4-1.8L7 13.5"/>';
+    _icons['filter'] = '<path d="M3 5h18l-7 8v6l-4 2v-8z"/>';
+    _icons['sort'] = '<path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/>';
+    _icons['folder'] = '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>';
+    _icons['music'] = '<path d="M9 18V6l11-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>';
+    _icons['user'] = '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>';
+    _icons['wifiOff'] = '<path d="M2 8.8a15 15 0 0 1 4-2.4M22 8.8a15 15 0 0 0-9-3.7M5 12.9a10 10 0 0 1 5-2.7M19 12.9a10 10 0 0 0-2.4-1.9M8.5 16.4a5 5 0 0 1 7 0M12 20h.01M2 2l20 20"/>';
     _icons['dl'] = '<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19h14"/>';
   } catch (_) {}
 }

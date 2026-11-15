@@ -134,12 +134,54 @@ class Repo extends ChangeNotifier {
   final Map<String, List<Lyric>> _ly = {};
   SharedPreferences? _p;
 
+  /// هوية صاحب البيانات الشخصية (المفضلة والمتابعات والقوائم والسجل): uid الحساب أو guest، فلا تختلط بين الحسابات والضيف
+  String ns = '';
+  String _k(String b) => 'u.$ns.$b';
+
+  /// أول هوية تدخل بعد هذا التحديث ترث بيانات النسخة القديمة (كانت مشتركة) مرة وحدة
+  void _loadUser() {
+    final p = _p;
+    if (p == null) return;
+    favs = {};
+    follows = {};
+    recent = [];
+    pls = [];
+    if (ns.isEmpty) return;
+    if (!(p.getBool('u.legacyDone') ?? false)) {
+      p.setBool('u.legacyDone', true);
+      for (final b in ['fav', 'fol', 'recent']) {
+        final v = p.getStringList(b);
+        if (v != null) p.setStringList(_k(b), v);
+      }
+      final pl = p.getString('pls');
+      if (pl != null) p.setString(_k('pls'), pl);
+      final li = p.getString('last.id');
+      if (li != null) p.setString(_k('last.id'), li);
+      for (final key in p.getKeys().where((e) => e.startsWith('pos.')).toList()) {
+        final v = p.getInt(key);
+        if (v != null) p.setInt(_k(key), v);
+      }
+    }
+    favs = (p.getStringList(_k('fav')) ?? []).toSet();
+    follows = (p.getStringList(_k('fol')) ?? []).toSet();
+    recent = p.getStringList(_k('recent')) ?? [];
+    try {
+      final j = jsonDecode(p.getString(_k('pls')) ?? '[]') as List;
+      pls = j.whereType<Map>().map((m) => Pl('${m['id']}', '${m['name']}', ((m['ids'] ?? []) as List).map((e) => '$e').toList())).toList();
+    } catch (_) {}
+  }
+
+  void useUser(String n) {
+    if (n == ns) return;
+    ns = n;
+    _loadUser();
+    notifyListeners();
+  }
+
   Future<void> init() async {
     _p = await SharedPreferences.getInstance();
-    favs = (_p!.getStringList('fav') ?? []).toSet();
-    follows = (_p!.getStringList('fol') ?? []).toSet();
+    _loadUser();
     offline = (_p!.getStringList('off') ?? []).toSet();
-    recent = _p!.getStringList('recent') ?? [];
     try {
       (jsonDecode(_p!.getString('durs') ?? '{}') as Map).forEach((k, v) => durs['$k'] = (v as num).toInt());
     } catch (_) {}
@@ -147,10 +189,6 @@ class Repo extends ChangeNotifier {
       final dir = await getApplicationDocumentsDirectory();
       offDir = '${dir.path}/off';
       await Directory(offDir).create(recursive: true);
-    } catch (_) {}
-    try {
-      final j = jsonDecode(_p!.getString('pls') ?? '[]') as List;
-      pls = j.whereType<Map>().map((m) => Pl('${m['id']}', '${m['name']}', ((m['ids'] ?? []) as List).map((e) => '$e').toList())).toList();
     } catch (_) {}
     try {
       final j = jsonDecode(_p!.getString('tracks') ?? '[]') as List;
@@ -220,7 +258,7 @@ class Repo extends ChangeNotifier {
   }
 
   void _savePls() {
-    _p?.setString('pls', jsonEncode(pls.map((e) => e.toJson()).toList()));
+    _p?.setString(_k('pls'), jsonEncode(pls.map((e) => e.toJson()).toList()));
     notifyListeners();
   }
 
@@ -252,7 +290,7 @@ class Repo extends ChangeNotifier {
   void Function()? onFav;
   void toggleFav(String id) {
     favs.contains(id) ? favs.remove(id) : favs.add(id);
-    _p?.setStringList('fav', favs.toList());
+    _p?.setStringList(_k('fav'), favs.toList());
     notifyListeners();
     onFav?.call();
   }
@@ -284,11 +322,11 @@ class Repo extends ChangeNotifier {
     return r;
   }
 
-  String? get lastId => _p?.getString('last.id');
-  int posOf(String id) => _p?.getInt('pos.$id') ?? 0;
+  String? get lastId => _p?.getString(_k('last.id'));
+  int posOf(String id) => _p?.getInt(_k('pos.$id')) ?? 0;
   void savePos(String id, int ms, {int dur = 0}) {
-    _p?.setInt('pos.$id', ms);
-    _p?.setString('last.id', id);
+    _p?.setInt(_k('pos.$id'), ms);
+    _p?.setString(_k('last.id'), id);
     if (dur > 0 && durs[id] != dur) {
       durs[id] = dur;
       _p?.setString('durs', jsonEncode(durs));
@@ -297,13 +335,13 @@ class Repo extends ChangeNotifier {
       recent.remove(id);
       recent.add(id);
       if (recent.length > 40) recent.removeAt(0);
-      _p?.setStringList('recent', recent);
+      _p?.setStringList(_k('recent'), recent);
     }
   }
 
   void toggleFollow(String r) {
     follows.contains(r) ? follows.remove(r) : follows.add(r);
-    _p?.setStringList('fol', follows.toList());
+    _p?.setStringList(_k('fol'), follows.toList());
     notifyListeners();
   }
 

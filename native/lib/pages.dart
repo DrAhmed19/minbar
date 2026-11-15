@@ -44,9 +44,21 @@ class _GateState extends State<Gate> with SingleTickerProviderStateMixin {
   Widget build(BuildContext context) {
     final a = app.auth;
     final ready = _minDone && a.state != AuthState.init && a.state != AuthState.loading;
-    if (ready && a.isIn) return const HomeShell();
-    if (!ready) return _splash();
-    return LoginPage(onRetry: () => setState(() {}));
+    const light = SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: Color(0xFF03140F),
+        systemNavigationBarIconBrightness: Brightness.light);
+    const dark = SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+        systemNavigationBarColor: kCream,
+        systemNavigationBarIconBrightness: Brightness.dark);
+    if (ready && a.isIn) return AnnotatedRegion<SystemUiOverlayStyle>(value: dark, child: const HomeShell());
+    if (!ready) return AnnotatedRegion<SystemUiOverlayStyle>(value: light, child: _splash());
+    return AnnotatedRegion<SystemUiOverlayStyle>(value: light, child: LoginPage(onRetry: () => setState(() {})));
   }
 
   Widget _splash() => Scaffold(
@@ -117,8 +129,8 @@ class LoginPage extends StatelessWidget {
       default:
         body = Column(children: [
           GoldButton('الدخول بحساب Google', a.google, icon: Ic.users),
-          const SizedBox(height: 10),
-          GoldButton('الدخول كضيف', a.enterGuest, outline: true),
+          const SizedBox(height: 6),
+          TextButton(onPressed: a.enterGuest, child: Text('المتابعة كضيف', style: tx(14, w: FontWeight.w600, c: const Color(0xFFB9CFC4)))),
           if (a.error.isNotEmpty) ...[
             const SizedBox(height: 12),
             Text(a.error, style: tx(12.5, c: const Color(0xFFE8A0A0)), textAlign: TextAlign.center),
@@ -140,22 +152,14 @@ class LoginPage extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text('منبر', style: tx(44, w: FontWeight.w800, c: const Color(0xFFF3EAD0))),
                 Text('قصائد ومراثي', style: tx(14, w: FontWeight.w500, c: const Color(0xFF9FBDB0))),
-                const SizedBox(height: 14),
-                Wrap(alignment: WrapAlignment.center, spacing: 6, runSpacing: 6, children: [
-                  for (final f in const ['كلمات متزامنة', 'وضع السيارة', 'مجلس مشترك'])
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 4),
-                      decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(14), color: const Color(0x1AF4CF55), border: Border.all(color: const Color(0x47F4CF55))),
-                      child: Text(f, style: tx(11.5, w: FontWeight.w600, c: const Color(0xFFE8D79A))),
-                    ),
-                ]),
+                const SizedBox(height: 18),
+                Container(width: 42, height: 2, decoration: BoxDecoration(color: const Color(0x66F4CF55), borderRadius: BorderRadius.circular(2))),
                 const SizedBox(height: 30),
                 body,
                 const SizedBox(height: 28),
-                Text('مُهدى إلى باسم الكربلائي', style: tx(12, w: FontWeight.w600, c: const Color(0xFF7E9A8E))),
-                const SizedBox(height: 2),
-                Text('نسخة تجريبية قيد التطوير', style: tx(10.5, c: const Color(0xFF5E7A6E))),
+                Text('بالمتابعة فإنك توافق على شروط الاستخدام وسياسة الخصوصية', style: tx(10.5, c: const Color(0xFF6B887B)), textAlign: TextAlign.center),
+                const SizedBox(height: 4),
+                Text('مُهدى إلى باسم الكربلائي · نسخة تجريبية', style: tx(10.5, c: const Color(0xFF5E7A6E))),
               ]),
             ),
           ),

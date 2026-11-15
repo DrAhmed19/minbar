@@ -116,7 +116,7 @@ flutter_launcher_icons:
 
 flutter_native_splash:
   color: '#072a20'
-  image: assets/brand-mark.png
+  image: assets/blank.png
   android_12:
     color: '#072a20'
-    image: assets/brand-mark.png
+    image: assets/blank.png

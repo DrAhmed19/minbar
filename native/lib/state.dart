@@ -337,6 +337,7 @@ class AuthCtl extends ChangeNotifier {
     _p = await SharedPreferences.getInstance();
     guest = _p!.getBool('guest') ?? false;
     if (guest) {
+      app.repo.useUser('guest');
       state = AuthState.ok;
       notifyListeners();
     }
@@ -345,8 +346,10 @@ class AuthCtl extends ChangeNotifier {
 
   Future<void> _on(User? u) async {
     user = u;
+    if (u != null) app.repo.useUser(u.uid);
     if (u == null) {
       if (!guest) {
+        app.repo.useUser('');
         state = AuthState.out;
         notifyListeners();
       }
@@ -411,6 +414,7 @@ class AuthCtl extends ChangeNotifier {
 
   Future<void> enterGuest() async {
     guest = true;
+    app.repo.useUser('guest');
     await _p?.setBool('guest', true);
     state = AuthState.ok;
     notifyListeners();
@@ -441,6 +445,7 @@ class AuthCtl extends ChangeNotifier {
       await FirebaseAuth.instance.signOut();
     } catch (_) {}
     user = null;
+    app.repo.useUser('');
     state = AuthState.out;
     notifyListeners();
   }

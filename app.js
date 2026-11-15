@@ -2021,8 +2021,23 @@ function setLoginMode(m) {
   loginMode = m; $('ltIn').classList.toggle('on', m === 'in'); $('ltUp').classList.toggle('on', m === 'up');
   $('lfName').hidden = $('lfChan').hidden = m === 'in'; $('lGo').textContent = m === 'in' ? 'دخول' : 'إنشاء الحساب والدخول';
 }
+/* كل حساب (وكل ضيف) له مفضلته وقوائمه وسجله: عند تغيّر الهوية نحفظ بيانات السابق ونستعيد بيانات الداخل */
+const PERS = ['minbar.plr', 'minbar.pls', 'minbar.follow', 'minbar.last', 'minbar.pos', 'minbar.queue', 'minbar.seen.ids', 'minbar.rx.local', 'minbar.cm.local', 'minbar.lyr.mine'];
+function swapSpace(u) {
+  const ns = u.uid ? 'u' + u.uid : 'guest'; let cur = null; try { cur = localStorage.getItem('minbar.ns'); } catch (e) { return false; }
+  if (cur === ns) return false;
+  try {
+    if (cur) {
+      PERS.forEach((k) => { const v = localStorage.getItem(k); if (v != null) localStorage.setItem(cur + '|' + k, v); localStorage.removeItem(k); });
+      PERS.forEach((k) => { const v = localStorage.getItem(ns + '|' + k); if (v != null) localStorage.setItem(k, v); });
+    }
+    localStorage.setItem('minbar.ns', ns);
+  } catch (e) { return false; }
+  return !!cur;
+}
 function finishLogin(u) {
   if (user && u.uid && user.uid === u.uid) return;
+  if (swapSpace(u)) { LS.set('basim.user', u.guest ? null : u); return location.reload(); }
   user = u; loadSpace(u); if (u.trial) runTrial(); else stopTrial(); LS.set('basim.user', u); applyUser();
   if (u.chan && !u.guest && cfg.logoMode === 'builder' && (cfg.logoP.text === LOGO0.text || cfg.logoP.text === 'باسم')) { cfg.logoP.text = u.chan; saveCfg(); loadLogo(); buildLogoUI(); }
   $('login').classList.add('leave'); $('app').classList.add('enter');

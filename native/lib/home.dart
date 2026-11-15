@@ -124,7 +124,10 @@ class _HomeShellState extends State<HomeShell> {
     return r.tracks.where((t) => norm('${t.title} ${t.reciter} ${t.poet} ${t.albumName} ${t.cat}').contains(k) || norm(r.allLy[t.id] ?? '').contains(k)).toList();
   }
 
-  void _play(List<Track> l, Track t) => app.player.playList(l, l.indexOf(t));
+  void _play(List<Track> l, Track t) {
+    app.player.playList(l, l.indexOf(t));
+    openPlayer(context);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -288,32 +291,191 @@ class _HomeShellState extends State<HomeShell> {
         itemBuilder: (_, i) => TrackTile(l[i], onTap: () => _play(l, l[i])),
       );
 
-  Widget _poems() {
-    final cats = ['الكل', ...{for (final t in app.repo.tracks) t.cat}];
-    final l = app.repo.tracks.where((t) => cat == 'الكل' || t.cat == cat).toList();
-    return Column(children: [
-      SizedBox(
-        height: 42,
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          children: [
-            for (final c in cats)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 4),
-                child: ChoiceChip(
-                  label: Text(c, style: tx(12.5, c: cat == c ? Colors.white : kGreen)),
-                  selected: cat == c,
-                  selectedColor: kGreen,
-                  backgroundColor: Colors.white,
-                  showCheckmark: false,
-                  onSelected: (_) => setState(() => cat = c),
-                ),
-              ),
-          ],
+  // ترتيب وفلاتر صفحة القصائد (تُحفظ أثناء الجلسة)
+  String _sort = 'new';
+  final Set<String> _fRec = {}, _fPoet = {}, _fAlb = {};
+  bool _fLy = false, _fOff = false, _fFav = false;
+  static const _sorts = {'new': 'الأحدث', 'old': 'الأقدم', 'az': 'أبجدياً', 'hot': 'الأكثر استماعاً', 'fav': 'المفضلة أولاً'};
+  int get _fCount => _fRec.length + _fPoet.length + _fAlb.length + (_fLy ? 1 : 0) + (_fOff ? 1 : 0) + (_fFav ? 1 : 0) + (cat != 'الكل' ? 1 : 0);
+
+  List<Track> _poemList() {
+    final r = app.repo;
+    var l = r.tracks.where((t) {
+      if (cat != 'الكل' && t.cat != cat) return false;
+      if (_fRec.isNotEmpty && !_fRec.contains(t.reciter)) return false;
+      if (_fPoet.isNotEmpty && !_fPoet.contains(t.poet)) return false;
+      if (_fAlb.isNotEmpty && !_fAlb.contains(t.albumName)) return false;
+      if (_fLy && !r.allLy.containsKey(t.id) && t.lyrics.isEmpty) return false;
+      if (_fOff && !r.offline.contains(t.id)) return false;
+      if (_fFav && !r.isFav(t.id)) return false;
+      return true;
+    }).toList();
+    final hot = {for (final e in r.hotPlays) e.key: e.value};
+    int cmp(Track a, Track b) {
+      switch (_sort) {
+        case 'old':
+          return a.at.compareTo(b.at);
+        case 'az':
+          return a.title.compareTo(b.title);
+        case 'hot':
+          return (hot[b.id] ?? 0).compareTo(hot[a.id] ?? 0);
+        case 'fav':
+          final x = r.isFav(b.id) ? 1 : 0, y = r.isFav(a.id) ? 1 : 0;
+          return x != y ? x - y : b.at.compareTo(a.at);
+        default:
+          return b.at.compareTo(a.at);
+      }
+    }
+
+    l.sort(cmp);
+    return l;
+  }
+
+  Widget _tbBtn(String ic, String label, VoidCallback f, {int badge = 0}) => GestureDetector(
+        onTap: f,
+        child: Container(
+          height: 34,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(color: badge > 0 ? kGreen : Colors.white, borderRadius: BorderRadius.circular(17), border: Border.all(color: kGreen.withOpacity(.25))),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            PIcon(ic, color: badge > 0 ? Colors.white : kGreen, size: 16),
+            const SizedBox(width: 6),
+            Text(badge > 0 ? '$label · $badge' : label, style: tx(12.5, w: FontWeight.w700, c: badge > 0 ? Colors.white : kGreen)),
+          ]),
         ),
+      );
+
+  void _sortSheet() => showModalBottomSheet(
+        context: context,
+        backgroundColor: kCream,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        builder: (c) => SafeArea(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const SizedBox(height: 10),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(2))),
+            Padding(padding: const EdgeInsets.all(14), child: Text('ترتيب القصائد', style: tx(16, w: FontWeight.w800))),
+            for (final e in _sorts.entries)
+              ListTile(
+                dense: true,
+                title: Text(e.value, style: tx(14.5, w: _sort == e.key ? FontWeight.w800 : FontWeight.w500, c: _sort == e.key ? kGreen : null)),
+                trailing: _sort == e.key ? const Icon(Icons.check_rounded, color: kGreen) : null,
+                onTap: () {
+                  setState(() => _sort = e.key);
+                  Navigator.pop(c);
+                },
+              ),
+            const SizedBox(height: 8),
+          ]),
+        ),
+      );
+
+  void _filterSheet() {
+    final r = app.repo;
+    List<String> uniq(String Function(Track) f) => ({for (final t in r.tracks) f(t)}..remove('')).toList()..sort();
+    final cats = ['الكل', ...{for (final t in r.tracks) t.cat}];
+    final recs = uniq((t) => t.reciter), poets = uniq((t) => t.poet), albs = uniq((t) => t.albumName);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: kCream,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (c) => StatefulBuilder(builder: (c, ss) {
+        void up(VoidCallback f) {
+          f();
+          ss(() {});
+          setState(() {});
+        }
+
+        Widget chips(String title, List<String> all, Set<String> sel) => all.length < 2
+            ? const SizedBox()
+            : Padding(
+                padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(title, style: tx(13, w: FontWeight.w800, c: kMuted)),
+                  const SizedBox(height: 6),
+                  Wrap(spacing: 6, runSpacing: 2, children: [
+                    for (final v in all)
+                      FilterChip(
+                        label: Text(v, style: tx(12, c: sel.contains(v) ? Colors.white : kGreen)),
+                        selected: sel.contains(v),
+                        selectedColor: kGreen,
+                        backgroundColor: Colors.white,
+                        showCheckmark: false,
+                        visualDensity: VisualDensity.compact,
+                        onSelected: (_) => up(() => sel.contains(v) ? sel.remove(v) : sel.add(v)),
+                      ),
+                  ]),
+                ]),
+              );
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: .75,
+          maxChildSize: .92,
+          builder: (_, sc) => ListView(controller: sc, children: [
+            Center(child: Container(margin: const EdgeInsets.only(top: 10), width: 40, height: 4, decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(2)))),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Row(children: [
+                Text('تصنيف القصائد', style: tx(16, w: FontWeight.w800)),
+                const Spacer(),
+                if (_fCount > 0)
+                  TextButton(
+                      onPressed: () => up(() {
+                            cat = 'الكل';
+                            _fRec.clear();
+                            _fPoet.clear();
+                            _fAlb.clear();
+                            _fLy = _fOff = _fFav = false;
+                          }),
+                      child: Text('مسح الكل', style: tx(13, c: Colors.red.shade700))),
+              ]),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('النوع', style: tx(13, w: FontWeight.w800, c: kMuted)),
+                const SizedBox(height: 6),
+                Wrap(spacing: 6, children: [
+                  for (final v in cats)
+                    ChoiceChip(
+                      label: Text(v, style: tx(12, c: cat == v ? Colors.white : kGreen)),
+                      selected: cat == v,
+                      selectedColor: kGreen,
+                      backgroundColor: Colors.white,
+                      showCheckmark: false,
+                      visualDensity: VisualDensity.compact,
+                      onSelected: (_) => up(() => cat = v),
+                    ),
+                ]),
+              ]),
+            ),
+            chips('الرادود', recs, _fRec),
+            chips('الشاعر', poets, _fPoet),
+            chips('الإصدار', albs, _fAlb),
+            SwitchListTile(dense: true, activeColor: kGreen, title: Text('لها كلمات متزامنة', style: tx(14)), value: _fLy, onChanged: (v) => up(() => _fLy = v)),
+            SwitchListTile(dense: true, activeColor: kGreen, title: Text('المحمّلة على الجهاز فقط', style: tx(14)), value: _fOff, onChanged: (v) => up(() => _fOff = v)),
+            SwitchListTile(dense: true, activeColor: kGreen, title: Text('المفضلة فقط', style: tx(14)), value: _fFav, onChanged: (v) => up(() => _fFav = v)),
+            Padding(padding: const EdgeInsets.all(16), child: GoldButton('عرض ${_poemList().length} قصيدة', () => Navigator.pop(c))),
+          ]),
+        );
+      }),
+    );
+  }
+
+  Widget _poems() {
+    final l = _poemList();
+    return Column(children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
+        child: Row(children: [
+          _tbBtn(Ic.filter, 'تصنيف', _filterSheet, badge: _fCount),
+          const SizedBox(width: 8),
+          _tbBtn(Ic.sort, _sorts[_sort]!, _sortSheet),
+          const Spacer(),
+          Text('${l.length} قصيدة', style: tx(12, c: kMuted, w: FontWeight.w600)),
+        ]),
       ),
-      Expanded(child: _list(l)),
+      Expanded(child: l.isEmpty ? _empty('ما اكو قصائد بهذا التصنيف') : _list(l)),
     ]);
   }
 

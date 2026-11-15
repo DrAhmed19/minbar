@@ -49,7 +49,7 @@ class Social extends ChangeNotifier {
     notifyListeners();
     final sp = await SharedPreferences.getInstance();
     try {
-      final loc = (jsonDecode(sp.getString('rxLocal') ?? '{}') as Map)[t.id];
+      final loc = (jsonDecode(sp.getString('rxLocal.${app.repo.ns}') ?? '{}') as Map)[t.id];
       if (loc is List) rx.addAll(loc.map((e) => (e as num).toDouble()));
     } catch (_) {}
     await _rxSub?.cancel();
@@ -177,9 +177,9 @@ class Social extends ChangeNotifier {
     }
     if (!ok) {
       final sp = await SharedPreferences.getInstance();
-      final all = jsonDecode(sp.getString('rxLocal') ?? '{}') as Map;
+      final all = jsonDecode(sp.getString('rxLocal.${app.repo.ns}') ?? '{}') as Map;
       (all[t.id] ??= []).add(at);
-      await sp.setString('rxLocal', jsonEncode(all));
+      await sp.setString('rxLocal.${app.repo.ns}', jsonEncode(all));
     }
   }
 
