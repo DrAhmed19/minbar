@@ -7,66 +7,17 @@ swipe 540 1800 540 700 400
 wait 3
 text "وضع السيارة"
 wait 12
-shot c01-default
 text "إعدادات السيارة"
-wait 4
-text "عالية"
-wait 2
+wait 5
 shot c02-settings
+swipe 540 1700 540 700 400
+wait 3
+shot c09-settings-more
+swipe 540 1700 540 500 400
+wait 3
+shot c10-settings-end
 text "مدينة"
 wait 1
 back
 wait 8
 shot c03-city
-text "إعدادات السيارة"
-wait 3
-text "صحراء"
-wait 1
-back
-wait 8
-shot c04-desert
-text "إعدادات السيارة"
-wait 3
-text "جبال"
-wait 1
-swipe 540 1600 540 900 400
-wait 2
-text "ثلج"
-wait 1
-back
-wait 8
-shot c05-mount-snow
-text "إعدادات السيارة"
-wait 3
-text "أهوار"
-wait 1
-swipe 540 1600 540 900 400
-wait 2
-text "الحقيقي"
-wait 1
-back
-wait 8
-shot c06-marsh
-text "إعدادات السيارة"
-wait 3
-text "مدينة"
-wait 1
-swipe 540 1600 540 900 400
-wait 2
-text "ليل"
-wait 1
-text "مطر غزير"
-wait 1
-back
-wait 9
-shot c07-city-night-rain
-text "إعدادات السيارة"
-wait 3
-text "دفع رباعي"
-wait 1
-text "أحمر"
-wait 2
-shot c08-settings-suv
-swipe 540 1700 540 600 400
-wait 2
-shot c09-settings-more

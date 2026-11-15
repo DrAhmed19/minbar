@@ -1050,11 +1050,6 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
                 ]),
                 const SizedBox(height: 6),
                 card('🚗', 'سيارتك', [
-                  Container(
-                    height: 170,
-                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: const Color(0xFF0B1F19)),
-                    child: ClipRRect(borderRadius: BorderRadius.circular(16), child: CustomPaint(painter: _CarPreview(_sc.model, _sc.color), size: Size.infinite)),
-                  ),
                   label('الشكل'),
                   Row(children: [
                     for (final e in _modelNames.entries)
@@ -1094,7 +1089,6 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
                               shape: BoxShape.circle,
                               gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(e.value[0]), Color(e.value[1]), Color(e.value[3])]),
                               border: Border.all(color: _sc.color == e.key ? kGold : const Color(0x33FFFFFF), width: _sc.color == e.key ? 3 : 1),
-                              boxShadow: _sc.color == e.key ? const [BoxShadow(color: Color(0x66E8C468), blurRadius: 10)] : null,
                             ),
                           ),
                         ),
@@ -1200,6 +1194,13 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
                   const SizedBox(height: 6),
                   Row(children: [stat(gps ? '${avg.round()}' : '—', 'المعدل'), stat(gps ? '${(_maxV * 3.6).round()}' : '—', 'الأعلى'), stat(gps ? _dur(_moveSec) : '—', 'الحركة')]),
                   if (lastTrip != null) ...[label('آخر رحلة'), Text(lastTrip, style: tx(13, c: Colors.white70))],
+                ]),
+                card('🚘', 'معاينة', [
+                  Container(
+                    height: 170,
+                    color: const Color(0xFF0B1F19),
+                    child: CustomPaint(painter: _CarPreview(_sc.model, _sc.color), size: Size.infinite),
+                  ),
                 ]),
               ]),
             ),
