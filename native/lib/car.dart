@@ -692,7 +692,7 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
                 right: 0,
                 bottom: 0,
                 height: panel + 50,
-                child: const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x00000000), Color(0xA6000000), Color(0xE6000000)], stops: [0, 0.22, 1])))),
+                child: const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x00000000), Color(0xCC000000), Color(0xF2000000)], stops: [0, 0.2, 1])))),
             Positioned(top: top + 44, left: (w - g) / 2, child: _speedo(g)),
             Positioned(top: top - 4, left: 0, right: 0, child: _topBar()),
             Positioned(
@@ -1178,16 +1178,18 @@ class _World extends CustomPainter {
     // ---------- ضوء السيارة الأمامي على الطريق ----------
     final beamOn = math.max(lightsOn, murk * 0.8);
     if (beamOn > 0.05) {
-      final qa = qc + 1.6, qb = qc + 26, ya = Y(qa), yb = Y(qb);
+      // مخروط يبدأ من مقدمة السيارة (مخفي خلفها) ويتلاشى تدريجياً للأمام وللجانبين
+      final qa = qc + 0.2, qb = qc + 30, ya = Y(qa), yb = Y(qb);
       final bm = Path()
-        ..moveTo(X(-1.1, qa), ya)
-        ..lineTo(X(1.1, qa), ya)
-        ..lineTo(X(4.5, qb), yb)
-        ..lineTo(X(-4.5, qb), yb)
+        ..moveTo(X(-0.8, qa), ya)
+        ..lineTo(X(0.8, qa), ya)
+        ..lineTo(X(6.5, qb), yb)
+        ..lineTo(X(-6.5, qb), yb)
         ..close();
+      final bc = const Color(0xFFFFF1D6);
       c.drawPath(bm, Paint()
-        ..shader = LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [const Color(0xFFFFF4DC).withOpacity(0.42 * beamOn), const Color(0x00FFF4DC)]).createShader(Rect.fromLTRB(0, yb, w, ya))
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8));
+        ..shader = LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [bc.withOpacity(0.3 * beamOn), bc.withOpacity(0.22 * beamOn), bc.withOpacity(0.06 * beamOn), bc.withOpacity(0)], stops: const [0, 0.25, 0.6, 1]).createShader(Rect.fromLTRB(0, yb, w, ya))
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, g.cw * 0.12));
     }
 
     // ---------- السيارة ----------
