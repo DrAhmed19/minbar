@@ -1050,11 +1050,6 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
                 ]),
                 const SizedBox(height: 6),
                 card('🚗', 'سيارتك', [
-                  Container(
-                    height: 150,
-                    color: const Color(0xFF0B1F19),
-                    child: CustomPaint(painter: _CarPreview(_sc.model, _sc.color), size: Size.infinite),
-                  ),
                   label('الشكل'),
                   Row(children: [
                     for (final e in _modelNames.entries)
@@ -1199,6 +1194,13 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
                   const SizedBox(height: 6),
                   Row(children: [stat(gps ? '${avg.round()}' : '—', 'المعدل'), stat(gps ? '${(_maxV * 3.6).round()}' : '—', 'الأعلى'), stat(gps ? _dur(_moveSec) : '—', 'الحركة')]),
                   if (lastTrip != null) ...[label('آخر رحلة'), Text(lastTrip, style: tx(13, c: Colors.white70))],
+                ]),
+                card('🚘', 'معاينة', [
+                  Container(
+                    height: 170,
+                    color: const Color(0xFF0B1F19),
+                    child: CustomPaint(painter: _CarPreview(_sc.model, _sc.color), size: Size.infinite),
+                  ),
                 ]),
               ]),
             ),
