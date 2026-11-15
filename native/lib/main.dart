@@ -13,6 +13,7 @@ import 'state.dart';
 import 'audio.dart';
 import 'extras.dart';
 import 'ui.dart';
+import 'home.dart' show openPlayer;
 
 Future<void> main() async {
   runZonedGuarded(_start, (e, s) => debugPrint('MBERR zone: $e\n${s.toString().split('\n').take(6).join('\n')}'));
@@ -78,7 +79,29 @@ Future<void> _start() async {
   await loadIcons();
   runApp(const MinbarApp());
   // أندرويد 13+: بدون صلاحية الإشعارات لا تظهر لوحة التحكم بالإشعارات ولا على شاشة القفل
-  Future.delayed(const Duration(seconds: 2), () => notifInit(ask: true));
+  // فتح ملف صوتي من خارج التطبيق («فتح بواسطة منبر»)
+  const fx = MethodChannel('minbar/fx');
+  Future<void> openExt(dynamic p) async {
+    if (p is! String || p.isEmpty) return;
+    for (var i = 0; i < 40 && app.repo.offDir.isEmpty; i++) {
+      await Future.delayed(const Duration(milliseconds: 250));
+    }
+    final t = await app.repo.importPath(p);
+    final c = kNav.currentContext;
+    if (t != null) {
+      app.player.playList([t], 0);
+      if (c != null && c.mounted) openPlayer(c);
+    }
+  }
+
+  fx.setMethodCallHandler((call) async {
+    if (call.method == 'open') await openExt(call.arguments);
+  });
+  Future.delayed(const Duration(seconds: 2), () async {
+    try {
+      await openExt(await fx.invokeMethod('pending'));
+    } catch (_) {}
+  });
 }
 
 class MinbarApp extends StatelessWidget {

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:just_audio/just_audio.dart';
@@ -18,6 +19,7 @@ import 'occasion.dart';
 import 'state.dart';
 import 'ui.dart';
 import 'car.dart';
+import 'home.dart' show GroupPage, LocalPage;
 export 'car.dart';
 
 /// إضافات التطبيق: الإعدادات، الإشعارات (قصائد جديدة + تذكير المناسبات)،
@@ -395,6 +397,177 @@ class _SettingsPageState extends State<SettingsPage> {
               );
             }),
           ]),
+        ]),
+      ),
+    );
+  }
+}
+
+
+/// أول فتح بعد الدخول: شرح الأذونات وطلبها بشكل مرتّب بدل نوافذ متفرقة
+Future<void> showPermsOnce(BuildContext context) async {
+  final sp = await SharedPreferences.getInstance();
+  if (sp.getBool('permsShown') ?? false) return;
+  if (!context.mounted) return;
+  await sp.setBool('permsShown', true);
+  if (!context.mounted) return;
+  await showModalBottomSheet(
+    context: context,
+    isDismissible: true,
+    backgroundColor: kCream,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
+    builder: (c) => Directionality(
+      textDirection: TextDirection.rtl,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22, 18, 22, 14),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('أذونات تحتاجها بعض الميزات', style: tx(18, w: FontWeight.w800)),
+            const SizedBox(height: 4),
+            Text('تُطلب مرة واحدة، ويمكنك تغييرها لاحقاً من إعدادات الهاتف.', style: tx(12.5, c: kMuted)),
+            const SizedBox(height: 14),
+            for (final r in const [
+              (Ic.chat, 'الإشعارات', 'أزرار التحكم بالتشغيل في الإشعار وشاشة القفل، وتنبيه القصائد الجديدة والمناسبات.'),
+              (Ic.flame, 'الموقع (أثناء الاستخدام فقط)', 'وضع السيارة: اسم المنطقة والطقس وسرعة القيادة. لا يُحفظ ولا يُرسل لأحد.'),
+              (Ic.wave, 'المايكروفون', 'يُطلب عند استعمال «التعرّف على القصيدة» فقط.'),
+            ])
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Container(width: 38, height: 38, decoration: BoxDecoration(color: kGreen.withOpacity(.1), borderRadius: BorderRadius.circular(12)), child: Center(child: PIcon(r.$1, color: kGreen, size: 20))),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(r.$2, style: tx(14, w: FontWeight.w800)),
+                      Text(r.$3, style: tx(12, c: kMuted, h: 1.6)),
+                    ]),
+                  ),
+                ]),
+              ),
+            const SizedBox(height: 4),
+            GoldButton('السماح', () async {
+              Navigator.pop(c);
+              await notifInit(ask: true);
+              try {
+                await Geolocator.requestPermission();
+              } catch (_) {}
+            }),
+            Center(child: TextButton(onPressed: () => Navigator.pop(c), child: Text('لاحقاً', style: tx(13, c: kMuted)))),
+          ]),
+        ),
+      ),
+    ),
+  );
+}
+
+
+/// صفحة المستخدم: هويته وإحصاءاته وكل ما يخصه (المفضلة، السجل، المحمّل، ملفاته) + الإعدادات
+class ProfilePage extends StatefulWidget {
+  const ProfilePage({super.key});
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  void _r() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    app.repo.addListener(_r);
+  }
+
+  @override
+  void dispose() {
+    app.repo.removeListener(_r);
+    super.dispose();
+  }
+
+  Widget _stat(String n, String l) => Expanded(
+        child: Column(children: [
+          Text(n, style: tx(20, w: FontWeight.w800, c: kGreen)),
+          const SizedBox(height: 2),
+          Text(l, style: tx(11.5, c: kMuted, w: FontWeight.w500)),
+        ]),
+      );
+
+  Widget _item(String ic, String t, String sub, VoidCallback f) => ListTile(
+        leading: Container(width: 40, height: 40, decoration: BoxDecoration(color: kGreen.withOpacity(.09), borderRadius: BorderRadius.circular(12)), child: Center(child: PIcon(ic, color: kGreen, size: 20))),
+        title: Text(t, style: tx(14.5, w: FontWeight.w700)),
+        subtitle: sub.isEmpty ? null : Text(sub, style: tx(11.5, c: kMuted, w: FontWeight.w500)),
+        trailing: const Icon(Icons.chevron_left_rounded, color: kMuted),
+        onTap: f,
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final a = app.auth, r = app.repo;
+    final photo = a.user?.photoURL ?? '';
+    final favs = r.tracks.where((t) => r.isFav(t.id)).toList();
+    final hist = [for (final id in r.recent.reversed) if (r.byId(id) != null) r.byId(id)!];
+    final dls = r.tracks.where((t) => r.offline.contains(t.id)).toList();
+    void go(Widget w) => Navigator.push(context, MaterialPageRoute(builder: (_) => w));
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: kCream,
+        appBar: AppBar(backgroundColor: kCream, elevation: 0, scrolledUnderElevation: 0, foregroundColor: kGreen, title: Text('حسابي', style: tx(19, w: FontWeight.w800, c: kGreen))),
+        body: ListView(padding: const EdgeInsets.only(bottom: 30), children: [
+          Container(
+            margin: const EdgeInsets.fromLTRB(14, 4, 14, 10),
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22), boxShadow: [BoxShadow(color: Colors.black.withOpacity(.05), blurRadius: 14, offset: const Offset(0, 4))]),
+            child: Column(children: [
+              Row(children: [
+                CircleAvatar(
+                  radius: 34,
+                  backgroundColor: kGreen,
+                  backgroundImage: (!a.guest && photo.isNotEmpty) ? NetworkImage(photo) : null,
+                  child: (!a.guest && photo.isNotEmpty) ? null : const PIcon(Ic.user, color: kGold, size: 32),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(a.guest ? 'ضيف' : (a.user?.displayName ?? ''), style: tx(18, w: FontWeight.w800)),
+                    const SizedBox(height: 2),
+                    Text(a.guest ? 'تستمع بدون حساب' : (a.user?.email ?? ''), style: tx(12, c: kMuted, w: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    if (a.admin) ...[
+                      const SizedBox(height: 6),
+                      Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2), decoration: BoxDecoration(color: kGold.withOpacity(.25), borderRadius: BorderRadius.circular(10)), child: Text('مشرف', style: tx(11, w: FontWeight.w800, c: const Color(0xFF6B5210)))),
+                    ],
+                  ]),
+                ),
+              ]),
+              const SizedBox(height: 16),
+              Row(children: [_stat('${favs.length}', 'المفضلة'), _stat('${r.pls.length}', 'القوائم'), _stat('${dls.length + r.locals.length}', 'بدون إنترنت'), _stat('${r.recent.length}', 'سجلي')]),
+              if (a.guest) ...[
+                const SizedBox(height: 14),
+                Text('بياناتك كضيف (المفضلة والقوائم) خاصة بهذا الجهاز. سجّل الدخول بحساب Google لتكون لك ولتظهر إعجاباتك وتعليقاتك للآخرين.', style: tx(12, c: kMuted, h: 1.7)),
+                const SizedBox(height: 10),
+                GoldButton('تسجيل الدخول بحساب Google', () {
+                  Navigator.pop(context);
+                  a.signOut();
+                }),
+              ],
+            ]),
+          ),
+          _item(Ic.heart, 'مفضلتي', '${favs.length} قصيدة', () => go(GroupPage('مفضلتي', favs))),
+          _item(Ic.timer, 'سجل الاستماع', hist.isEmpty ? 'لم تستمع لشيء بعد' : 'آخر ${hist.length} قصيدة', () => go(GroupPage('سجل الاستماع', hist))),
+          _item(Ic.dl, 'المحمّلة للاستماع بدون إنترنت', '${dls.length} قصيدة', () => go(GroupPage('المحمّلة', dls))),
+          _item(Ic.folder, 'ملفات من جهازك', '${r.locals.length} ملف', () => go(const LocalPage())),
+          const Divider(height: 24, indent: 18, endIndent: 18),
+          _item(Ic.gear, 'الإعدادات', 'الإشعارات والتشغيل والصوت والتحديث', () => go(const SettingsPage())),
+          if (!a.guest)
+            ListTile(
+              leading: Container(width: 40, height: 40, decoration: BoxDecoration(color: Colors.red.withOpacity(.08), borderRadius: BorderRadius.circular(12)), child: Center(child: PIcon(Ic.power, color: Colors.red.shade700, size: 20))),
+              title: Text('تسجيل الخروج', style: tx(14.5, w: FontWeight.w700, c: Colors.red.shade700)),
+              onTap: () {
+                Navigator.pop(context);
+                a.signOut();
+              },
+            ),
         ]),
       ),
     );

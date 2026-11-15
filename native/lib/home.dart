@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'package:file_picker/file_picker.dart';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
 import 'data.dart';
@@ -71,6 +74,9 @@ class _HomeShellState extends State<HomeShell> {
     if (app.repo.loaded) app.player.restore();
     Future.delayed(const Duration(seconds: 4), _checkUpdate);
     Future.delayed(const Duration(seconds: 6), extrasStart);
+    Future.delayed(const Duration(milliseconds: 2200), () {
+      if (mounted) showPermsOnce(context);
+    });
     final al = AppLinks();
     al.getInitialLink().then(_link).catchError((_) {});
     _linkSub = al.uriLinkStream.listen(_link, onError: (_) {});
@@ -86,15 +92,24 @@ class _HomeShellState extends State<HomeShell> {
     final up = await latestUpdate();
     final n = up.build;
     if (!mounted || kBuild == 0 || n <= kBuild) return;
+    final sp = await SharedPreferences.getInstance();
+    if (DateTime.now().millisecondsSinceEpoch - (sp.getInt('upSnooze') ?? 0) < 86400000) return;
+    if (!mounted) return;
     showDialog(
       context: context,
       builder: (d) => Directionality(
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           title: Text('تحديث جديد', style: tx(17, w: FontWeight.w800)),
-          content: Text('نزلت نسخة أحدث من منبر. حمّلها وثبّتها فوق النسخة الحالية (بياناتك تبقى).', style: tx(13.5, w: FontWeight.w500, h: 1.7)),
+          content: Text('نزلت نسخة أحدث من منبر (إصدار $n). قبل التحميل:\n• يفضّل الاتصال بشبكة Wi‑Fi (الحجم نحو 30 ميغا).\n• يتوقف التشغيل لحظة التثبيت.\n• بياناتك ومفضلتك تبقى كما هي.', style: tx(13.5, w: FontWeight.w500, h: 1.8)),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(d), child: Text('لاحقاً', style: tx(13, c: kMuted))),
+            TextButton(
+              onPressed: () {
+                sp.setInt('upSnooze', DateTime.now().millisecondsSinceEpoch);
+                Navigator.pop(d);
+              },
+              child: Text('ذكّرني غداً', style: tx(13, c: kMuted)),
+            ),
             TextButton(
               onPressed: () {
                 Navigator.pop(d);
@@ -168,7 +183,7 @@ class _HomeShellState extends State<HomeShell> {
             child: Column(children: [
               Container(
                 decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x330E5C46), Color(0x000E5C46)])),
-                child: Column(children: [_header(), if (nav == 0 && !searching) _subTabs()]),
+                child: Column(children: [_header(), if (app.repo.noNet) _offBanner(), if (nav == 0 && !searching && !app.repo.noNet) _subTabs()]),
               ),
               Expanded(child: _body()),
               _mini(),
@@ -223,7 +238,7 @@ class _HomeShellState extends State<HomeShell> {
             ),
           if (!searching) const Spacer(),
           if (!searching) _ib('mic', () => recognizePoem(context), 'التعرف على القصيدة'),
-          if (!searching) _ib(Ic.users, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsPage())), 'الإعدادات'),
+          if (!searching) _ib(Ic.users, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage())), 'حسابي'),
           _ib(searching ? Ic.x : Ic.search, () => setState(() {
                 searching = !searching;
                 if (!searching) {
@@ -271,6 +286,10 @@ class _HomeShellState extends State<HomeShell> {
       return l.isEmpty ? _empty('ما عندك مفضلة بعد') : _list(l);
     }
     if (nav == 3) return _playlists();
+    if (r.noNet && nav == 0) {
+      final l = r.playableOffline;
+      return l.isEmpty ? _empty('ما عندك قصائد محمّلة. حمّل قصائد وأنت متصل لتسمعها بدون إنترنت، أو أضف ملفات من جهازك من تبويب القوائم.') : _list(l);
+    }
     switch (sub) {
       case 1:
         return _poems();
@@ -282,6 +301,18 @@ class _HomeShellState extends State<HomeShell> {
         return HomeTab(onPlay: _play, onSub: (i) => setState(() => sub = i));
     }
   }
+
+  Widget _offBanner() => Container(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(color: const Color(0xFFFFF3D6), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFE8C468))),
+        child: Row(children: [
+          const PIcon(Ic.wifiOff, color: Color(0xFF8A6A12), size: 18),
+          const SizedBox(width: 8),
+          Expanded(child: Text('بدون إنترنت — تظهر القصائد المحمّلة وملفات جهازك', style: tx(12.5, w: FontWeight.w600, c: const Color(0xFF6B5210)))),
+          GestureDetector(onTap: () => app.repo.refresh(), child: Text('إعادة', style: tx(12.5, w: FontWeight.w800, c: kGreen))),
+        ]),
+      );
 
   Widget _empty(String s) => Center(child: Text(s, style: tx(14, c: kMuted)));
 
@@ -525,6 +556,12 @@ class _HomeShellState extends State<HomeShell> {
             if (n != null) r.newPl(n);
           }),
         ),
+      ),
+      ListTile(
+        leading: Container(width: 50, height: 50, decoration: BoxDecoration(color: kGreen, borderRadius: BorderRadius.circular(12)), child: const Center(child: PIcon(Ic.folder, color: kGold, size: 24))),
+        title: Text('ملفات من جهازك', style: tx(14.5, w: FontWeight.w800)),
+        subtitle: Text(r.locals.isEmpty ? 'شغّل لطمياتك المحفوظة بالهاتف، وأرفق كلماتها' : '${r.locals.length} ملف · تعمل بدون إنترنت', style: tx(12, c: kMuted, w: FontWeight.w500)),
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LocalPage())),
       ),
       Expanded(
         child: r.pls.isEmpty
@@ -1182,4 +1219,138 @@ void shareTrack(BuildContext context, Track t, {int? at}) {
       ),
     ),
   );
+}
+
+
+/// ملفات من جهاز المستخدم: استيراد + تشغيل + إرفاق كلمات (LRC أو نص) — كلها تعمل بدون إنترنت
+class LocalPage extends StatefulWidget {
+  const LocalPage({super.key});
+  @override
+  State<LocalPage> createState() => _LocalPageState();
+}
+
+class _LocalPageState extends State<LocalPage> {
+  bool _busy = false;
+  void _r() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    app.repo.addListener(_r);
+  }
+
+  @override
+  void dispose() {
+    app.repo.removeListener(_r);
+    super.dispose();
+  }
+
+  Future<void> _import() async {
+    setState(() => _busy = true);
+    int n = 0;
+    try {
+      n = await app.repo.importLocal();
+    } catch (_) {}
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (n > 0) snack(context, 'أُضيف $n ملف');
+  }
+
+  Future<void> _lyrics(Track t) async {
+    final tc = TextEditingController();
+    await showDialog(
+      context: context,
+      builder: (d) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: Text('كلمات «${t.title}»', style: tx(16, w: FontWeight.w800)),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Text('الصق الكلمات (سطر لكل بيت). ملف LRC يعطي تزامناً دقيقاً، والنص العادي يُوزَّع على مدة القصيدة.', style: tx(12, c: kMuted, h: 1.6)),
+              const SizedBox(height: 8),
+              TextField(controller: tc, maxLines: 8, minLines: 4, style: tx(14), decoration: const InputDecoration(border: OutlineInputBorder(), isDense: true)),
+              const SizedBox(height: 6),
+              TextButton.icon(
+                icon: const PIcon(Ic.folder, color: kGreen, size: 18),
+                label: Text('اختيار ملف LRC / نص', style: tx(13, c: kGreen)),
+                onPressed: () async {
+                  final f = await FilePicker.platform.pickFiles(type: FileType.any);
+                  final p = f?.files.single.path;
+                  if (p != null) {
+                    try {
+                      tc.text = await File(p).readAsString();
+                    } catch (_) {}
+                  }
+                },
+              ),
+            ]),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(d), child: Text('إلغاء', style: tx(13, c: kMuted))),
+            TextButton(
+              onPressed: () {
+                final n = tc.text.trim().isEmpty ? 0 : app.repo.setLocalLyrics(t, tc.text);
+                Navigator.pop(d);
+                if (n > 0) snack(context, 'أُرفقت الكلمات ($n سطر)');
+              },
+              child: Text('حفظ', style: tx(13.5, c: kGreen, w: FontWeight.w800)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = app.repo.locals;
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: kCream,
+        appBar: AppBar(backgroundColor: kCream, elevation: 0, scrolledUnderElevation: 0, foregroundColor: kGreen, title: Text('ملفات من جهازك', style: tx(18, w: FontWeight.w800, c: kGreen))),
+        body: Column(children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
+            child: Align(alignment: Alignment.centerRight, child: GoldPill(_busy ? 'جارٍ النسخ…' : 'إضافة ملفات صوت', Ic.plus, _busy ? () {} : _import)),
+          ),
+          Expanded(
+            child: l.isEmpty
+                ? Center(child: Padding(padding: const EdgeInsets.all(30), child: Text('اختر ملفات الصوت من هاتفك (mp3 · m4a …) لتشغيلها داخل منبر بدون إنترنت.', style: tx(14, c: kMuted, h: 1.8), textAlign: TextAlign.center)))
+                : ListView.builder(
+                    itemCount: l.length,
+                    itemBuilder: (_, i) {
+                      final t = l[i];
+                      return ListTile(
+                        leading: Container(width: 46, height: 46, decoration: BoxDecoration(color: kGreen.withOpacity(.1), borderRadius: BorderRadius.circular(12)), child: const Center(child: PIcon(Ic.music, color: kGreen, size: 22))),
+                        title: Text(t.title, style: tx(14.5, w: FontWeight.w800), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        subtitle: FutureBuilder<List<Lyric>>(
+                          future: app.repo.lyricsFor(t),
+                          builder: (_, s) => Text((s.data ?? []).isEmpty ? 'بدون كلمات' : 'كلماتها مرفقة · ${s.data!.length} سطر', style: tx(12, c: kMuted, w: FontWeight.w500)),
+                        ),
+                        trailing: PopupMenuButton<String>(
+                          onSelected: (v) {
+                            if (v == 'ly') _lyrics(t);
+                            if (v == 'del') app.repo.delLocal(t);
+                          },
+                          itemBuilder: (_) => [
+                            PopupMenuItem(value: 'ly', child: Text('إرفاق كلمات', style: tx(14))),
+                            PopupMenuItem(value: 'del', child: Text('حذف', style: tx(14, c: Colors.red.shade700))),
+                          ],
+                        ),
+                        onTap: () {
+                          app.player.playList(l, i);
+                          openPlayer(context);
+                        },
+                      );
+                    },
+                  ),
+          ),
+        ]),
+      ),
+    );
+  }
 }

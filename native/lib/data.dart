@@ -1,7 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -178,8 +181,122 @@ class Repo extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ---- ملفات من جهاز المستخدم (تُنسخ داخل التطبيق وتعمل بدون إنترنت) ----
+  List<Track> locals = [];
+  bool _noConn = false;
+  bool get noNet => netOff || _noConn;
+
+  /// المحمّلة + ملفات الجهاز (للتشغيل بدون إنترنت)
+  List<Track> get playableOffline => [...locals, ...tracks.where((t) => offline.contains(t.id))];
+
+  void _watchNet() {
+    Connectivity().checkConnectivity().then((r) {
+      _noConn = r.every((e) => e == ConnectivityResult.none);
+      notifyListeners();
+    }).catchError((_) {});
+    Connectivity().onConnectivityChanged.listen((r) {
+      final off = r.every((e) => e == ConnectivityResult.none);
+      if (off != _noConn) {
+        _noConn = off;
+        if (!off) netOff = false;
+        notifyListeners();
+      }
+    });
+  }
+
+  void _saveLocals() => _p?.setString('locals', jsonEncode(locals.map((e) => e.toJson()).toList()));
+
+  Future<int> importLocal() async {
+    if (offDir.isEmpty) return 0;
+    final r = await FilePicker.platform.pickFiles(type: FileType.audio, allowMultiple: true);
+    if (r == null) return 0;
+    var n = 0;
+    for (final f in r.files) {
+      final p = f.path;
+      if (p == null) continue;
+      final id = 'loc_${DateTime.now().microsecondsSinceEpoch}_$n';
+      try {
+        await File(p).copy('$offDir/$id.audio');
+      } catch (_) {
+        continue;
+      }
+      final title = f.name.replaceAll(RegExp(r'\.[A-Za-z0-9]{2,5}$'), '').replaceAll('_', ' ');
+      locals.add(Track(id: id, title: title, reciter: 'ملف من جهازك', poet: '', audio: '', cover: '', album: '', albumName: '', cat: 'محلي', at: DateTime.now().millisecondsSinceEpoch, lyrics: const []));
+      n++;
+    }
+    _saveLocals();
+    notifyListeners();
+    return n;
+  }
+
+  /// ملف جاء من «فتح بواسطة منبر»: نحفظه ضمن ملفات الجهاز ونُرجع القصيدة
+  Future<Track?> importPath(String p) async {
+    if (offDir.isEmpty) return null;
+    final id = 'loc_${DateTime.now().microsecondsSinceEpoch}_x';
+    try {
+      await File(p).copy('$offDir/$id.audio');
+      final raw = p.split('/').last.replaceFirst(RegExp(r'^open_\d+_'), '');
+      final t = Track(id: id, title: raw.replaceAll(RegExp(r'\.[A-Za-z0-9]{2,5}$'), '').replaceAll('_', ' '), reciter: 'ملف من جهازك', poet: '', audio: '', cover: '', album: '', albumName: '', cat: 'محلي', at: DateTime.now().millisecondsSinceEpoch, lyrics: const []);
+      locals.add(t);
+      _saveLocals();
+      notifyListeners();
+      try {
+        await File(p).delete();
+      } catch (_) {}
+      return t;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> delLocal(Track t) async {
+    locals.removeWhere((e) => e.id == t.id);
+    try {
+      await File('$offDir/${t.id}.audio').delete();
+    } catch (_) {}
+    await _p?.remove('ly.${t.id}');
+    _saveLocals();
+    notifyListeners();
+  }
+
+  /// كلمات من نص: ملف LRC ([دق:ثا.جزء] نص) يعطي تزامناً دقيقاً، والنص العادي يوزَّع على مدة القصيدة تقريباً
+  int setLocalLyrics(Track t, String raw) {
+    final out = <Map<String, dynamic>>[];
+    final re = RegExp(r'\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?\]');
+    for (final line in raw.split(RegExp(r'\r?\n'))) {
+      final ms = re.allMatches(line).toList();
+      final txt = line.replaceAll(re, '').trim();
+      if (txt.isEmpty) continue;
+      if (ms.isNotEmpty) {
+        for (final m in ms) {
+          final fr = m.group(3);
+          final f = fr == null ? 0.0 : int.parse(fr) / math.pow(10, fr.length);
+          out.add({'t': int.parse(m.group(1)!) * 60 + int.parse(m.group(2)!) + f, 'l': txt});
+        }
+      }
+    }
+    if (out.isEmpty) {
+      final lines = raw.split(RegExp(r'\r?\n')).map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+      final d = (durs[t.id] ?? 0) / 1000.0;
+      final step = (d > 0 && lines.isNotEmpty) ? (d - 6) / lines.length : 4.0;
+      for (var i = 0; i < lines.length; i++) {
+        out.add({'t': 3 + i * step, 'l': lines[i]});
+      }
+    } else {
+      out.sort((a, b) => (a['t'] as double).compareTo(b['t'] as double));
+    }
+    _p?.setString('ly.${t.id}', jsonEncode(out));
+    _ly.remove(t.id);
+    notifyListeners();
+    return out.length;
+  }
+
   Future<void> init() async {
     _p = await SharedPreferences.getInstance();
+    _watchNet();
+    try {
+      locals = (jsonDecode(_p!.getString('locals') ?? '[]') as List).whereType<Map>().map(Track.fromJson).toList();
+    } catch (_) {}
     _loadUser();
     offline = (_p!.getStringList('off') ?? []).toSet();
     try {
@@ -251,6 +368,9 @@ class Repo extends ChangeNotifier {
   }
 
   Track? byId(String id) {
+    for (final t in locals) {
+      if (t.id == id) return t;
+    }
     for (final t in tracks) {
       if (t.id == id) return t;
     }
@@ -298,6 +418,10 @@ class Repo extends ChangeNotifier {
   /// الكلمات المعتمدة للجميع (lyrApproved) ثم كلمات القصيدة نفسها
   Future<List<Lyric>> lyricsFor(Track t) async {
     // بدون ذاكرة دائمة بالجلسة: كل فتح للقصيدة يجيب آخر تعديل (التعديلات من الويب تظهر فوراً)
+    if (t.id.startsWith('loc_')) {
+      final c = _p?.getString('ly.${t.id}');
+      return c == null ? <Lyric>[] : Lyric.parse(c);
+    }
     if (_ly.containsKey(t.id) && offline.contains(t.id)) return _ly[t.id]!;
     List<Lyric> r = [];
     final cached = _p?.getString('ly.${t.id}');
@@ -346,7 +470,7 @@ class Repo extends ChangeNotifier {
   }
 
   // ---- التنزيل للاستماع بدون إنترنت ----
-  String? offPath(String id) => offline.contains(id) && offDir.isNotEmpty ? '$offDir/$id.audio' : null;
+  String? offPath(String id) => (offline.contains(id) || id.startsWith('loc_')) && offDir.isNotEmpty ? '$offDir/$id.audio' : null;
 
   Future<bool> offSave(Track t, void Function(double) prog) async {
     if (offDir.isEmpty) return false;
@@ -457,6 +581,7 @@ class Repo extends ChangeNotifier {
   }
 
   void countPlay(String id) {
+    if (id.startsWith('loc_')) return;
     FirebaseFirestore.instance.doc('stats/$id').set({'plays': FieldValue.increment(1)}, SetOptions(merge: true)).catchError((_) {});
   }
 

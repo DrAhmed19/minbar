@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
@@ -423,6 +425,23 @@ void showLyricsSheet(BuildContext context, List<Lyric> lines) {
             ),
             Expanded(
               child: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
+                GestureDetector(
+                  onTap: () {
+                    final t = app.player.cur;
+                    if (t != null) showLyricFix(context, t, lines);
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: const Color(0x14E8C468), border: Border.all(color: const Color(0x40E8C468))),
+                    child: Row(children: [
+                      const PIcon(Ic.text, color: kGold, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(child: Text('اقتراح تصحيح للكلمات', style: tx(14, w: FontWeight.w700, c: kGold))),
+                      const Icon(Icons.chevron_left_rounded, color: kGold),
+                    ]),
+                  ),
+                ),
                 sec('الخط'),
                 Wrap(spacing: 8, runSpacing: 8, children: [
                   for (var i = 0; i < kLF.length; i++) pill(kLF[i].$2, pc.lyFont == i, () => u('lyFont', i), st: TextStyle(fontFamily: kLF[i].$1, fontFamilyFallback: const ['F0'], fontSize: 17, fontWeight: kLF[i].$3 >= 600 ? FontWeight.w700 : FontWeight.w400, color: pc.lyFont == i ? kGold : Colors.white)),
@@ -519,4 +538,137 @@ class _KarTickS extends State<_KarTick> with SingleTickerProviderStateMixin {
     final t = pl.p.position.inMilliseconds / 1000.0 + pl.lyOffset;
     return widget.build(((t - widget.a) / math.max(0.4, widget.b - widget.a)).clamp(0.0, 1.0));
   }
+}
+
+int _jsHash(String s) {
+  var h = 0;
+  for (final c in s.codeUnits) {
+    h = (h * 31 + c).toSigned(32);
+  }
+  return h.abs();
+}
+
+/// اقتراح تصحيح سطر (نص أو توقيت): يذهب لتصويت lyrEdits ويراجعه المشرف من لوحة الإدارة بالويب
+void showLyricFix(BuildContext context, Track t, List<Lyric> lines) {
+  final u = FirebaseAuth.instance.currentUser;
+  if (u == null || app.auth.guest) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('سجّل الدخول بحساب Google لإرسال التصحيح', style: tx(13, c: Colors.white))));
+    return;
+  }
+  if (lines.isEmpty) return;
+  var i = 0;
+  var dt = 0.0;
+  final tc = TextEditingController(text: lines[0].l);
+  showMSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: const Color(0xFF1C1612),
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+    builder: (c) => StatefulBuilder(builder: (c, ss) {
+      final x = lines[i];
+      return Directionality(
+        textDirection: TextDirection.rtl,
+        child: Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(c).viewInsets.bottom),
+          child: SizedBox(
+            height: MediaQuery.of(c).size.height * 0.8,
+            child: Column(children: [
+              const SizedBox(height: 10),
+              Container(width: 54, height: 5, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(3))),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 12, 18, 4),
+                child: Row(children: [
+                  Text('تصحيح كلمات «${t.title}»', style: tx(16, c: Colors.white, w: FontWeight.w800)),
+                ]),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
+                child: Text('اختر السطر الخاطئ وصحّحه. يُراجَع قبل أن يظهر للجميع.', style: tx(12, c: Colors.white54)),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  itemCount: lines.length,
+                  itemBuilder: (_, k) => ListTile(
+                    dense: true,
+                    selected: k == i,
+                    selectedTileColor: const Color(0x1FE8C468),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    leading: Text('${k + 1}', style: tx(12, c: Colors.white38)),
+                    title: Text(lines[k].l, style: tx(14, c: k == i ? kGold : Colors.white, w: FontWeight.w600)),
+                    onTap: () => ss(() {
+                      i = k;
+                      dt = 0;
+                      tc.text = lines[k].l;
+                    }),
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+                decoration: const BoxDecoration(color: Color(0xFF241C16), borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+                child: SafeArea(
+                  top: false,
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    TextField(
+                      controller: tc,
+                      maxLines: 2,
+                      minLines: 1,
+                      style: tx(15, c: Colors.white),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: const Color(0x14FFFFFF),
+                        hintText: 'نص السطر الصحيح',
+                        hintStyle: tx(14, c: Colors.white38),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(children: [
+                      Text('التوقيت ${(x.t + dt).toStringAsFixed(1)} ث', style: tx(12.5, c: Colors.white70)),
+                      const Spacer(),
+                      for (final d in const [-0.5, -0.2, 0.2, 0.5])
+                        Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: GestureDetector(
+                            onTap: () => ss(() => dt = ((dt + d) * 10).round() / 10),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), color: const Color(0x1FFFFFFF)),
+                              child: Text(d > 0 ? '+$d' : '$d', style: tx(12, c: Colors.white)),
+                            ),
+                          ),
+                        ),
+                    ]),
+                    const SizedBox(height: 10),
+                    GoldButton('إرسال التصحيح', () async {
+                      final v = tc.text.trim();
+                      final db = FirebaseFirestore.instance;
+                      var n = 0;
+                      Future<void> send(String field, dynamic val) async {
+                        final id = [t.id, i, field, _jsHash('$val')].join('__');
+                        await db.doc('lyrEdits/$id').set({'track': t.id, 'line': i, 'field': field, 'val': val, 'voters': FieldValue.arrayUnion([u.uid])}, SetOptions(merge: true));
+                        n++;
+                      }
+
+                      try {
+                        if (v.isNotEmpty && v != x.l && v.length < 300) await send('l', v);
+                        if (dt != 0) await send('t', ((x.t + dt) * 100).round() / 100);
+                      } catch (_) {
+                        n = -1;
+                      }
+                      if (!c.mounted) return;
+                      Navigator.pop(c);
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text(n < 0 ? 'تعذّر الإرسال، جرّب لاحقاً' : (n == 0 ? 'ما غيّرت شيء' : 'وصل تصحيحك للمراجعة، شكراً لك'), style: tx(13, c: Colors.white))));
+                    }),
+                  ]),
+                ),
+              ),
+            ]),
+          ),
+        ),
+      );
+    }),
+  );
 }

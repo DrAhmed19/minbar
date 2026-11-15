@@ -471,6 +471,8 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
 
   @override
   void initState() {
+    // بدون إنترنت: وضع السيارة يشغّل المحمّل وملفات الجهاز، والطقس والمنطقة يبقيان على آخر حالة
+    if (app.repo.noNet && app.player.queue.isEmpty && app.repo.playableOffline.isNotEmpty) app.player.playList(app.repo.playableOffline, 0);
     super.initState();
     CarPage.open = true;
     _World.q = app.player.perf == 0 ? 2 : 1;

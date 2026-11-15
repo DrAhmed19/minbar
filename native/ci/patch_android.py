@@ -76,6 +76,20 @@ if 'minbar-95z.pages.dev' not in s:
     i = s.find('<category android:name="android.intent.category.LAUNCHER"')
     j = s.find('</intent-filter>', i) + len('</intent-filter>')
     s = s[:j] + '\n' + deep + s[j:]
+if 'android:mimeType="audio/*"' not in s:
+    aud = '''            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="content"/>
+                <data android:scheme="file"/>
+                <data android:mimeType="audio/*"/>
+                <data android:mimeType="application/ogg"/>
+            </intent-filter>
+'''
+    i = s.find('<category android:name="android.intent.category.LAUNCHER"')
+    j = s.find('</intent-filter>', i) + len('</intent-filter>')
+    s = s[:j] + '\n' + aud + s[j:]
 mf.write_text(s, encoding='utf-8')
 
 # مؤثرات أندرويد الأصلية للصوت: التوازن (DynamicsProcessing) + التوسيع (Virtualizer) + صدى القاعة (PresetReverb)
@@ -102,9 +116,40 @@ class MainActivity : AudioServiceActivity() {
         virt = null; rev = null; dp = null
     }
 
+    private var chan: MethodChannel? = null
+    private var pend: String? = null
+
+    // فتح ملف صوتي من مدير الملفات أو تطبيق آخر («فتح بواسطة منبر»): ننسخه للذاكرة المؤقتة ونسلّمه للتطبيق
+    private fun grab(i: android.content.Intent?) {
+        try {
+            if (i == null || i.action != android.content.Intent.ACTION_VIEW) return
+            val u = i.data ?: return
+            if (u.scheme != "content" && u.scheme != "file") return
+            val type = i.type ?: contentResolver.getType(u) ?: ""
+            if (!type.startsWith("audio") && !type.contains("ogg")) return
+            var name = "audio"
+            try {
+                contentResolver.query(u, null, null, null, null)?.use { c ->
+                    val ix = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (c.moveToFirst() && ix >= 0) name = c.getString(ix)
+                }
+            } catch (e: Exception) {}
+            val f = java.io.File(cacheDir, "open_" + System.currentTimeMillis() + "_" + name.replace("/", "_"))
+            contentResolver.openInputStream(u)?.use { ins -> f.outputStream().use { ins.copyTo(it) } }
+            pend = f.absolutePath
+            try { chan?.invokeMethod("open", pend) } catch (e: Exception) {}
+        } catch (e: Exception) {}
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        grab(intent)
+    }
+
     // بعد التحديث من داخل التطبيق تبقى مهمة قديمة بالتطبيقات الأخيرة: نزيل أي مهمة غير الحالية
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        grab(intent)
         try {
             val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
             for (t in am.appTasks) {
@@ -118,7 +163,7 @@ class MainActivity : AudioServiceActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "minbar/fx").setMethodCallHandler { call, result ->
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "minbar/fx").also { chan = it }.setMethodCallHandler { call, result ->
             try {
                 when (call.method) {
                     "attach" -> {
@@ -152,6 +197,7 @@ class MainActivity : AudioServiceActivity() {
                         dp?.let { it.setInputGainbyChannel(0, l); it.setInputGainbyChannel(1, r); it.enabled = (l != 0f || r != 0f) }
                         result.success(dp != null)
                     }
+                    "pending" -> { val p = pend; pend = null; result.success(p) }
                     "widget" -> { MinbarWidget.refresh(this); result.success(true) }
                     "bg" -> { moveTaskToBack(true); result.success(true) }
                     // اسم جهاز البلوتوث الصوتي المتصل حالياً (لفتح وضع السيارة تلقائياً)
