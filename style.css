@@ -1451,3 +1451,12 @@ textarea.mdin{resize:none}
 .lfeat{display:flex;justify-content:center;flex-wrap:wrap;gap:6px;margin:-6px 0 16px}
 .lfeat span{padding:4px 11px;border-radius:14px;background:rgba(244,207,85,.1);border:1px solid rgba(244,207,85,.28);color:#E8D79A;font:600 11.5px Cairo,sans-serif}
 .lnote{line-height:1.8}.lnote small{opacity:.7;font-size:11px}
+
+/* مكتبة القصائد: أدوات الترتيب والتصنيف وعرض القائمة المضغوطة */
+.plrsel{flex:0 0 auto;padding:8px 12px;border-radius:20px;border:1px solid var(--line);background:#fff;color:var(--em);font:inherit;font-size:13px;max-width:150px}
+.plrsel.on{background:var(--em);color:#fff;border-color:var(--em)}
+.plrgrid.cmp{grid-template-columns:1fr;gap:8px}
+.plrgrid.cmp .plrcard{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:16px}
+.plrgrid.cmp .plrcov{width:50px;height:50px;aspect-ratio:auto;flex:none;border-radius:12px}.plrgrid.cmp .plrcov span{font-size:20px}
+.plrgrid.cmp .plrcm{padding:0;flex:1;min-width:0}
+.plrgrid.cmp .plrheart{top:50%;transform:translateY(-50%);left:10px;background:transparent}

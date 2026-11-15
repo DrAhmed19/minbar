@@ -173,6 +173,7 @@
     let fsc = []; try { fsc = JSON.parse(localStorage.getItem(FSK) || '[]'); } catch (e) {} tracks = BASE.concat(fsc); render(); fsLoad(); setTimeout(() => { if (deepAt) deepGo(); else { lastRestore(); setTimeout(uiRestore, 600); } }, 300);
   }
   /* القصائد المرفوعة: بياناتها في Firestore (tracks) وملفاتها في مخزن Cloudflare */
+  let srt = 'new', fRec = '', fPoet = '', fAlb = '', cmpV = false; try { cmpV = localStorage.getItem('minbar.cmp') === '1'; } catch (e) {}
   const FSK = 'minbar.tracks.fs', OWNER = 'ahmad1999199919999@gmail.com'; let BASE = [];
   const isOwner = () => { try { const u = firebase.auth().currentUser; return !!u && u.email === OWNER && u.emailVerified; } catch (e) { return false; } };
   function fsSet(arr) { const id = cur >= 0 && tracks[cur] ? tracks[cur].id : null; tracks = BASE.concat(arr); if (id) cur = tracks.findIndex((t) => t.id === id); render(); setTimeout(() => { try { newCheck(); } catch (e) {} }, 500); }
@@ -186,21 +187,34 @@
   const hit = (t, k) => { if (!k) return true; const nk = NZ(k); if (!nk) return true; hay(t); return t._h.includes(nk) || t._hl.includes(nk); };
   function filtered() {
     const k = q.trim().toLowerCase(); if (tab === 'pls') { const pl = pls().find((x) => x.id === plSel); return pl ? pl.ids.map(byId).filter(Boolean).filter((t) => hit(t, k)) : []; }
-    return tracks.filter((t) => (tab !== 'fav' || st.fav.includes(t.id)) && (cat === 'الكل' || t.cat === cat) && hit(t, k));
+    const r = tracks.filter((t) => (tab !== 'fav' || st.fav.includes(t.id)) && (cat === 'الكل' || t.cat === cat) && (!fRec || t.reciter === fRec) && (!fPoet || t.poet === fPoet) && (!fAlb || t.albumName === fAlb) && hit(t, k));
+    if (srt === 'old') r.sort((a, b) => (a.at || 0) - (b.at || 0)); else if (srt === 'az') r.sort((a, b) => String(a.title).localeCompare(String(b.title), 'ar')); else if (srt === 'fav') r.sort((a, b) => (st.fav.includes(b.id) ? 1 : 0) - (st.fav.includes(a.id) ? 1 : 0));
+    return r;
+  }
+  /* أدوات ترتيب وتصنيف مكتبة القصائد: قوائم صغيرة بجانب الأنواع */
+  function libTools(bar) {
+    const mk = (title, opts, val, cb) => { const sl = document.createElement('select'); sl.className = 'plrsel' + (val ? ' on' : ''); sl.title = title; opts.forEach(([v, l]) => { const o = document.createElement('option'); o.value = v; o.textContent = l; sl.appendChild(o); }); sl.value = val; sl.onchange = () => { cb(sl.value); render(); }; bar.appendChild(sl); };
+    const uniq = (f) => [...new Set(tracks.map(f).filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b), 'ar'));
+    mk('الترتيب', [['new', 'ترتيب: الأحدث'], ['old', 'الأقدم'], ['az', 'أبجدياً'], ['fav', 'المفضلة أولاً']], srt, (v) => { srt = v; });
+    const rc = uniq((t) => t.reciter), po = uniq((t) => t.poet), al = uniq((t) => t.albumName);
+    if (rc.length > 1) mk('الرادود', [['', 'كل الرواديد']].concat(rc.map((x) => [x, x])), fRec, (v) => { fRec = v; });
+    if (po.length > 1) mk('الشاعر', [['', 'كل الشعراء']].concat(po.map((x) => [x, x])), fPoet, (v) => { fPoet = v; });
+    if (al.length > 1) mk('الإصدار', [['', 'كل الإصدارات']].concat(al.map((x) => [x, x])), fAlb, (v) => { fAlb = v; });
+    const vb = document.createElement('button'); vb.className = 'plrchip' + (cmpV ? ' on' : ''); vb.textContent = cmpV ? 'قائمة' : 'شبكة'; vb.onclick = () => { cmpV = !cmpV; try { localStorage.setItem('minbar.cmp', cmpV ? '1' : '0'); } catch (e) {} render(); }; bar.appendChild(vb);
   }
   function render() {
     const cs = ['الكل'].concat([...new Set(tracks.map((t) => t.cat).filter(Boolean))]); const bar = g('plrCats'); bar.textContent = '';
-    cs.forEach((c) => { const b = document.createElement('button'); b.className = 'plrchip' + (c === cat ? ' on' : ''); b.textContent = c; b.onclick = () => { cat = c; render(); }; bar.appendChild(b); });
+    cs.forEach((c) => { const b = document.createElement('button'); b.className = 'plrchip' + (c === cat ? ' on' : ''); b.textContent = c; b.onclick = () => { cat = c; render(); }; bar.appendChild(b); }); if (tab === 'lib' || tab === 'fav') libTools(bar);
     const body = g('plrBody'); body.textContent = ''; g('plrLt').hidden = true; view = filtered(); g('plrCats').hidden = tab === 'pls';
     if (tab === 'pls') { if (!plSel) return plRender(body); const pl = pls().find((x) => x.id === plSel); if (!pl) { plSel = null; return render(); } const hb = el('div', 'plhd'); const bk = el('button', 'ib'); bk.innerHTML = ic('next', 18); bk.onclick = () => { plSel = null; render(); }; const nm = el('b', '', pl.name); const pa = el('button', 'btn small primary', 'تشغيل الكل'); pa.onclick = () => plPlay(pl); const dl = el('button', 'btn small', 'حذف'); dl.onclick = () => { if (!confirm('حذف القائمة «' + pl.name + '»؟')) return; plsSet(pls().filter((x) => x.id !== pl.id)); plSel = null; render(); }; hb.append(bk, nm, pa, dl); body.appendChild(hb); }
     g('plrCats').hidden = tab === 'pls' || (tab === 'lib' && libV !== 'all'); if (tab === 'lib' && libRender(body)) return; if (tab === 'lib' && tracks.length) body.insertBefore(el('div'), null);
     if (!view.length) { const d = document.createElement('div'); d.className = 'hint'; d.style.textAlign = 'center'; d.textContent = tab === 'fav' ? 'لا توجد عناصر في المفضلة' : (tracks.length ? 'لا توجد نتائج' : 'لا توجد قصائد بعد'); body.appendChild(d); return; }
-    const grid = document.createElement('div'); grid.className = 'plrgrid';
+    const grid = document.createElement('div'); grid.className = 'plrgrid' + (cmpV ? ' cmp' : '');
     view.forEach((t) => {
       const c = document.createElement('div'); c.className = 'plrcard' + (cur >= 0 && tracks[cur] === t ? ' on' : ''); const cv = document.createElement('div'); cv.className = 'plrcov'; coverEl(t, cv);
       const m = document.createElement('div'); m.className = 'plrcm'; const b = document.createElement('b'); b.textContent = t.title; const s = document.createElement('small'); s.textContent = t.reciter || ''; m.append(b, s);
       const h = document.createElement('button'); h.className = 'plrheart' + (st.fav.includes(t.id) ? ' on' : ''); h.innerHTML = ic('heart', 18); h.onclick = (e) => { e.stopPropagation(); tog(t.id); render(); };
-      c.append(cv, m, h); c.onclick = () => { if (c._lp) { c._lp = 0; return; } if (tracks[cur] !== t) qFrom(t, view); play(tracks.indexOf(t), true); }; lpMenu(c, t); grid.appendChild(c);
+      c.append(cv, m, h); c.onclick = () => { if (c._lp) { c._lp = 0; return; } if (tracks[cur] !== t) qFrom(t, view); play(tracks.indexOf(t), true); openFull(); }; lpMenu(c, t); grid.appendChild(c);
     });
     body.appendChild(grid); occRender(body);
   }
