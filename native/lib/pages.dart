@@ -140,8 +140,22 @@ class LoginPage extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text('منبر', style: tx(44, w: FontWeight.w800, c: const Color(0xFFF3EAD0))),
                 Text('قصائد ومراثي', style: tx(14, w: FontWeight.w500, c: const Color(0xFF9FBDB0))),
-                const SizedBox(height: 36),
+                const SizedBox(height: 14),
+                Wrap(alignment: WrapAlignment.center, spacing: 6, runSpacing: 6, children: [
+                  for (final f in const ['كلمات متزامنة', 'وضع السيارة', 'مجلس مشترك'])
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 4),
+                      decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14), color: const Color(0x1AF4CF55), border: Border.all(color: const Color(0x47F4CF55))),
+                      child: Text(f, style: tx(11.5, w: FontWeight.w600, c: const Color(0xFFE8D79A))),
+                    ),
+                ]),
+                const SizedBox(height: 30),
                 body,
+                const SizedBox(height: 28),
+                Text('مُهدى إلى باسم الكربلائي', style: tx(12, w: FontWeight.w600, c: const Color(0xFF7E9A8E))),
+                const SizedBox(height: 2),
+                Text('نسخة تجريبية قيد التطوير', style: tx(10.5, c: const Color(0xFF5E7A6E))),
               ]),
             ),
           ),

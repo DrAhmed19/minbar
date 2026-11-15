@@ -1446,3 +1446,8 @@ textarea.mdin{resize:none}
 .mjst{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 0 10px;padding:8px 12px;border-radius:12px;background:rgba(255,255,255,.07);font:700 13px Cairo,sans-serif;color:#cfe0d8}
 .mjst::before{content:"";width:9px;height:9px;border-radius:50%;background:#8FA69B}
 .mjst.live::before{background:#4ADE80;animation:mjp 1.6s infinite}.mjst.wait::before{background:#E8C468}.mjst.warn{color:#F0A0A0}.mjst.warn::before{background:#F07878}
+
+/* ترحيب: شرائح المميزات والإهداء */
+.lfeat{display:flex;justify-content:center;flex-wrap:wrap;gap:6px;margin:-6px 0 16px}
+.lfeat span{padding:4px 11px;border-radius:14px;background:rgba(244,207,85,.1);border:1px solid rgba(244,207,85,.28);color:#E8D79A;font:600 11.5px Cairo,sans-serif}
+.lnote{line-height:1.8}.lnote small{opacity:.7;font-size:11px}

@@ -298,7 +298,12 @@ class _SettingsPageState extends State<SettingsPage> {
           _sec('الحساب'),
           _card([
             ListTile(
-              leading: const CircleAvatar(radius: 22, backgroundColor: kGreen, child: PIcon(Ic.users, color: kGold, size: 22)),
+              leading: CircleAvatar(
+                radius: 24,
+                backgroundColor: kGreen,
+                backgroundImage: (!a.guest && (a.user?.photoURL ?? '').isNotEmpty) ? NetworkImage(a.user!.photoURL!) : null,
+                child: (!a.guest && (a.user?.photoURL ?? '').isNotEmpty) ? null : const PIcon(Ic.users, color: kGold, size: 22),
+              ),
               title: Text(a.guest ? 'ضيف' : (a.user?.displayName ?? ''), style: tx(15.5)),
               subtitle: Text(a.guest ? 'تستمع بدون حساب — الإعجابات والتعليقات والمجلس تحتاج حساب Google' : (a.user?.email ?? ''), style: tx(11.5, c: kMuted)),
             ),

@@ -397,7 +397,12 @@ class _HomeShellState extends State<HomeShell> {
             padding: const EdgeInsets.all(16),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               Row(children: [
-                CircleAvatar(radius: 26, backgroundColor: kGreen, child: const PIcon(Ic.users, color: kGold)),
+                CircleAvatar(
+                  radius: 26,
+                  backgroundColor: kGreen,
+                  backgroundImage: (!a.guest && (a.user?.photoURL ?? '').isNotEmpty) ? NetworkImage(a.user!.photoURL!) : null,
+                  child: (!a.guest && (a.user?.photoURL ?? '').isNotEmpty) ? null : const PIcon(Ic.users, color: kGold),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
