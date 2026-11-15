@@ -11,7 +11,7 @@ shot c01-real
 text "إعدادات السيارة"
 wait 3
 text "دفع رباعي"
-wait 4
+wait 3
 shot c02-suv
 back
 wait 4
@@ -30,3 +30,31 @@ wait 1
 text "غروب"
 wait 8
 shot c05-night-rain
+text "إعدادات السيارة"
+wait 3
+text "سيدان"
+wait 2
+back
+wait 2
+tap 700 204
+wait 1
+tap 700 204
+wait 1
+tap 700 204
+wait 1
+tap 700 204
+wait 8
+shot c06-night-snow
+text "ليل"
+wait 1
+text "تلقائي"
+wait 8
+shot c07-day-snow
+swipe 800 1000 200 1000 200
+wait 2
+shot c08-swipe
+back
+wait 1
+back
+wait 3
+shot c09-exit

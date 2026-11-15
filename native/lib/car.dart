@@ -110,31 +110,37 @@ class _Stage {
 
 /// صور مرسومة مرة واحدة (نخيل، غيوم، أنسجة، جزيئات) تُعاد بالـGPU كل إطار
 class _Art {
-  static bool _ready = false;
+  static bool _started = false, ready = false;
   static late ui.Image dot, streak, flake, asphalt, sand;
   static late List<ui.Image> palms, clouds;
 
-  static ui.Image _img(int w, int h, void Function(Canvas) draw) {
+  // تُولَّد الصور بشكل غير متزامن (الطريقة الآمنة على كل المعالجات الرسومية)
+  static Future<ui.Image> _img(int w, int h, void Function(Canvas) draw) async {
     final r = ui.PictureRecorder();
     draw(Canvas(r, Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble())));
     final p = r.endRecording();
-    final im = p.toImageSync(w, h);
+    final im = await p.toImage(w, h);
     p.dispose();
     return im;
   }
 
   static void ensure() {
-    if (_ready) return;
-    _ready = true;
-    dot = _img(64, 64, (c) => c.drawCircle(const Offset(32, 32), 32, Paint()..shader = ui.Gradient.radial(const Offset(32, 32), 32, [Colors.white, Colors.white.withOpacity(0.35), Colors.white.withOpacity(0)], [0, 0.3, 1])));
-    streak = _img(8, 96, (c) {
+    if (_started) return;
+    _started = true;
+    _build();
+  }
+
+  static Future<void> _build() async {
+    dot = await _img(64, 64, (c) => c.drawCircle(const Offset(32, 32), 32, Paint()..shader = ui.Gradient.radial(const Offset(32, 32), 32, [Colors.white, Colors.white.withOpacity(0.35), Colors.white.withOpacity(0)], [0, 0.3, 1])));
+    streak = await _img(8, 96, (c) {
       c.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(2.5, 0, 3, 96), const Radius.circular(1.5)), Paint()..shader = ui.Gradient.linear(Offset.zero, const Offset(0, 96), [Colors.white.withOpacity(0), Colors.white.withOpacity(0.9), Colors.white.withOpacity(0.25)], [0, 0.82, 1]));
     });
-    flake = _img(32, 32, (c) => c.drawCircle(const Offset(16, 16), 16, Paint()..shader = ui.Gradient.radial(const Offset(16, 16), 16, [Colors.white, Colors.white.withOpacity(0.85), Colors.white.withOpacity(0)], [0, 0.35, 1])));
-    asphalt = _img(256, 256, _asphaltTex);
-    sand = _img(256, 256, _sandTex);
-    palms = [for (int v = 0; v < 3; v++) _img(256, 320, (c) => _palm(c, v))];
-    clouds = [for (int v = 0; v < 3; v++) _img(512, 220, (c) => _cloud(c, v))];
+    flake = await _img(32, 32, (c) => c.drawCircle(const Offset(16, 16), 16, Paint()..shader = ui.Gradient.radial(const Offset(16, 16), 16, [Colors.white, Colors.white.withOpacity(0.85), Colors.white.withOpacity(0)], [0, 0.35, 1])));
+    asphalt = await _img(256, 256, _asphaltTex);
+    sand = await _img(256, 256, _sandTex);
+    palms = [for (int v = 0; v < 3; v++) await _img(256, 320, (c) => _palm(c, v))];
+    clouds = [for (int v = 0; v < 3; v++) await _img(512, 220, (c) => _cloud(c, v))];
+    ready = true;
   }
 
   /// حبيبات الأسفلت: حصى داكنة وفاتحة متناثرة (قابلة للتكرار بلا فواصل)
@@ -347,6 +353,7 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
   final _rnd = math.Random();
   // الإعدادات
   int _limit = 0; // 0 = بلا تنبيه
+  int _qMode = 0; // جودة الرسوم: 0 تلقائي، 1 عالية، 2 متوسطة، 3 خفيفة
   bool _restOn = true;
   // الرحلة
   final DateTime _start = DateTime.now();
@@ -368,6 +375,10 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
       _ft.add(math.max(t.buildDuration.inMicroseconds, t.rasterDuration.inMicroseconds) / 1000);
     }
     if (_ft.length < 45) return;
+    if (_qMode != 0) {
+      _ft.clear();
+      return;
+    }
     _ft.sort();
     final p90 = _ft[(_ft.length * 0.9).floor()], med = _ft[_ft.length ~/ 2];
     debugPrint('MBCAR q=${_World.q} med=${med.toStringAsFixed(1)}ms p90=${p90.toStringAsFixed(1)}ms');
@@ -408,6 +419,8 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
       if (!_carColors.containsKey(_sc.color)) _sc.color = 'green';
       _limit = p.getInt('car.limit') ?? 0;
       _restOn = p.getBool('car.rest') ?? true;
+      _qMode = p.getInt('car.q') ?? 0;
+      if (_qMode != 0) _World.q = 3 - _qMode;
       _env();
       if (mounted) setState(() {});
       if (p.getBool('car.gps') ?? false) {
@@ -927,6 +940,15 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
                       if (v > 0 && !gps) _gpsOn();
                     }),
                 ]),
+                head('جودة الرسوم'),
+                Wrap(spacing: 8, runSpacing: 8, children: [
+                  for (final e in const {0: 'تلقائي', 1: 'عالية', 2: 'متوسطة', 3: 'خفيفة'}.entries)
+                    chip(e.value, _qMode == e.key, () {
+                      _qMode = e.key;
+                      save('car.q', e.key);
+                      _World.q = e.key == 0 ? (app.player.perf == 0 ? 2 : 1) : 3 - e.key;
+                    }),
+                ]),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: _restOn,
@@ -1413,7 +1435,7 @@ class _World extends CustomPainter {
   static double _plateW = 0;
   static int _holyKm = -1;
   static ui.Image? _carImg;
-  static String _carKey = '';
+  static String _carKey = '', _carPending = '';
   static const _r64 = Rect.fromLTWH(0, 0, 64, 64);
 
   // دفعة توهّجات تُرسم بنداء واحد (إضافي) بدل تمويه كل ضوء على حدة
@@ -1426,7 +1448,7 @@ class _World extends CustomPainter {
 
   void _flush(Canvas c) {
     if (_gT.isEmpty) return;
-    c.drawAtlas(_Art.dot, _gT, List.filled(_gT.length, _r64), _gC, BlendMode.modulate, null, Paint()..blendMode = BlendMode.plus);
+    if (_Art.ready) c.drawAtlas(_Art.dot, _gT, List.filled(_gT.length, _r64), _gC, BlendMode.modulate, null, Paint());
     _gT.clear();
     _gC.clear();
   }
@@ -1511,7 +1533,7 @@ class _World extends CustomPainter {
     final cp = Paint()
       ..filterQuality = FilterQuality.low
       ..colorFilter = ColorFilter.mode(_mix(cTint, Colors.white, s.flash), BlendMode.modulate);
-    final nCl = (2 + s.cloud * 10).round();
+    final nCl = _Art.ready ? (2 + s.cloud * 10).round() : 0;
     for (int i = 0; i < nCl; i++) {
       final cw0 = w * (0.35 + _hash(i + 40) * 0.45) * (1 - _hash(i + 30) * 0.4);
       final x = ((_hash(i + 20) * (w + cw0) + s.t * (2 + s.wind * 1.5) * (0.4 + _hash(i))) % (w + cw0 * 2)) - cw0, y = _hash(i + 30) * hz * 0.6 - cw0 * 0.12;
@@ -1586,7 +1608,7 @@ class _World extends CustomPainter {
       }
     }
 
-    if (q >= 2) tex(_Art.sand, 40, 0.3 + 0.45 * light * (1 - s.snow));
+    if (q >= 2 && _Art.ready) tex(_Art.sand, 40, 0.3 + 0.45 * light * (1 - s.snow));
 
     // ---------- الطريق: 3 مسارات × 3.6 م، كتف 1.6 م ----------
     final wet = _cl(s.rain * 1.4 + s.snow * 0.5);
@@ -1594,7 +1616,7 @@ class _World extends CustomPainter {
     asph = _mix(asph, _mix(const Color(0xFF06080A), const Color(0xFF2A2D31), light), wet);
     strip(-half - shoulder, half + shoulder, qMin, qMax, Paint()..color = _mix(asph, land, 0.3), 48);
     strip(-half, half, qMin, qMax, Paint()..color = asph, 48);
-    if (q >= 1) tex(_Art.asphalt, 70, (0.75 - 0.35 * wet) * (0.4 + 0.6 * light), xl: -half - shoulder, xr: half + shoulder);
+    if (q >= 1 && _Art.ready) tex(_Art.asphalt, 70, (0.75 - 0.35 * wet) * (0.4 + 0.6 * light), xl: -half - shoulder, xr: half + shoulder);
     // آثار العجلات: داكنة جافة، لامعة مبللة
     for (final lcn in const [-3.6, 0.0, 3.6]) {
       for (final o in const [-0.8, 0.8]) {
@@ -1698,7 +1720,7 @@ class _World extends CustomPainter {
       if (o.$2 == 0) {
         final side = o.$3.isEven ? 1.0 : -1.0, xm = side * (half + shoulder + 4 + _hash(o.$3) * 7), ht = 8 + _hash(o.$3 + 3) * 4;
         final k = ht * sc / 250, bx = X(xm, q), by = Y(q);
-        if (k * 256 < 2 || (_World.q == 0 && q > 25)) continue;
+        if (!_Art.ready || k * 256 < 2 || (_World.q == 0 && q > 25)) continue;
         final sway = math.sin(s.t * 1.2 + o.$3) * (0.02 + s.wind * 0.006);
         c.save();
         c.translate(bx, by);
@@ -1830,7 +1852,7 @@ class _World extends CustomPainter {
     final ox = cx + off(qc) * s0 * fc + s.lean * cw * 0.06, oy = g.carY + bob + s.pitch * cw * 0.004;
     final img = _carImage(cw, light0);
     final W = cw * 1.3, Hc = cw * 1.0;
-    final src = Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble()), dst = Rect.fromLTWH(-W / 2, -cw * 0.9, W, Hc);
+    final src = img == null ? Rect.zero : Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble()), dst = Rect.fromLTWH(-W / 2, -cw * 0.9, W, Hc);
     final lit = _cl(s.tail * 0.6 + s.brake * 0.9), red = Color.lerp(const Color(0xFF3A060C), const Color(0xFFFF2236), lit)!;
     // ظل الشمس باتجاهها الحقيقي (تدرّج بدل تمويه)
     final rel = ((s.sunAz - s.heading + 540) % 360 - 180) * math.pi / 180;
@@ -1840,7 +1862,7 @@ class _World extends CustomPainter {
       c.drawOval(sr, Paint()..shader = RadialGradient(colors: [Colors.black.withOpacity(0.5 * shA), Colors.black.withOpacity(0.35 * shA), Colors.black.withOpacity(0)], stops: const [0, 0.6, 1]).createShader(sr));
     }
     // انعكاس السيارة وأضوائها على الأسفلت المبلل
-    if (wet > 0.2) {
+    if (wet > 0.2 && img != null) {
       c.save();
       c.translate(ox, oy);
       c.scale(1, -0.7);
@@ -1857,13 +1879,13 @@ class _World extends CustomPainter {
     c.save();
     c.translate(ox, oy);
     c.rotate(s.lean * 0.035);
-    c.drawImageRect(img, src, dst, Paint()..filterQuality = FilterQuality.medium);
+    if (img != null) c.drawImageRect(img, src, dst, Paint()..filterQuality = FilterQuality.medium);
     final lq = ((s.q - 3) / lp).round() * lp - s.q + 3 - qc;
     _carLive(c, m, cw, light, lightsOn, wet, lq, red, lit);
     c.restore();
 
     // ---------- رذاذ الإطارات بالمطر ----------
-    if (s.splash > 0.05) {
+    if (s.splash > 0.05 && _Art.ready) {
       final sc0 = _mix(const Color(0xFF2A2E33), const Color(0xFFDDE3E8), light);
       final tr = <RSTransform>[], cl = <Color>[];
       for (int i = 0; i < 30; i++) {
@@ -1876,7 +1898,7 @@ class _World extends CustomPainter {
     }
 
     // ---------- المطر: ثلاث طبقات عمق بخيوط ناعمة (نداء رسم واحد) ----------
-    if (s.rain > 0.02) {
+    if (s.rain > 0.02 && _Art.ready) {
       final n = ((80 + 380 * s.rain) * (_World.q == 2 ? 1 : 0.5)).round(), rc0 = _mix(const Color(0xFF8C96A0), const Color(0xFFE6ECF2), light);
       final tr = <RSTransform>[], cl = <Color>[];
       final slant = s.wind * 0.035;
@@ -1892,7 +1914,7 @@ class _World extends CustomPainter {
       c.drawRect(Offset.zero & z, Paint()..color = _mix(const Color(0xFF0A0E12), const Color(0xFF8E99A4), light).withOpacity(0.08 * s.rain));
     }
     // ---------- الثلج: رقائق بعمق، تتمايل وتسقط ببطء ----------
-    if (s.snow > 0.02) {
+    if (s.snow > 0.02 && _Art.ready) {
       final n = ((60 + 260 * s.snow) * (_World.q == 2 ? 1 : 0.5)).round();
       final tr = <RSTransform>[], cl = <Color>[];
       for (int i = 0; i < n; i++) {
@@ -1987,20 +2009,24 @@ class _World extends CustomPainter {
   }
 
   /// صورة هيكل السيارة الثابت (تُرسم مرة لكل شكل/لون/حجم/مستوى ضوء)
-  ui.Image _carImage(double cw, double light) {
+  ui.Image? _carImage(double cw, double light) {
     final lq = (light * 24).round(), key = '${s.model}|${s.color}|${cw.round()}|$lq|${g.dpr}';
-    if (key == _carKey && _carImg != null) return _carImg!;
-    final rec = ui.PictureRecorder(), c = Canvas(rec);
-    c.scale(g.dpr);
-    c.translate(cw * 0.65, cw * 0.9);
-    _carBody(c, _carModels[s.model] ?? _carModels['sport']!, _carColors[s.color] ?? _carColors['green']!, cw, lq / 24);
-    final pic = rec.endRecording();
-    final img = pic.toImageSync((cw * 1.3 * g.dpr).ceil(), (cw * g.dpr).ceil());
-    pic.dispose();
-    _carImg?.dispose();
-    _carImg = img;
-    _carKey = key;
-    return img;
+    if (key != _carKey && key != _carPending) {
+      _carPending = key;
+      final rec = ui.PictureRecorder(), c = Canvas(rec);
+      c.scale(g.dpr);
+      c.translate(cw * 0.65, cw * 0.9);
+      _carBody(c, _carModels[s.model] ?? _carModels['sport']!, _carColors[s.color] ?? _carColors['green']!, cw, lq / 24);
+      final pic = rec.endRecording();
+      pic.toImage((cw * 1.3 * g.dpr).ceil(), (cw * g.dpr).ceil()).then((img) {
+        pic.dispose();
+        if (_carPending != key) return;
+        _carImg = img; // الصورة القديمة تُحرَّر تلقائياً
+        _carKey = key;
+        _carPending = '';
+      });
+    }
+    return _carImg;
   }
 
   /// الأجزاء الثابتة: ظلال التلامس، الإطارات، الهيكل بتظليل أسطواني، الزجاج، المرايا، اللوحة، الناشر والعادم، وأغطية الأضواء
