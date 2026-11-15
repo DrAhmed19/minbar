@@ -63,6 +63,7 @@ for _ in range(6):
     time.sleep(10)
     if not anr(): break
 adb('logcat', '-c')
+_lc = subprocess.Popen(['adb', 'logcat', '-v', 'time', 'flutter:I', 'AndroidRuntime:E', 'DEBUG:*', 'libc:*', 'lowmemorykiller:*', 'ActivityManager:I', '*:S'], stdout=open(OUT / 'stream.txt', 'wb'), stderr=subprocess.STDOUT)
 adb('shell', 'monkey', '-p', PKG, '-c', 'android.intent.category.LAUNCHER', '1')
 for ln in open(os.environ.get('SHOTS_FILE') or 'native/ci/shots.txt', encoding='utf-8'):
     ln = ln.strip()
