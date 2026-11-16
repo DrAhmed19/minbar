@@ -1587,3 +1587,14 @@ textarea.mdin{resize:none}
 .plrnav button .pi{width:24px;height:24px}
 .plrnav button{gap:3px;font-size:11.5px}
 .plrmini .pi{width:26px;height:26px}
+/* فلاتر منسّقة */
+.plrchips.fx{flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:10px;overflow:visible}
+.fcats{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px}.fcats::-webkit-scrollbar{display:none}.fcats .plrchip{flex:none}
+.fsel{display:flex;gap:8px;align-items:center}
+.fsel .plrsel{flex:1 1 0;min-width:0;max-width:none;justify-content:space-between;gap:6px;cursor:pointer;display:inline-flex;align-items:center;height:40px;padding:0 14px;border-radius:20px;border:0;background:#fff;color:var(--em2);font:600 13px Cairo,sans-serif;box-shadow:0 2px 8px rgba(14,60,45,.08)}
+.fsel .plrsel span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:start}
+.fsel .plrsel::after{content:"";width:7px;height:7px;border:solid currentColor;border-width:0 2px 2px 0;transform:rotate(45deg) translateY(-2px);flex:none;opacity:.55}
+.fsel .plrsel.on{background:var(--em);color:#fff}
+.fsel>.plrchip{flex:none;height:40px;min-width:62px;justify-content:center;background:#fff;color:var(--em2);box-shadow:0 2px 8px rgba(14,60,45,.08)}
+.shtt{font:800 16px Cairo,sans-serif;padding:4px 6px 10px;color:#fff}
+.sha.cur{color:#E8C468;font-weight:800}.sha.cur::after{content:"✓";margin-inline-start:auto;font-weight:800}

@@ -2158,5 +2158,17 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   g('plrMdB').onclick = modesSheet; g('plrMdB').classList.toggle('on', !!st.latm);
   g('plrRecB').onclick = recognize; g('plrMj').onclick = () => mjMenu(); g('plrTitle').onclick = about; g('plrTitle').style.cursor = 'pointer';
   window.PLR = { open, close: () => { root.hidden = true; }, audio: A, playing: () => !A.paused, back, visible: () => !root.hidden, level: () => { if (!an) return -1; an.getByteFrequencyData(fbuf); let s = 0; for (let i = 0; i < fbuf.length; i++) s += fbuf[i]; return s / fbuf.length; } };
+  /* فلاتر المكتبة: أزرار منسّقة تفتح نافذة منبثقة بدل قائمة النظام، والتصنيفات بسطر مستقل */
+  (function () {
+    const btnFor = (s) => { const b = el('button', 'plrsel' + (s.classList.contains('on') ? ' on' : '')); b.type = 'button'; const lab = el('span', '', ''); b.appendChild(lab); const sync = () => { const o = s.options[s.selectedIndex]; lab.textContent = o ? o.textContent : ''; }; sync();
+      b.onclick = () => { const o0 = s.options[0] ? s.options[0].textContent : ''; const ttl = /ترتيب/.test(o0) ? 'ترتيب القصائد' : 'اختر ' + o0.replace(/^كل\s*/, '');
+        sheet((bx, close) => { bx.appendChild(el('div', 'shtt', ttl)); const L = el('div', 'shl'); [...s.options].forEach((o, i) => { const r = el('button', 'sha' + (i === s.selectedIndex ? ' cur' : ''), o.textContent); r.type = 'button'; r.onclick = () => { close(); s.selectedIndex = i; sync(); s.dispatchEvent(new Event('change', { bubbles: true })); }; L.appendChild(r); }); bx.appendChild(L); }); };
+      return b; };
+    const tidy = (box) => { const sels = [...box.children].filter((x) => x.tagName === 'SELECT'); if (!sels.length) return; const kids = [...box.children], first = kids.indexOf(sels[0]), r1 = el('div', 'fcats'), r2 = el('div', 'fsel');
+      kids.slice(0, first).forEach((c) => r1.appendChild(c)); kids.slice(first).forEach((x) => { if (x.tagName === 'SELECT') { x.style.display = 'none'; r2.appendChild(btnFor(x)); } r2.appendChild(x); });
+      box.textContent = ''; box.classList.add('fx'); if (r1.children.length) box.appendChild(r1); box.appendChild(r2); };
+    const run = () => root.querySelectorAll('.plrchips').forEach(tidy);
+    new MutationObserver(run).observe(root, { childList: true, subtree: true }); run();
+  })();
   lyStyle(); ui(); loadCatalog();
 })();
