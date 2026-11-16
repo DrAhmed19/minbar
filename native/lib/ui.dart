@@ -48,8 +48,8 @@ class LogoPainter extends CustomPainter {
       canvas.drawPath(m.extractPath(0, m.length * draw.clamp(0.0, 1.0)), sp);
     }
     final fp = Paint()..shader = shader;
-    const xs = [32.0, 45.0, 56.0, 67.0, 80.0];
-    const hs = [56.0, 74.0, 88.0, 70.0, 52.0];
+    const xs = [23.5, 39.5, 55.5, 71.5, 87.5];
+    const hs = [50.0, 72.0, 90.0, 72.0, 50.0];
     for (var i = 0; i < 5; i++) {
       final k = 0.25 + 0.75 * (0.5 + 0.5 * _wave(t * 6.283 + i * 1.1));
       final h = hs[i] * k;
