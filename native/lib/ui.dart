@@ -23,7 +23,8 @@ TextStyle tx(double size, {FontWeight w = FontWeight.w600, Color c = kInk, doubl
 class LogoPainter extends CustomPainter {
   final double t; // 0..1 حركة الأعمدة
   final double draw; // 0..1 رسم القوس
-  LogoPainter(this.t, {this.draw = 1});
+  final double rise; // 0..1 صعود الأعمدة بالتتابع
+  LogoPainter(this.t, {this.draw = 1, this.rise = 1});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -52,7 +53,9 @@ class LogoPainter extends CustomPainter {
     const hs = [50.0, 72.0, 90.0, 72.0, 50.0];
     for (var i = 0; i < 5; i++) {
       final k = 0.25 + 0.75 * (0.5 + 0.5 * _wave(t * 6.283 + i * 1.1));
-      final h = hs[i] * k;
+      final r = Curves.easeOutBack.transform(((rise * 1.6) - i * 0.15).clamp(0.0, 1.0)).clamp(0.0, 1.2);
+      final h = hs[i] * k * r;
+      if (h < 0.5) continue;
       canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(xs[i], 118 - h, 9, h), const Radius.circular(4.5)), fp);
     }
     canvas.restore();
@@ -61,7 +64,7 @@ class LogoPainter extends CustomPainter {
   double _wave(double x) => math.sin(x);
 
   @override
-  bool shouldRepaint(covariant LogoPainter o) => o.t != t || o.draw != draw;
+  bool shouldRepaint(covariant LogoPainter o) => o.t != t || o.draw != draw || o.rise != rise;
 }
 
 class Cover extends StatelessWidget {

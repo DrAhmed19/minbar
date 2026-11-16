@@ -18,7 +18,9 @@
 <path class="sp-arch" d="M14 118V58Q14 22 60 6Q106 22 106 58V118" fill="none" stroke="url(#spg)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
 <g class="sp-bars" fill="url(#spg)"><rect x="23.5" y="68" width="9" height="50" rx="4.5"/><rect x="39.5" y="46" width="9" height="72" rx="4.5"/><rect x="55.5" y="28" width="9" height="90" rx="4.5"/><rect x="71.5" y="46" width="9" height="72" rx="4.5"/><rect x="87.5" y="68" width="9" height="50" rx="4.5"/></g></svg>
 <div class="sp-t">منبر</div><div class="sp-l"></div><div class="sp-s">صوت المنبر</div></div></div>
-<script>window.__t0=Date.now();window.__splashOut=function(){var s=document.getElementById('splash');if(!s||s.dataset.o)return;s.dataset.o=1;var w=Math.max(0,1700-(Date.now()-window.__t0));setTimeout(function(){s.classList.add('out');setTimeout(function(){s.remove()},600)},w)};setTimeout(window.__splashOut,6000)</script>
+<script>window.__t0=Date.now();(function(){var s=document.querySelector('#splash .sp-s');if(!s)return;try{s.textContent=new Intl.DateTimeFormat('ar-IQ-u-ca-islamic-umalqura-nu-arab',{day:'numeric',month:'long',year:'numeric'}).format(new Date()).replace(/\s*هـ?$/,'')+' هـ';}catch(e){}})();
+var __sv=0;try{__sv=+localStorage.getItem('mb.sv')||0;localStorage.setItem('mb.sv',__sv+1);}catch(e){}
+window.__splashOut=function(){var s=document.getElementById('splash');if(!s||s.dataset.o)return;s.dataset.o=1;var w=Math.max(0,(__sv?1100:1700)-(Date.now()-window.__t0));setTimeout(function(){var lg=s.querySelector('.sp-svg'),t=null;document.querySelectorAll('img[src*="brand-mark"]').forEach(function(i){if(!t&&!i.closest('#splash')&&!i.closest('#app')&&i.offsetParent){var r=i.getBoundingClientRect();if(r.width)t=r;}});if(lg&&t){var r=lg.getBoundingClientRect();lg.style.transition='transform .65s cubic-bezier(.65,0,.35,1)';lg.style.transform='translate('+(t.left+t.width/2-(r.left+r.width/2))+'px,'+(t.top+t.height/2-(r.top+r.height/2))+'px) scale('+(t.width/r.width)+')';}s.classList.add('out');setTimeout(function(){s.remove()},700)},w)};setTimeout(window.__splashOut,6000)</script>
 <div id="login" class="login">
   <canvas id="lgBg"></canvas>
   <div class="lcard">

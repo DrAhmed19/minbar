@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'home.dart';
+import 'occasion.dart';
 import 'data.dart';
 import 'state.dart';
 import 'ui.dart';
@@ -15,18 +16,24 @@ class Gate extends StatefulWidget {
   State<Gate> createState() => _GateState();
 }
 
-class _GateState extends State<Gate> with SingleTickerProviderStateMixin {
+class _GateState extends State<Gate> with TickerProviderStateMixin {
   late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..repeat();
+  late final AnimationController _x = AnimationController(vsync: this, duration: const Duration(milliseconds: 650));
   final DateTime _t0 = DateTime.now();
-  bool _minDone = false;
+  bool _minDone = false, _gone = false;
+  static const _hm = ['', 'محرم', 'صفر', 'ربيع الأول', 'ربيع الآخر', 'جمادى الأولى', 'جمادى الآخرة', 'رجب', 'شعبان', 'رمضان', 'شوال', 'ذو القعدة', 'ذو الحجة'];
 
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(milliseconds: 1700), () {
+    // تحميل ذكي: أقل مدة 1.1 ثانية حتى تكتمل الحركة، ويبقى فقط لحد ما تجهز البيانات
+    Future.delayed(const Duration(milliseconds: 1100), () {
       if (mounted) setState(() => _minDone = true);
     });
     app.auth.addListener(_r);
+    _x.addStatusListener((st) {
+      if (st == AnimationStatus.completed && mounted) setState(() => _gone = true);
+    });
   }
 
   void _r() {
@@ -37,7 +44,15 @@ class _GateState extends State<Gate> with SingleTickerProviderStateMixin {
   void dispose() {
     app.auth.removeListener(_r);
     _c.dispose();
+    _x.dispose();
     super.dispose();
+  }
+
+  String _greet() {
+    final o = occasionToday();
+    if (o != null) return o.t;
+    final h = hijriOf(DateTime.now());
+    return '${h.d} ${_hm[h.m]} ${h.y} هـ';
   }
 
   @override
@@ -56,34 +71,75 @@ class _GateState extends State<Gate> with SingleTickerProviderStateMixin {
         statusBarBrightness: Brightness.light,
         systemNavigationBarColor: kCream,
         systemNavigationBarIconBrightness: Brightness.dark);
-    if (ready && a.isIn) return AnnotatedRegion<SystemUiOverlayStyle>(value: dark, child: const HomeShell());
-    if (!ready) return AnnotatedRegion<SystemUiOverlayStyle>(value: light, child: _splash());
+    if (ready && a.isIn) {
+      if (!_gone && !_x.isAnimating && _x.value == 0) _x.forward();
+      return AnnotatedRegion<SystemUiOverlayStyle>(
+        value: dark,
+        child: Stack(children: [
+          const HomeShell(),
+          if (!_gone) IgnorePointer(child: AnimatedBuilder(animation: _x, builder: (_, __) => _splash(_x.value))),
+        ]),
+      );
+    }
+    if (!ready) return AnnotatedRegion<SystemUiOverlayStyle>(value: light, child: _splash(0));
     return AnnotatedRegion<SystemUiOverlayStyle>(value: light, child: LoginPage(onRetry: () => setState(() {})));
   }
 
-  Widget _splash() => Scaffold(
-        backgroundColor: kDeep,
-        body: Container(
-          decoration: const BoxDecoration(
-            gradient: RadialGradient(center: Alignment(0, -0.25), radius: 1.2, colors: [Color(0xFF0F4A38), Color(0xFF072A20), Color(0xFF03140F)]),
-          ),
-          child: Center(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              AnimatedBuilder(
-                animation: _c,
-                builder: (_, __) {
-                  final el = DateTime.now().difference(_t0).inMilliseconds / 1000.0;
-                  return SizedBox(width: 128, height: 138, child: CustomPaint(painter: LogoPainter(_c.value, draw: (el / 1.1).clamp(0.0, 1.0))));
-                },
-              ),
-              const SizedBox(height: 6),
-              Text('منبر', style: tx(54, w: FontWeight.w800, c: const Color(0xFFF3EAD0))),
-              const SizedBox(height: 6),
-              Text('صوت المنبر', style: tx(15, c: const Color(0xFF9FBDB0))),
-            ]),
+  /// x: 0 = الافتتاح، 1 = انتهى الانتقال (الشعار يصغر ويطير لمكانه بأعلى الرئيسية والخلفية تختفي)
+  Widget _splash(double x) {
+    final e = Curves.easeInOutCubic.transform(x);
+    final sz = MediaQuery.of(context).size, top = MediaQuery.of(context).padding.top;
+    // مكان شعار الرأس بالرئيسية تقريباً (يمين الشاشة بالأعلى)
+    final dx = (sz.width / 2 - 34) * e, dy = -(sz.height / 2 - top - 36) * e;
+    return Opacity(
+      opacity: x < 0.75 ? 1 : (1 - (x - 0.75) / 0.25),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(center: const Alignment(0, -0.25), radius: 1.2, colors: [
+            const Color(0xFF0F4A38).withOpacity(1 - e),
+            const Color(0xFF072A20).withOpacity(1 - e),
+            const Color(0xFF03140F).withOpacity(1 - e),
+          ]),
+        ),
+        child: Center(
+          child: AnimatedBuilder(
+            animation: _c,
+            builder: (_, __) {
+              final el = DateTime.now().difference(_t0).inMilliseconds / 1000.0;
+              double fade(double at) => ((el - at) / 0.5).clamp(0.0, 1.0);
+              return Column(mainAxisSize: MainAxisSize.min, children: [
+                Transform.translate(
+                  offset: Offset(dx, dy),
+                  child: Transform.scale(
+                    scale: 1 - 0.72 * e,
+                    child: SizedBox(
+                      width: 128,
+                      height: 138,
+                      child: CustomPaint(painter: LogoPainter(_c.value, rise: (el / 0.6).clamp(0.0, 1.0), draw: ((el - 0.3) / 0.7).clamp(0.0, 1.0))),
+                    ),
+                  ),
+                ),
+                Opacity(
+                  opacity: fade(0.75) * (1 - e),
+                  child: Transform.translate(
+                    offset: Offset(0, 14 * (1 - fade(0.75))),
+                    child: Column(children: [
+                      const SizedBox(height: 6),
+                      Text('منبر', style: tx(54, w: FontWeight.w800, c: const Color(0xFFF3EAD0))),
+                      const SizedBox(height: 6),
+                      Container(width: 120 * fade(0.95), height: 2, decoration: BoxDecoration(borderRadius: BorderRadius.circular(2), gradient: const LinearGradient(colors: [Color(0x00E8C46A), kGold, Color(0x00E8C46A)]))),
+                      const SizedBox(height: 8),
+                      Opacity(opacity: fade(1.05), child: Text(_greet(), style: tx(15, c: const Color(0xFF9FBDB0)))),
+                    ]),
+                  ),
+                ),
+              ]);
+            },
           ),
         ),
-      );
+      ),
+    );
+  }
 }
 
 class LoginPage extends StatelessWidget {
