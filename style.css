@@ -1666,3 +1666,5 @@ textarea.mdin{resize:none}
 .ptr img{width:26px;height:26px}
 .ptr.spin img{animation:ptrs .9s linear infinite}.ptr.spin{opacity:1!important}
 @keyframes ptrs{to{transform:rotate(360deg)}}
+.plrau .bands{flex-direction:row!important;max-height:none!important;overflow:visible!important;align-items:stretch;direction:ltr}
+.plrau .bnd{height:auto}
