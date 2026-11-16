@@ -324,17 +324,20 @@ Widget _box(Widget child) => Container(
 SliderThemeData _sth() => SliderThemeData(activeTrackColor: kGold, inactiveTrackColor: Colors.white12, thumbColor: kGold2, overlayColor: kGold.withOpacity(0.15), trackHeight: 6, thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 11, elevation: 3), overlayShape: const RoundSliderOverlayShape(overlayRadius: 20));
 
 List<Widget> _bands(BuildContext c, StateSetter ss, VoidCallback edited) => [
-      _box(SizedBox(height: 170, child: EqGraph(onChange: () {
-        auApply();
-        ss(() {});
-      }, onEnd: edited))),
+      Container(
+        height: 170,
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), color: const Color(0xFF07120D), border: Border.all(color: const Color(0xFF1F3A2C)), boxShadow: const [BoxShadow(color: Color(0x1F2FBF8F), blurRadius: 18, spreadRadius: -6)]),
+        child: IgnorePointer(child: EqGraph(onChange: () {}, onEnd: () {})),
+      ),
+      const SizedBox(height: 10),
       Row(children: [
         Text('التضخيم المسبق', style: tx(14, c: Colors.white)),
         Expanded(
           child: SliderTheme(
             data: _sth(),
             child: Slider(value: au.preamp, min: 0, max: 12, onChanged: (v) {
-              au.preamp = v;
+              au.preamp = auSnap(v, 0, 12);
               ss(() {});
             }, onChangeEnd: (_) => edited()),
           ),
@@ -354,33 +357,9 @@ List<Widget> _bands(BuildContext c, StateSetter ss, VoidCallback edited) => [
         ),
       ]),
       const SizedBox(height: 8),
-      _box(SizedBox(
-        height: 250,
-        child: Directionality(
-          textDirection: TextDirection.ltr,
-          child: Row(children: [
-            for (var i = 0; i < 12; i++)
-              Expanded(
-                child: Column(children: [
-                  Text(au.eq[i].toStringAsFixed(1), style: tx(10, c: kGold)),
-                  Expanded(
-                    child: RotatedBox(
-                      quarterTurns: 3,
-                      child: SliderTheme(
-                        data: _sth().copyWith(trackHeight: 5, thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10, elevation: 3)),
-                        child: Slider(value: au.eq[i], min: -12, max: 12, onChanged: (v) {
-                          au.eq[i] = (v * 10).round() / 10;
-                          ss(() {});
-                        }, onChangeEnd: (_) => edited()),
-                      ),
-                    ),
-                  ),
-                  Text(fmtF(kEQF[i]), style: tx(9.5, c: Colors.white54)),
-                ]),
-              ),
-          ]),
-        ),
-      )),
+      const SizedBox(height: 10),
+      EqConsole(onChange: () => ss(() {}), onEnd: edited),
+      const SizedBox(height: 8),
       Text('يُطبَّق على معادل أندرويد للجهاز (عادة 5 نطاقات)، لذلك يُقرَّب منحنى الـ12 نطاقاً عليه.', style: tx(11.5, c: Colors.white38)),
     ];
 
@@ -574,7 +553,8 @@ List<Widget> _effects(StateSetter ss, VoidCallback edited) {
         textDirection: TextDirection.ltr,
         child: Row(children: [
           Text('يسار', style: tx(12, c: Colors.white54)),
-          Expanded(child: Slider(value: au.bal, min: -1, max: 1, divisions: 100, activeColor: kGold, inactiveColor: Colors.white12, onChanged: (v) {
+          Expanded(child: Slider(value: au.bal, min: -1, max: 1, divisions: 100, activeColor: kGold, inactiveColor: Colors.white12, onChanged: (v0) {
+            final v = auSnap(v0, 0, 2);
             au.bal = (v.abs() < 0.04 ? 0.0 : v);
             ss(() {});
           }, onChangeEnd: (_) => edited())),
@@ -620,7 +600,7 @@ List<Widget> _adv(StateSetter ss, VoidCallback edited) {
           textDirection: TextDirection.ltr,
           child: Row(children: [
             Text(lo, style: tx(12, c: Colors.white54)),
-            Expanded(child: SliderTheme(data: _sth(), child: Slider(value: v.clamp(mn, mx), min: mn, max: mx, onChanged: f, onChangeEnd: (_) => end()))),
+            Expanded(child: SliderTheme(data: _sth(), child: Slider(value: v.clamp(mn, mx), min: mn, max: mx, onChanged: (x) => f(mn < 0 && mx > 0 ? auSnap(x, 0, mx - mn) : (mn == 0.5 && mx == 2 ? auSnap(x, 1, 1.5) : x)), onChangeEnd: (_) => end()))),
             Text(hi, style: tx(12, c: Colors.white54)),
           ]),
         ),
@@ -796,4 +776,186 @@ Future<void> auSetPerDev(bool v) async {
     _auDev[auDevKey] = au.toJson();
     await sp.setString('auDev', jsonEncode(_auDev));
   }
+}
+
+
+/// التصاق المنزلق بقيمته الطبيعية عند الاقتراب منها
+double auSnap(double v, double def, double span) {
+  if ((v - def).abs() < span * 0.045) {
+    if (v != def) HapticFeedback.selectionClick();
+    return def;
+  }
+  return v;
+}
+
+/// لوحة استوديو: 12 قناة، لكل قناة عدّاد LED حي + شاشة قيمة + فيدر معدني + ملصق التردد
+class EqConsole extends StatefulWidget {
+  final VoidCallback onChange, onEnd;
+  const EqConsole({super.key, required this.onChange, required this.onEnd});
+  @override
+  State<EqConsole> createState() => _EqConsoleState();
+}
+
+class _EqConsoleState extends State<EqConsole> with SingleTickerProviderStateMixin {
+  late final AnimationController _t = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat();
+  final _raw = List<double>.filled(22, 0);
+  final _lv = List<double>.filled(12, 0);
+  final _snapped = List<bool>.filled(12, false);
+  final _acc = List<double>.filled(12, 0);
+
+  @override
+  void dispose() {
+    _t.dispose();
+    super.dispose();
+  }
+
+  void _tick() {
+    final pl = app.player.p;
+    if (pl.playing && auAn != null) {
+      auAn!.bandsAt(pl.position.inMilliseconds / 1000.0, _raw);
+    } else {
+      _raw.fillRange(0, 22, 0);
+    }
+    for (var i = 0; i < 12; i++) {
+      final bn = (math.log(kEQF[i] / 40) / math.log(400) * 22).round().clamp(0, 21);
+      final v = _raw[bn];
+      _lv[i] = v > _lv[i] ? v : _lv[i] * 0.9;
+    }
+  }
+
+  void _drag(int i, double dy, double h) {
+    _acc[i] += -dy / h * 24;
+    var v = _acc[i].clamp(-12.0, 12.0);
+    if (v.abs() < 1.1) {
+      if (!_snapped[i]) {
+        _snapped[i] = true;
+        HapticFeedback.selectionClick();
+      }
+      v = 0;
+    } else {
+      _snapped[i] = false;
+    }
+    au.eq[i] = (v * 10).round() / 10;
+    au.pre = 'custom';
+    widget.onChange();
+  }
+
+  Widget _ch(int i) {
+    return LayoutBuilder(builder: (_, c) {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 1.5),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: const Color(0xFF1D1813), border: Border.all(color: const Color(0xFF2A2219))),
+        child: Column(children: [
+          SizedBox(width: 8, height: 44, child: CustomPaint(painter: _LedPainter(_lv[i]))),
+          const SizedBox(height: 6),
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.symmetric(horizontal: 3),
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            decoration: BoxDecoration(color: const Color(0xFF07120D), borderRadius: BorderRadius.circular(4), border: Border.all(color: const Color(0xFF1F3A2C))),
+            child: FittedBox(child: Text('${au.eq[i] > 0 ? '+' : ''}${au.eq[i].toStringAsFixed(1)}', style: const TextStyle(fontFamily: 'monospace', fontSize: 9, color: Color(0xFF7BE2B8), fontWeight: FontWeight.w600))),
+          ),
+          const SizedBox(height: 6),
+          Expanded(
+            child: LayoutBuilder(builder: (_, fc) {
+              final h = fc.maxHeight;
+              return GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onDoubleTap: () {
+                  au.eq[i] = 0;
+                  au.pre = 'custom';
+                  widget.onChange();
+                  widget.onEnd();
+                },
+                onVerticalDragStart: (_) {
+                  _acc[i] = au.eq[i];
+                  _snapped[i] = au.eq[i] == 0;
+                },
+                onVerticalDragUpdate: (d) => _drag(i, d.delta.dy, h - 13),
+                onVerticalDragEnd: (_) => widget.onEnd(),
+                child: CustomPaint(size: Size(fc.maxWidth, h), painter: _FaderPainter(au.eq[i], _snapped[i])),
+              );
+            }),
+          ),
+          const SizedBox(height: 6),
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.symmetric(horizontal: 3),
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            decoration: BoxDecoration(color: const Color(0xFF26201A), borderRadius: BorderRadius.circular(4)),
+            child: FittedBox(child: Text(fmtF(kEQF[i]), style: tx(9, c: const Color(0xFFB3A78F)))),
+          ),
+        ]),
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 320,
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFF1B1611), Color(0xFF120E0A)]),
+          border: Border.all(color: const Color(0xFF2F271F)),
+        ),
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: AnimatedBuilder(
+            animation: _t,
+            builder: (_, __) {
+              _tick();
+              return Row(children: [for (var i = 0; i < 12; i++) Expanded(child: _ch(i))]);
+            },
+          ),
+        ),
+      );
+}
+
+class _LedPainter extends CustomPainter {
+  final double lv;
+  _LedPainter(this.lv);
+  @override
+  void paint(Canvas c, Size s) {
+    const n = 9;
+    final sh = s.height / n;
+    for (var k = 0; k < n; k++) {
+      final fromTop = k / n;
+      final col = fromTop < 0.14 ? const Color(0xFFE0503C) : fromTop < 0.36 ? const Color(0xFFE8C468) : const Color(0xFF2FBF8F);
+      final on = (1 - fromTop) <= lv + 0.02;
+      c.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(0, k * sh, s.width, sh - 2), const Radius.circular(1)), Paint()..color = on ? col : col.withOpacity(0.15));
+    }
+  }
+
+  @override
+  bool shouldRepaint(_LedPainter o) => o.lv != lv;
+}
+
+class _FaderPainter extends CustomPainter {
+  final double v;
+  final bool snap;
+  _FaderPainter(this.v, this.snap);
+  @override
+  void paint(Canvas c, Size s) {
+    final cx = s.width / 2, top = 6.5, bot = s.height - 6.5;
+    final y = top + (12 - v) / 24 * (bot - top), y0 = (top + bot) / 2;
+    for (var k = 0; k <= 8; k++) {
+      final ty = top + k * (bot - top) / 8;
+      c.drawLine(Offset(cx + 6, ty), Offset(cx + 9, ty), Paint()..color = const Color(0xFF6F6450)..strokeWidth = 1);
+    }
+    c.drawRRect(RRect.fromRectAndRadius(Rect.fromLTRB(cx - 2, top, cx + 2, bot), const Radius.circular(2)), Paint()..color = const Color(0xFF050403));
+    c.drawLine(Offset(cx - 9, y0), Offset(cx + 9, y0), Paint()..color = Colors.white38..strokeWidth = 1);
+    if (v != 0) {
+      c.drawRRect(RRect.fromRectAndRadius(Rect.fromLTRB(cx - 2, math.min(y, y0), cx + 2, math.max(y, y0)), const Radius.circular(2)), Paint()..color = const Color(0xCCE8C468));
+    }
+    final cap = RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, y), width: math.min(22, s.width - 4), height: 13), const Radius.circular(3));
+    if (snap) c.drawRRect(cap.inflate(3), Paint()..color = const Color(0x737BE2B8));
+    c.drawRRect(cap.shift(const Offset(0, 2)), Paint()..color = Colors.black54);
+    c.drawRRect(cap, Paint()..shader = const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFFE6DFCC), Color(0xFFA9A08A)]).createShader(cap.outerRect));
+    c.drawRect(Rect.fromCenter(center: Offset(cx, y), width: math.min(18, s.width - 8), height: 2), Paint()..color = const Color(0xFFD2553F));
+  }
+
+  @override
+  bool shouldRepaint(_FaderPainter o) => o.v != v || o.snap != snap;
 }
