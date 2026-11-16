@@ -878,7 +878,9 @@ class _EqConsoleState extends State<EqConsole> with SingleTickerProviderStateMix
                         _acc[i] = au.eq[i];
                         _snapped[i] = false;
                       }
-                      ..onUpdate = (d) => _drag(i, d.delta.dy, h - 13)
+                      ..onUpdate = (d) {
+                        _drag(i, d.delta.dy, h - 13);
+                      }
                       ..onEnd = (_) {
                         _snapped[i] = false;
                         widget.onEnd();
