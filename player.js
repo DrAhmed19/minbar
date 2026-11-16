@@ -1103,7 +1103,10 @@
     const setV = (v, fire) => { v = Math.max(o.min, Math.min(o.max, Math.round(v / st0) * st0)); v = +v.toFixed(3); if (v === val && !fire) return; val = v; paint(); o.onInput && o.onInput(val); };
     let a0 = 0, v0 = 0, drag = false, tap = 0;
     w.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); const rc = tr.getBoundingClientRect(); if (e.target !== th) { const len0 = o.v ? rc.height : rc.width; if (len0) { const f = o.v ? 1 - (e.clientY - rc.top) / len0 : (e.clientX - rc.left) / len0; setV(o.min + Math.max(0, Math.min(1, f)) * span); } } drag = true; a0 = o.v ? e.clientY : e.clientX; v0 = val; th.classList.add('on'); try { w.setPointerCapture(e.pointerId); } catch (x) {} const n = Date.now(); if (n - tap < 300 && o.def != null) { setV(o.def, true); drag = false; } tap = n; });
-    w.addEventListener('pointermove', (e) => { if (!drag) return; const len = o.v ? tr.clientHeight : tr.clientWidth; if (!len) return; const d = o.v ? (a0 - e.clientY) : (e.clientX - a0); setV(v0 + d / len * span); });
+    w.addEventListener('pointermove', (e) => { if (!drag) return; const len = o.v ? tr.clientHeight : tr.clientWidth; if (!len) return; const d = o.v ? (a0 - e.clientY) : (e.clientX - a0); let tv = v0 + d / len * span;
+      if (o.def != null) { const z = span * 0.045; if (Math.abs(tv - o.def) < z) { if (!snapped) { snapped = true; try { navigator.vibrate && navigator.vibrate(8); } catch (x) {} th.classList.add('snap'); } tv = o.def; } else if (snapped && Math.abs(tv - o.def) > z * 1.6) { snapped = false; th.classList.remove('snap'); } else if (snapped) tv = o.def; }
+      setV(tv); });
+    let snapped = false;
     const end = () => { drag = false; th.classList.remove('on'); }; w.addEventListener('pointerup', end); w.addEventListener('pointercancel', end);
     w.addEventListener('wheel', (e) => { e.preventDefault(); setV(val + (e.deltaY < 0 ? 1 : -1) * st0); }, { passive: false });
     w.set = (v) => { val = v; paint(); }; w.get = () => val; requestAnimationFrame(paint); paint(); return w;
