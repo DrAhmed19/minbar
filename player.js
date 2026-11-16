@@ -17,7 +17,7 @@
     heart: '<path d="M12 21s-7-4.4-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6c-2.5 4.6-9.5 9-9.5 9z"/>', lib: '<path d="M4 5h4v14H4zM10 5h4v14h-4zM16.5 6l3.7-1 3 13-3.7 1z"/>',
     studio: '<path d="M4 20l4-1 11-11-3-3L5 16zM14 6l3 3"/>', down: '<path d="M6 9l6 6 6-6"/>', arch: '<path d="M5 21V11a7 7 0 0 1 14 0v10"/><path d="M9 21v-5a3 3 0 0 1 6 0v5M3 21h18M12 4V2"/>', hand: '<path d="M7 11V5.5a1.5 1.5 0 0 1 3 0V10m0-4.5v-1a1.5 1.5 0 0 1 3 0V10m0-4a1.5 1.5 0 0 1 3 0v4m0-1.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7h-1a6 6 0 0 1-5-2.7L3.6 14a1.5 1.5 0 0 1 2.4-1.8L7 13.5"/>', dl: '<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19h14"/>', moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>', timer: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/>',
     color: '<path d="M12 3a9 9 0 1 0 0 18c1.2 0 1.8-.8 1.8-1.7 0-1.1-.9-1.4-.9-2.4 0-.9.7-1.6 1.6-1.6H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10" cy="7.2" r="1.2"/><circle cx="14.5" cy="7.2" r="1.2"/>', speed: '<path d="M12 14l4-5M4.5 17a9 9 0 1 1 15 0"/>', text: '<path d="M4 6h16M4 12h10M4 18h14"/>', cut: '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/>',
-    search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>', queue: '<path d="M3 6h13M3 12h13M3 18h7M16 14l5 3-5 3z"/>', more: '<circle cx="12" cy="5" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="19" r="1.6" fill="currentColor"/>', eq: '<path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"/>', up: '<path d="M6 15l6-6 6 6"/>', x: '<path d="M6 6l12 12M18 6L6 18"/>', check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>', spark: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" fill="currentColor" stroke="none"/>', chat: '<path d="M4 5h16v11H9l-5 4z"/>', send: '<path d="M21 3L3 11l7 2 2 7z"/>', power: '<path d="M12 3v8M6.3 6.3a8 8 0 1 0 11.4 0"/>', save: '<path d="M5 3h11l3 3v15H5zM8 3v5h7V3M8 21v-7h8v7"/>', reset: '<path d="M4 12a8 8 0 1 0 2.3-5.7M4 4v4h4"/>', wave: '<path d="M3 12h2l2-6 3 12 3-15 3 15 2-6h3"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 15.1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 9 4.6V4.5a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9h.1a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>', lay: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M4 14h16"/>', note: '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>', user: '<circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c0-4 3.4-6.5 7.5-6.5s7.5 2.5 7.5 6.5"/>'
+    search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>', queue: '<path d="M3 6h13M3 12h13M3 18h7M16 14l5 3-5 3z"/>', more: '<circle cx="12" cy="5" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="19" r="1.6" fill="currentColor"/>', eq: '<path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4"/>', up: '<path d="M6 15l6-6 6 6"/>', x: '<path d="M6 6l12 12M18 6L6 18"/>', check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>', spark: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" fill="currentColor" stroke="none"/>', chat: '<path d="M4 5h16v11H9l-5 4z"/>', send: '<path d="M21 3L3 11l7 2 2 7z"/>', power: '<path d="M12 3v8M6.3 6.3a8 8 0 1 0 11.4 0"/>', save: '<path d="M5 3h11l3 3v15H5zM8 3v5h7V3M8 21v-7h8v7"/>', reset: '<path d="M4 12a8 8 0 1 0 2.3-5.7M4 4v4h4"/>', wave: '<path d="M3 12h2l2-6 3 12 3-15 3 15 2-6h3"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 15.1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 9 4.6V4.5a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9h.1a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>', lay: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M4 14h16"/>', note: '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>', user: '<circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c0-4 3.4-6.5 7.5-6.5s7.5 2.5 7.5 6.5"/>', home: '<path d="M3 11l9-7.5 9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>', compass: '<circle cx="12" cy="12" r="9"/><path d="M15.6 8.4l-2.1 5.1-5.1 2.1 2.1-5.1z"/>'
   };
   const ic = (n, s) => `<svg class="pi" viewBox="0 0 24 24" ${s ? `style="width:${s}px;height:${s}px"` : ''}>${I[n]}</svg>`;
   const LF = [['F0', 'كايرو', 700], ['F1', 'تجوّل', 700], ['F2', 'أميري', 700], ['F8', 'نسخ', 700], ['F13', 'شهرزاد', 700], ['F17', 'لطيف', 700], ['F3', 'رقعة', 700], ['F10', 'رقعة الحبر', 700], ['F12', 'ميرزا', 700], ['F5', 'المسيري', 700], ['F4', 'ريم كوفي', 700], ['F15', 'ريم الحبر', 400], ['F14', 'كوفي', 700], ['F6', 'لالزار', 400], ['F9', 'رقّاص', 400], ['F7', 'كاتبة', 400], ['F16', 'بلاكا', 400], ['F11', 'فايبز', 400]];
@@ -48,7 +48,7 @@
     <div class="plrmrow"><div class="plrcov sm" id="plrMiniC"></div><div class="plrmt" id="plrMiniT"><b></b><small></small></div>
       <button class="plrib" id="plrMiniPlay"></button><button class="plrib" id="plrMiniNext">${ic('next', 22)}</button></div>
   </div>
-  <nav class="plrnav"><button data-t="lib" class="on">${ic('lib', 22)}<span>المكتبة</span></button><button data-t="fav">${ic('heart', 22)}<span>المفضلة</span></button><button data-t="smp">${ic('pulse', 22)}<span>عينات</span></button><button data-t="pls" id="plrNavPl">${ic('plist', 22)}<span>القوائم</span></button></nav>
+  <nav class="plrnav"><button data-t="home" class="on">${ic('home', 22)}<span>الرئيسية</span></button><button data-t="explore">${ic('compass', 22)}<span>استكشاف</span></button><button data-t="mine" id="plrNavPl">${ic('lib', 22)}<span>مكتبتي</span></button><button data-t="smp">${ic('pulse', 22)}<span>عينات</span></button><button data-t="me">${ic('user', 22)}<span>صفحتي</span></button></nav>
   <div class="plrhs" id="plrHs" hidden><div class="hst"></div><div class="hsw"><p class="hsc"></p><p class="hsn"></p></div><div class="hsp"><i></i></div><div class="hsctl"><button class="hspp" type="button">${ic('pause', 22)}</button><button class="hsx" type="button">${ic('x', 22)}</button></div></div>
   <div class="plrsmp" id="plrSmp" hidden><div class="smhd"><b>عينات</b><button class="ib" id="plrSmpX" aria-label="إغلاق">${ic('x', 20)}</button></div><div class="smpl" id="plrSmpL"></div></div>
   <div class="plrme" id="plrMe" hidden><div class="meh"><b>صفحتي</b><button class="ib" id="plrMeX" aria-label="إغلاق">${ic('x', 20)}</button></div><div class="mel" id="plrMeL"></div></div>
@@ -205,10 +205,10 @@
   }
   function render() {
     const cs = ['الكل'].concat([...new Set(tracks.map((t) => t.cat).filter(Boolean))]); const bar = g('plrCats'); bar.textContent = '';
-    cs.forEach((c) => { const b = document.createElement('button'); b.className = 'plrchip' + (c === cat ? ' on' : ''); b.textContent = c; b.onclick = () => { cat = c; render(); }; bar.appendChild(b); }); if (tab === 'lib' || tab === 'fav') libTools(bar);
-    const body = g('plrBody'); body.textContent = ''; g('plrLt').hidden = true; view = filtered(); g('plrCats').hidden = tab === 'pls';
+    cs.forEach((c) => { const b = document.createElement('button'); b.className = 'plrchip' + (c === cat ? ' on' : ''); b.textContent = c; b.onclick = () => { cat = c; render(); }; bar.appendChild(b); }); if ((tab === 'lib' && libV === 'all') || tab === 'fav') libTools(bar);
+    const body = g('plrBody'); body.textContent = ''; g('plrLt').hidden = true; view = filtered(); if (MINE.includes(tab)) mineTabs(); g('plrCats').hidden = tab !== 'fav' && !(tab === 'lib' && (libV === 'home' || libV === 'all'));
     if (tab === 'pls') { if (!plSel) return plRender(body); const pl = pls().find((x) => x.id === plSel); if (!pl) { plSel = null; return render(); } const hb = el('div', 'plhd'); const bk = el('button', 'ib'); bk.innerHTML = ic('next', 18); bk.onclick = () => { plSel = null; render(); }; const nm = el('b', '', pl.name); const pa = el('button', 'btn small primary', 'تشغيل الكل'); pa.onclick = () => plPlay(pl); const dl = el('button', 'btn small', 'حذف'); dl.onclick = () => { if (!confirm('حذف القائمة «' + pl.name + '»؟')) return; plsSet(pls().filter((x) => x.id !== pl.id)); plSel = null; render(); }; hb.append(bk, nm, pa, dl); body.appendChild(hb); }
-    g('plrCats').hidden = tab === 'pls' || (tab === 'lib' && libV !== 'all'); if (tab === 'lib' && libRender(body)) return; if (tab === 'lib' && tracks.length) body.insertBefore(el('div'), null);
+    g('plrCats').hidden = !(tab === 'fav' || (tab === 'lib' && (libV === 'home' || libV === 'all'))); if (['smart', 'hist', 'off', 'fol'].includes(tab)) return mineRender(body); if (tab === 'lib' && libRender(body)) return; if (tab === 'lib' && tracks.length) body.insertBefore(el('div'), null);
     if (!view.length) { const d = document.createElement('div'); d.className = 'hint'; d.style.textAlign = 'center'; d.textContent = tab === 'fav' ? 'لا توجد عناصر في المفضلة' : (tracks.length ? 'لا توجد نتائج' : 'لا توجد قصائد بعد'); body.appendChild(d); return; }
     const grid = document.createElement('div'); grid.className = 'plrgrid' + (cmpV ? ' cmp' : '');
     view.forEach((t) => {
@@ -225,7 +225,7 @@
   function play(i, open) {
     const t = tracks[i]; if (!t) return;
     if (i === cur && A.src) { if (A.paused) fadePlay(); if (open) openFull(); return; }
-    cur = i; startAudio(t); loadImg(t); if (!g('plrQs').hidden) setTimeout(qBuild, 0);
+    cur = i; histAdd(t.id); startAudio(t); loadImg(t); if (!g('plrQs').hidden) setTimeout(qBuild, 0);
     g('plrMini').hidden = false; g('plrTitle').textContent = t.title; g('plrSub').textContent = [t.reciter, t.poet].filter(Boolean).join(' · ');
     const mt = g('plrMiniT'); mt.firstChild.textContent = t.title; mt.lastChild.textContent = t.reciter || '';
     coverEl(t, g('plrMiniC')); stageBuild(); counter(); lyrBuild(); favUi(); clipReset(); render(); meta(); waveDraw();
@@ -1072,10 +1072,12 @@
   /* التنقل */
   g('plrSearchB').onclick = () => { const s = g('plrSearch'); s.hidden = !s.hidden; if (!s.hidden) g('plrQ').focus(); else { q = ''; g('plrQ').value = ''; render(); } };
   g('plrQ').oninput = () => { q = g('plrQ').value; render(); };
-  root.querySelectorAll('.plrnav button').forEach((b) => b.onclick = () => { plSel = null; b.classList.remove('newdot');
-    if (b.dataset.t === 'smp') { root.querySelectorAll('.plrnav button').forEach((x) => x.classList.toggle('on', x === b)); smpOpen(); return; }
-    if (b.dataset.t === 'studio') { root.hidden = true; const h = $('home'); if (h && h.hidden && !$('btnHome').hidden) { /* داخل المحرر */ } return; }
-    tab = b.dataset.t; root.querySelectorAll('.plrnav button').forEach((x) => x.classList.toggle('on', x === b)); render();
+  root.querySelectorAll('.plrnav button').forEach((b) => b.onclick = () => { plSel = null; smartSel = null; libSel = null; b.classList.remove('newdot'); const k = b.dataset.t;
+    if (k === 'smp') { root.querySelectorAll('.plrnav button').forEach((x) => x.classList.toggle('on', x === b)); smpOpen(); return; }
+    if (k === 'me') { meOpen(); return; }
+    if (k === 'studio') { root.hidden = true; const h = $('home'); if (h && h.hidden && !$('btnHome').hidden) { /* داخل المحرر */ } return; }
+    if (k === 'home') { tab = 'lib'; libV = 'home'; cat = 'الكل'; } else if (k === 'explore') { tab = 'lib'; libV = lastExp; cat = 'الكل'; } else if (k === 'mine') tab = lastMine;
+    navSync(); render(); g('plrBody').scrollTop = 0;
   });
   document.addEventListener('click', (e) => { if (e.target && e.target.id === 'homeToPlr') open(); });
   function open() { root.hidden = false; if (!tracks.length) loadCatalog(); ui(); }
@@ -1459,8 +1461,10 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     if (tab === 'pls' && plSel) { plSel = null; render(); return true; }
     if (tab === 'lib' && libSel) { libSel = null; render(); return true; }
     if (tab === 'lib' && cat !== 'الكل') { cat = 'الكل'; render(); return true; }
-    if (tab === 'lib' && libV !== 'home') { libV = 'home'; render(); return true; }
-    if (tab !== 'lib') { tab = 'lib'; cat = 'الكل'; root.querySelectorAll('.plrnav button').forEach((x) => x.classList.toggle('on', x.dataset.t === 'lib')); render(); return true; }
+    if (smartSel != null) { smartSel = null; render(); return true; }
+    if (tab === 'lib' && libSel) { libSel = null; render(); return true; }
+    if (tab === 'lib' && libV !== 'home') { libV = 'home'; navSync(); render(); return true; }
+    if (tab !== 'lib') { tab = 'lib'; libV = 'home'; cat = 'الكل'; navSync(); render(); return true; }
     return false;
   }
 
@@ -1819,10 +1823,52 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   g('plrAddB').onclick = () => upMenu(null);
   try { firebase.auth().onAuthStateChanged(() => { g('plrAddB').hidden = !isOwner(); fsLoad(); if (isOwner()) glyAll(); }); } catch (e) {}
   /* ================= المكتبة: القصائد · الإصدارات · الرواديد ================= */
-  let libV = 'home', libSel = null; /* libSel: {k:'alb'|'rec', id} */
+  let libV = 'home', libSel = null; /* libSel: {k:'alb'|'rec'|'cat'|'poet', id} */
+  /* ================= التنقل: الرئيسية · استكشاف · مكتبتي · عينات · صفحتي ================= */
+  const MINE = ['fav', 'pls', 'smart', 'hist', 'off', 'fol'], HISK = 'minbar.hist';
+  let smartSel = null, lastMine = 'fav', lastExp = 'cat';
+  const navOf = () => (tab === 'lib' ? (libV === 'home' ? 'home' : 'explore') : (MINE.includes(tab) ? 'mine' : tab));
+  const navSync = () => root.querySelectorAll('.plrnav button').forEach((x) => x.classList.toggle('on', x.dataset.t === navOf()));
+  const hist = () => jget(HISK, []);
+  function histAdd(id) { const h = hist(), n = Date.now(); if (h.length && h[0].i === id && n - h[0].t < 30000) return; h.unshift({ i: id, t: n }); jset(HISK, h.slice(0, 400)); }
+  function mineTabs() { const hd = g('plrLt'); hd.textContent = ''; hd.hidden = false; const w = el('div', 'libtabs');
+    [['fav', 'المفضلة'], ['pls', 'قوائمي'], ['smart', 'ذكية'], ['hist', 'السجل'], ['off', 'التنزيلات'], ['fol', 'أتابعهم']].forEach(([k, n]) => { const b = el('button', tab === k ? 'on' : '', n); b.type = 'button'; b.onclick = () => { tab = k; lastMine = k; plSel = null; smartSel = null; render(); g('plrBody').scrollTop = 0; }; w.appendChild(b); }); hd.appendChild(w); }
+  /* قوائم ذكية تُبنى تلقائياً من استماعك وتاريخ نشر القصائد */
+  function smartLists() {
+    const h = hist(), cnt = {}; h.forEach((x) => { cnt[x.i] = (cnt[x.i] || 0) + 1; });
+    const fol = follows(), now = Date.now(), byAt = (a, b) => (b.at || 0) - (a.at || 0), heard = new Set(Object.keys(cnt));
+    const top = Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 30).map(([id]) => byId(id)).filter(Boolean);
+    const recent = tracks.filter((t) => t.at && now - t.at < 30 * 864e5).sort(byAt);
+    const fresh = tracks.filter((t) => !heard.has(t.id)).sort(byAt).slice(0, 60);
+    const fl = tracks.filter((t) => fol.includes((t.reciter || '').trim()) || (t.poet && fol.includes(t.poet.trim()))).sort(byAt).slice(0, 60);
+    const sh = tracks.filter((t) => { const d = durOfT(t); return d > 0 && d < 300; }).sort(byAt).slice(0, 60);
+    return [['الأكثر استماعاً عندك', 'من سجل استماعك', top], ['جديد هذا الشهر', 'نُشرت خلال 30 يوماً', recent], ['لم تسمعها بعد', 'قصائد لم تشغّلها', fresh], ['ممن تتابعهم', 'رواديد وشعراء تتابعهم', fl], ['قصيرة', 'أقل من 5 دقائق', sh]].filter((x) => x[2].length);
+  }
+  function mineRender(body) {
+    const row = (cv, n, s, f) => { const r = el('button', 'recr'); r.type = 'button'; const c = el('div', 'plrcov'); if (cv) coverEl(cv, c); const tx = el('div', 'trm'); tx.append(el('b', '', n), el('small', '', s)); r.append(c, tx); r.insertAdjacentHTML('beforeend', ic('fwd', 18)); r.onclick = f; return r; };
+    if (tab === 'smart') {
+      const S = smartLists(); if (smartSel != null && S[smartSel]) { const [n, s, L] = S[smartSel]; groupPage(body, n, s + ' · ' + L.length + ' قصيدة', L[0], L); return; }
+      if (!S.length) { body.appendChild(el('div', 'hint cen', 'ابدأ الاستماع لتظهر قوائمك الذكية')); return; }
+      const G = el('div', 'reclist'); S.forEach(([n, s, L], i) => G.appendChild(row(L[0], n, s + ' · ' + L.length + ' قصيدة', () => { smartSel = i; render(); g('plrBody').scrollTop = 0; }))); body.appendChild(G); return;
+    }
+    if (tab === 'hist') {
+      const h = hist().filter((x) => byId(x.i)); if (!h.length) { body.appendChild(el('div', 'hint cen', 'لا يوجد سجل استماع بعد')); return; }
+      const d0 = new Date(); d0.setHours(0, 0, 0, 0); const day = (t) => { const k = Math.round((d0 - new Date(new Date(t).setHours(0, 0, 0, 0))) / 864e5); return k <= 0 ? 'اليوم' : k === 1 ? 'أمس' : new Date(t).toLocaleDateString('ar-IQ', { day: 'numeric', month: 'long' }); };
+      const lst = h.map((x) => byId(x.i)); let last = ''; h.slice(0, 150).forEach((x) => { const d = day(x.t); if (d !== last) { last = d; body.appendChild(el('h5', 'hdy', d)); } body.appendChild(trackRow(byId(x.i), lst)); });
+      const cl = el('button', 'btn small', 'مسح السجل'); cl.type = 'button'; cl.onclick = () => { if (!confirm('مسح سجل الاستماع؟')) return; jset(HISK, []); render(); }; body.appendChild(cl); return;
+    }
+    if (tab === 'off') {
+      const L = jget(OFFK, []).map(byId).filter(Boolean); if (!L.length) { body.appendChild(el('div', 'hint cen', 'لا توجد تنزيلات. من ⋮ بجانب القصيدة اختر «تنزيل للاستماع بدون إنترنت»')); return; }
+      const w = el('div', 'tlist'); L.forEach((t) => w.appendChild(trackRow(t, L))); body.appendChild(w); return;
+    }
+    if (tab === 'fol') {
+      const F = follows(); if (!F.length) { body.appendChild(el('div', 'hint cen', 'لا تتابع أحداً بعد. افتح صفحة رادود أو شاعر واضغط «متابعة» لتصلك إصداراتهم الجديدة')); return; }
+      const w = el('div', 'reclist'); F.forEach((n) => { const isR = tracks.some((t) => (t.reciter || '').trim() === n), L = tracks.filter((t) => (isR ? (t.reciter || '').trim() : (t.poet || '').trim()) === n); w.appendChild(row(L[0], n, (isR ? 'رادود' : 'شاعر') + ' · ' + L.length + ' قصيدة', () => goLib(isR ? 'rec' : 'poet', n))); }); body.appendChild(w);
+    }
+  }
   const durOfT = (t) => { try { return (JSON.parse(localStorage.getItem(DUK) || '{}'))[t.id] || t.dur || 0; } catch (e) { return t.dur || 0; } };
   function libTabs(body) {
-    const w = el('div', 'libtabs'), hd = g('plrLt'); hd.textContent = ''; hd.hidden = false; [['home', 'الرئيسية'], ['all', 'القصائد'], ['alb', 'الإصدارات'], ['rec', 'الرواديد']].forEach(([k, n]) => { const b = el('button', libV === k ? 'on' : '', n); b.type = 'button'; b.onclick = () => { libV = k; libSel = null; render(); }; w.appendChild(b); });
+    const w = el('div', 'libtabs'), hd = g('plrLt'); hd.textContent = ''; hd.hidden = false; [['cat', 'التصنيفات'], ['alb', 'الإصدارات'], ['rec', 'الرواديد'], ['poet', 'الشعراء'], ['all', 'كل القصائد']].forEach(([k, n]) => { const b = el('button', libV === k ? 'on' : '', n); b.type = 'button'; b.onclick = () => { libV = k; lastExp = k; libSel = null; cat = 'الكل'; render(); }; w.appendChild(b); });
     hd.appendChild(w);
   }
   function trackRow(t, list) {
@@ -1832,7 +1878,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     r.append(cv, m, mo); r.onclick = () => { if (r._lp) { r._lp = 0; return; } qFrom(t, list); play(tracks.indexOf(t), true); }; lpMenu(r, t); return r;
   }
   function groupPage(body, title, sub, coverT, list) {
-    const hd = el('div', 'grph'); const bk = el('button', 'ib'); bk.type = 'button'; bk.innerHTML = ic('back', 20); bk.onclick = () => { libSel = null; render(); };
+    const hd = el('div', 'grph'); const bk = el('button', 'ib'); bk.type = 'button'; bk.innerHTML = ic('back', 20); bk.onclick = () => { libSel = null; smartSel = null; render(); };
     const cv = el('div', 'plrcov'); if (coverT) coverEl(coverT, cv); const tx = el('div', 'grt'); tx.append(el('b', '', title), el('small', '', sub));
     const pa = el('button', 'btn primary small', 'تشغيل الكل'); pa.type = 'button'; pa.onclick = () => { if (!list.length) return; qFrom(list[0], list); play(tracks.indexOf(list[0]), true); };
     const sh = el('button', 'btn small', 'عشوائي'); sh.type = 'button'; sh.onclick = () => { if (!list.length) return; const t = list[Math.floor(Math.random() * list.length)]; if (!st.shuf) g('plrShuf').click(); qFrom(t, list); play(tracks.indexOf(t), true); };
@@ -1841,7 +1887,22 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   }
   function albOf(t) { return t.album ? t.album : ''; }
   function libRender(body) {
-    libTabs(body); if (libV === 'home') { homeRender(body); return true; }
+    if (libV === 'home') { homeRender(body); return true; }
+    libTabs(body);
+    if (libV === 'cat') {
+      const map = new Map(); tracks.forEach((t) => { const k = t.cat || 'أخرى'; if (!map.has(k)) map.set(k, []); map.get(k).push(t); });
+      if (libSel && libSel.k === 'cat') { const L = (map.get(libSel.id) || []).slice().sort((a, b) => (b.at || 0) - (a.at || 0)); groupPage(body, libSel.id, L.length + ' قصيدة', L[0], L); return true; }
+      if (!map.size) { body.appendChild(el('div', 'hint cen', 'لا توجد قصائد بعد')); return true; }
+      const G = el('div', 'catgrid'); [...map.entries()].sort((a, b) => b[1].length - a[1].length).forEach(([k, L], i) => { const c = el('button', 'catt c' + (i % 6)); c.type = 'button'; const cv = el('div', 'plrcov'); coverEl(L[0], cv); c.append(el('b', '', k), el('small', '', L.length + ' قصيدة'), cv); c.onclick = () => { libSel = { k: 'cat', id: k }; render(); g('plrBody').scrollTop = 0; }; G.appendChild(c); });
+      body.appendChild(G); return true;
+    }
+    if (libV === 'poet') {
+      const map = new Map(); tracks.forEach((t) => { const k = (t.poet || '').trim(); if (!k) return; if (!map.has(k)) map.set(k, []); map.get(k).push(t); });
+      if (libSel && libSel.k === 'poet') { const L = (map.get(libSel.id) || []).slice().sort((a, b) => (b.at || 0) - (a.at || 0)); const nr = new Set(L.map((t) => (t.reciter || '').trim()).filter(Boolean)).size; groupPage(body, libSel.id, L.length + ' قصيدة' + (nr ? ' · ' + nr + ' رادود' : ''), L[0], L); const id0 = libSel.id, fb = el('button', 'btn small' + (isFol(id0) ? '' : ' primary'), isFol(id0) ? '✓ تتابعه' : '＋ متابعة'); fb.type = 'button'; fb.onclick = () => folToggle(id0); const rw = body.querySelector('.grph .row'); if (rw) rw.appendChild(fb); return true; }
+      if (!map.size) { body.appendChild(el('div', 'hint cen', 'لا توجد أسماء شعراء بعد')); return true; }
+      const R2 = el('div', 'reclist'); [...map.entries()].sort((a, b) => b[1].length - a[1].length).forEach(([k, L]) => { const r = el('button', 'recr'); r.type = 'button'; const cv = el('div', 'plrcov'); coverEl(L[0], cv); const tx = el('div', 'trm'); tx.append(el('b', '', k), el('small', '', L.length + ' قصيدة')); r.append(cv, tx); r.insertAdjacentHTML('beforeend', ic('fwd', 18)); r.onclick = () => { libSel = { k: 'poet', id: k }; render(); g('plrBody').scrollTop = 0; }; R2.appendChild(r); });
+      body.appendChild(R2); return true;
+    }
     if (libV === 'alb') {
       const map = new Map(); tracks.forEach((t) => { const k = albOf(t); if (!k) return; if (!map.has(k)) map.set(k, []); map.get(k).push(t); });
       if (libSel && libSel.k === 'alb') { const L = map.get(libSel.id) || []; const a = ALB[libSel.id] || {}; groupPage(body, a.name || 'إصدار', [a.reciter, L.length + ' قصيدة'].filter(Boolean).join(' · '), L[0], L); return true; }
@@ -1877,10 +1938,11 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
       if (offHas(t.id)) act('down', 'حذف التنزيل', () => offDel(t)); else act('down', 'تنزيل للاستماع بدون إنترنت', () => offSave(t));
       if (t.album && ALB[t.album]) act('lib', 'الذهاب للإصدار', () => { goLib('alb', t.album); });
       if (t.reciter) act('users', 'الذهاب للرادود', () => { goLib('rec', t.reciter.trim()); });
+      if (t.poet && t.poet.trim()) act('text', 'الذهاب للشاعر', () => { goLib('poet', t.poet.trim()); });
       if (t.fs && isOwner()) { act('text', 'تعديل بيانات القصيدة', () => upMenu(t)); act('x', 'حذف القصيدة', () => upDel(t), 'dang'); }
     });
   }
-  function goLib(k, id) { tab = 'lib'; document.querySelectorAll('.plrnav button').forEach((b) => b.classList.toggle('on', b.dataset.t === 'lib')); libV = k; libSel = { k, id }; if (!g('plrFull').hidden) g('plrClose').click(); render(); g('plrBody').scrollTop = 0; }
+  function goLib(k, id) { tab = 'lib'; libV = k; lastExp = k; navSync(); libSel = { k, id }; if (!g('plrFull').hidden) g('plrClose').click(); render(); g('plrBody').scrollTop = 0; }
   function plPick(t) { const a = pls(); sheet((bx, close) => { bx.appendChild(el('b', 'sht', 'إضافة «' + t.title + '» إلى')); const L = el('div', 'shl'); bx.appendChild(L);
       const nb = el('button', 'sha'); nb.type = 'button'; nb.innerHTML = ic('plus', 20) + '<span>قائمة جديدة</span>'; nb.onclick = () => { close(); modal('قائمة جديدة', (b2, c2) => { const inp = el('input', 'mdin'); inp.placeholder = 'اسم القائمة'; b2.appendChild(inp); const ok = el('button', 'pri', 'إنشاء وإضافة'); ok.type = 'button'; ok.onclick = () => { const n = inp.value.trim(); if (!n) return; const a2 = pls(); a2.unshift({ id: 'p' + Date.now().toString(36), name: n, ids: [t.id], at: Date.now() }); plsSet(a2); c2(); toast('أُنشئت القائمة'); }; b2.appendChild(ok); setTimeout(() => inp.focus(), 50); }); }; L.appendChild(nb);
       a.forEach((p) => { const b = el('button', 'sha'); b.type = 'button'; b.innerHTML = ic('plist', 20) + '<span></span>'; b.lastChild.textContent = p.name + ' (' + p.ids.length + ')'; b.onclick = () => { close(); const a2 = pls(), x = a2.find((y) => y.id === p.id); if (!x) return; if (x.ids.includes(t.id)) return toast('موجودة في القائمة'); x.ids.push(t.id); plsSet(a2); toast('أُضيفت إلى «' + x.name + '»'); }; L.appendChild(b); }); }); }
@@ -1938,7 +2000,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     const ln = it._ln; if (ln && k >= 0) { const end = L[k + 1] ? L[k + 1].t : L[k].t + 5, f = Math.max(0, Math.min(1, (now - L[k].t) / Math.max(0.8, (end - L[k].t) * 0.85))), ws = ln.querySelectorAll('span'), n = Math.ceil(f * ws.length);
       if (ln._n !== n) { ln._n = n; ws.forEach((s, i) => s.classList.toggle('on', i < n)); } } }
   function smpClose() { if (!smpOn) return; smpOn = false; SA.pause(); cancelAnimationFrame(smpRaf); try { smpObs && smpObs.disconnect(); } catch (e) {} g('plrSmp').hidden = true; g('plrSmpL').textContent = ''; smpIdx = -1;
-    document.querySelectorAll('.plrnav button').forEach((b) => b.classList.toggle('on', b.dataset.t === tab)); }
+    navSync(); }
   document.addEventListener('visibilitychange', () => { if (document.hidden && smpOn) SA.pause(); });
   /* تنزيل العينة فيديو بعلامة منبر المائية (يُسجَّل بزمنه الحقيقي) */
   let smpBusy = false;
@@ -1992,10 +2054,11 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     try { const wk = firebase.firestore.Timestamp.fromMillis(Date.now() - 7 * 864e5), s = await db.collection('rx').where('at', '>=', wk).limit(800).get(), c = {}; s.forEach((d) => { const x = d.data(); c[x.track] = (c[x.track] || 0) + 1; }); HOT.likes = Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 12); } catch (e) {}
     if (tab === 'lib' && libV === 'home') render(); }
   function homeRender(body) {
+    if (cat !== 'الكل') { const L = tracks.filter((t) => t.cat === cat).sort((a, b) => (b.at || 0) - (a.at || 0)); const w = el('div', 'tlist'); L.forEach((t) => w.appendChild(trackRow(t, L))); body.appendChild(w); return; }
     occRender(body); const nx = occNext(); if (nx && !occasion()) { const b = el('div', 'occ soon'); b.append(el('small', '', 'مناسبة قادمة'), el('b', '', nx.t), el('span', '', nx.d === 1 ? 'غداً' : 'بعد ' + nx.d + ' أيام')); body.appendChild(b); }
     const pos = jget(POSK, {}), du = (() => { try { return JSON.parse(localStorage.getItem(DUK) || '{}'); } catch (e) { return {}; } })();
     hsec(body, 'أكمل الاستماع', Object.keys(pos).reverse().map(byId).filter(Boolean).slice(0, 10), (t) => hcard(t, du[t.id] ? 'متبقٍ ' + fmt(du[t.id] - pos[t.id]) : 'من ' + fmt(pos[t.id]), du[t.id] ? (pos[t.id] / du[t.id]).toFixed(3) : 0));
-    const fol = follows(); if (fol.length) hsec(body, 'من رواديد تتابعهم', tracks.filter((t) => fol.includes((t.reciter || '').trim())).sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 12), (t) => hcard(t));
+    const fol = follows(); if (fol.length) hsec(body, 'ممن تتابعهم', tracks.filter((t) => fol.includes((t.reciter || '').trim()) || (t.poet && fol.includes(t.poet.trim()))).sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 12), (t) => hcard(t));
     const albs = Object.values(ALB).filter((a) => tracks.some((t) => t.album === a.id)).sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 10);
     hsec(body, 'جديد الإصدارات', albs, (a) => { const L = tracks.filter((t) => t.album === a.id), c = el('button', 'hcd'); c.type = 'button'; const cv = el('div', 'plrcov'); coverEl(L[0], cv); c.append(cv, el('b', '', a.name), el('small', '', (a.reciter || '') + ' · ' + L.length + ' قصيدة')); c.onclick = () => { libV = 'alb'; libSel = { k: 'alb', id: a.id }; render(); g('plrBody').scrollTop = 0; }; return c; }, () => { libV = 'alb'; render(); });
     hsec(body, 'أُضيفت حديثاً', tracks.filter((t) => t.at).sort((a, b) => b.at - a.at).slice(0, 12), (t) => hcard(t));
@@ -2010,8 +2073,8 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   /* ================= متابعة الرواديد + تنبيه بالجديد ================= */
   function folToggle(r) { let a = follows(); if (a.includes(r)) { a = a.filter((x) => x !== r); toast('ألغيت متابعة ' + r); } else { a.push(r); toast('تتابع ' + r + ' — ننبهك بإصداراته الجديدة'); try { if (window.Notification && Notification.permission === 'default') Notification.requestPermission(); } catch (e) {} } jset(FOLK, a); render(); }
   function newCheck() { const seen = jget(SEENK, null), ids = tracks.map((t) => t.id); if (!seen) { jset(SEENK, ids); return; } const fol = follows(), nw = tracks.filter((t) => !seen.includes(t.id));
-    jset(SEENK, ids); const mine = nw.filter((t) => fol.includes((t.reciter || '').trim())); if (!mine.length) return; const t = mine[0], msg = 'جديد من ' + t.reciter + ': «' + t.title + '»' + (mine.length > 1 ? ' و' + (mine.length - 1) + ' غيرها' : '');
-    snack(msg, 'استمع', () => { qFrom(t, tracks); play(tracks.indexOf(t), true); }, 12000); document.querySelector('.plrnav [data-t=lib]').classList.add('newdot');
+    jset(SEENK, ids); const mine = nw.filter((t) => fol.includes((t.reciter || '').trim()) || (t.poet && fol.includes(t.poet.trim()))); if (!mine.length) return; const t = mine[0], msg = 'جديد من ' + t.reciter + ': «' + t.title + '»' + (mine.length > 1 ? ' و' + (mine.length - 1) + ' غيرها' : '');
+    snack(msg, 'استمع', () => { qFrom(t, tracks); play(tracks.indexOf(t), true); }, 12000); document.querySelector('.plrnav [data-t=home]').classList.add('newdot');
     try { if (window.Notification && Notification.permission === 'granted' && document.hidden) navigator.serviceWorker.ready.then((r) => r.showNotification('منبر', { body: msg, icon: 'icons/icon-192.png', tag: 'minbar-new' })); } catch (e) {} }
   /* ================= التنزيل للاستماع بدون إنترنت ================= */
   const offHas = (id) => jget(OFFK, []).includes(id);
@@ -2057,7 +2120,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     const m = el('div'); m.append(el('b', '', nm), el('small', '', (u && u.email) || 'غير مسجّل الدخول')); cd.appendChild(m); L.appendChild(cd);
     const row = (icn, n, s, f, cls) => { const t = el('button', 'merow' + (cls ? ' ' + cls : '')); t.type = 'button'; t.innerHTML = '<i class="mei">' + ic(icn, 19) + '</i><span><b></b><small></small></span>'; t.querySelector('b').textContent = n; t.querySelector('small').textContent = s || ''; if (!s) t.querySelector('small').remove(); t.onclick = f; return t; };
     const grp = (title, items, cls) => { L.appendChild(el('h5', 'meg' + (cls ? ' ' + cls : ''), title)); const l = el('div', 'melist'); items.forEach((i) => l.appendChild(i)); L.appendChild(l); };
-    const mine = [row('heart', 'المفضلة', st.fav.length ? st.fav.length + ' قصيدة' : 'لا توجد قصائد بعد', () => { meClose(); const n = root.querySelector('.plrnav [data-t="fav"]'); if (n) n.click(); }),
+    const mine = [row('heart', 'المفضلة', st.fav.length ? st.fav.length + ' قصيدة' : 'لا توجد قصائد بعد', () => { meClose(); tab = 'fav'; lastMine = 'fav'; navSync(); render(); }),
       row('info', 'الإصدار ' + APPV, 'اضغط للتحقق من التحديث', () => { toast('جارٍ التحقق من التحديث…'); const go = () => setTimeout(() => location.reload(), 1200); try { navigator.serviceWorker.getRegistration().then((r) => (r ? r.update() : 0)).then(go, go); } catch (e) { go(); } })];
     if (u && window.MinbarAuth && MinbarAuth.signOut) mine.push(row('power', 'تسجيل الخروج', '', () => { meClose(); MinbarAuth.signOut(); }, 'dang'));
     grp('حسابي', mine);

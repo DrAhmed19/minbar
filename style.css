@@ -1503,3 +1503,12 @@ textarea.mdin{resize:none}
 .merow .mei{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:rgba(14,92,70,.1);color:var(--em);flex:none;font-style:normal}
 .merow span{flex:1;min-width:0}.merow b{display:block;font-weight:700}.merow small{display:block;color:var(--mu);font-size:11.5px;font-weight:600}
 .merow.dang b{color:#c0392b}
+/* التنقل الجديد */
+.plrnav button{font-size:10.5px;gap:2px}.plrnav button span{white-space:nowrap}
+.libtabs{overflow-x:auto;scrollbar-width:none}.libtabs::-webkit-scrollbar{display:none}.libtabs button{flex:1 0 auto;padding:8px 12px}
+.catgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.catt{position:relative;overflow:hidden;min-height:96px;border-radius:16px;padding:12px;text-align:start;border:0;color:#fff;display:flex;flex-direction:column;gap:3px;font-family:Cairo,sans-serif}
+.catt b{font-size:15px;font-weight:800;position:relative;z-index:1}.catt small{font-size:11.5px;opacity:.85;position:relative;z-index:1}
+.catt .plrcov{position:absolute;inset-inline-end:-12px;bottom:-12px;width:68px;height:68px;border-radius:10px;transform:rotate(-16deg);box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.catt.c0{background:linear-gradient(135deg,#0E5C46,#14805f)}.catt.c1{background:linear-gradient(135deg,#8a5a14,#c58a22)}.catt.c2{background:linear-gradient(135deg,#3b3a6b,#5a58a6)}.catt.c3{background:linear-gradient(135deg,#7a2e2e,#b04848)}.catt.c4{background:linear-gradient(135deg,#1f4f6b,#2f7fa6)}.catt.c5{background:linear-gradient(135deg,#4a3b2a,#7a6246)}
+.hdy{margin:14px 4px 6px;font:800 12.5px Cairo,sans-serif;color:var(--em)}
