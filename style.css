@@ -1512,3 +1512,12 @@ textarea.mdin{resize:none}
 .catt .plrcov{position:absolute;inset-inline-end:-12px;bottom:-12px;width:68px;height:68px;border-radius:10px;transform:rotate(-16deg);box-shadow:0 4px 12px rgba(0,0,0,.3)}
 .catt.c0{background:linear-gradient(135deg,#0E5C46,#14805f)}.catt.c1{background:linear-gradient(135deg,#8a5a14,#c58a22)}.catt.c2{background:linear-gradient(135deg,#3b3a6b,#5a58a6)}.catt.c3{background:linear-gradient(135deg,#7a2e2e,#b04848)}.catt.c4{background:linear-gradient(135deg,#1f4f6b,#2f7fa6)}.catt.c5{background:linear-gradient(135deg,#4a3b2a,#7a6246)}
 .hdy{margin:14px 4px 6px;font:800 12.5px Cairo,sans-serif;color:var(--em)}
+/* حركة وملمس */
+.plrcard,.trow,.hcd,.recr,.albc,.catt,.sha,.merow,.plrchip,.libtabs button,.plrmini{transition:transform .14s ease,background-color .18s,box-shadow .18s}
+.plrcard:active,.trow:active,.hcd:active,.recr:active,.albc:active,.catt:active,.merow:active{transform:scale(.97)}
+.plrnav button svg{transition:transform .22s cubic-bezier(.3,1.4,.5,1)}.plrnav button.on svg{transform:translateY(-2px) scale(1.14)}
+.plrmini:not([hidden]){animation:mup .28s cubic-bezier(.2,.8,.25,1)}@keyframes mup{from{transform:translateY(24px);opacity:0}}
+.plrbody{scroll-behavior:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.skel .plrcov,.skel .plrcm{background:linear-gradient(100deg,rgba(0,0,0,.06) 30%,rgba(0,0,0,.12) 50%,rgba(0,0,0,.06) 70%);background-size:200% 100%;animation:sk 1.3s linear infinite;border-radius:12px}.skel .plrcm{height:30px;margin-top:8px}.skel .plrcov{aspect-ratio:1}
+@keyframes sk{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.plrcard,.trow,.hcd,.recr,.albc,.catt,.plrmini{transition:none;animation:none!important}}

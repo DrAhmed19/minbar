@@ -203,7 +203,20 @@
     if (al.length > 1) mk('الإصدار', [['', 'كل الإصدارات']].concat(al.map((x) => [x, x])), fAlb, (v) => { fAlb = v; });
     const vb = document.createElement('button'); vb.className = 'plrchip' + (cmpV ? ' on' : ''); vb.textContent = cmpV ? 'قائمة' : 'شبكة'; vb.onclick = () => { cmpV = !cmpV; try { localStorage.setItem('minbar.cmp', cmpV ? '1' : '0'); } catch (e) {} render(); }; bar.appendChild(vb);
   }
+  /* انتقال سلس بين الشاشات + تذكّر مكان التمرير (يرجع لمكانه عند الرجوع أو تبديل الأقسام) */
+  const SCR = {}; let scrKey = '', scrDepth = 0;
   function render() {
+    const body = g('plrBody'), key = [tab, libV, libSel ? libSel.k + libSel.id : '', smartSel, plSel, cat].join('|'), depth = (libSel || smartSel != null || plSel) ? 1 : 0;
+    if (scrKey) SCR[scrKey] = body.scrollTop;
+    renderCore();
+    const y = SCR[key] || 0, dir = depth > scrDepth ? 1 : depth < scrDepth ? -1 : 0, changed = key !== scrKey && !!scrKey;
+    body.scrollTop = changed && dir > 0 ? 0 : y; scrKey = key; scrDepth = depth;
+    if (changed && !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) && body.animate) {
+      const f = dir > 0 ? [{ transform: 'translateX(-28px)', opacity: 0 }, { transform: 'none', opacity: 1 }] : dir < 0 ? [{ transform: 'translateX(28px)', opacity: 0 }, { transform: 'none', opacity: 1 }] : [{ transform: 'translateY(12px)', opacity: 0 }, { transform: 'none', opacity: 1 }];
+      try { body.animate(f, { duration: 230, easing: 'cubic-bezier(.2,.75,.25,1)' }); } catch (e) {} }
+  }
+  function skel(body, n) { const w = el('div', 'plrgrid'); for (let i = 0; i < (n || 6); i++) { const c = el('div', 'plrcard skel'); c.append(el('div', 'plrcov'), el('div', 'plrcm')); w.appendChild(c); } body.appendChild(w); }
+  function renderCore() {
     const cs = ['الكل'].concat([...new Set(tracks.map((t) => t.cat).filter(Boolean))]); const bar = g('plrCats'); bar.textContent = '';
     cs.forEach((c) => { const b = document.createElement('button'); b.className = 'plrchip' + (c === cat ? ' on' : ''); b.textContent = c; b.onclick = () => { cat = c; render(); }; bar.appendChild(b); }); if ((tab === 'lib' && libV === 'all') || tab === 'fav') libTools(bar);
     const body = g('plrBody'); body.textContent = ''; g('plrLt').hidden = true; view = filtered(); if (MINE.includes(tab)) mineTabs(); g('plrCats').hidden = tab !== 'fav' && !(tab === 'lib' && (libV === 'home' || libV === 'all'));
@@ -1072,7 +1085,7 @@
   /* التنقل */
   g('plrSearchB').onclick = () => { const s = g('plrSearch'); s.hidden = !s.hidden; if (!s.hidden) g('plrQ').focus(); else { q = ''; g('plrQ').value = ''; render(); } };
   g('plrQ').oninput = () => { q = g('plrQ').value; render(); };
-  root.querySelectorAll('.plrnav button').forEach((b) => b.onclick = () => { plSel = null; smartSel = null; libSel = null; b.classList.remove('newdot'); const k = b.dataset.t;
+  root.querySelectorAll('.plrnav button').forEach((b) => b.onclick = () => { plSel = null; smartSel = null; libSel = null; b.classList.remove('newdot'); const k = b.dataset.t; try { navigator.vibrate && navigator.vibrate(6); } catch (e) {}
     if (k === 'smp') { root.querySelectorAll('.plrnav button').forEach((x) => x.classList.toggle('on', x === b)); smpOpen(); return; }
     if (k === 'me') { meOpen(); return; }
     if (k === 'studio') { root.hidden = true; const h = $('home'); if (h && h.hidden && !$('btnHome').hidden) { /* داخل المحرر */ } return; }
@@ -2065,7 +2078,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     hsec(body, 'الأكثر إعجاباً هذا الأسبوع', HOT.likes.map(([id, n]) => [byId(id), n]).filter((x) => x[0]), ([t, n]) => hcard(t, '❤ ' + n));
     hsec(body, 'الأكثر استماعاً', HOT.plays.map(([id, n]) => [byId(id), n]).filter((x) => x[0]), ([t, n]) => hcard(t, n + ' استماع'));
     hsec(body, 'التنزيلات (بدون إنترنت)', jget(OFFK, []).map(byId).filter(Boolean), (t) => hcard(t));
-    if (!body.querySelector('.hsec')) { const h = el('div', 'hint cen', tracks.length ? 'ابدأ الاستماع لتظهر هنا اقتراحاتك' : 'لا توجد قصائد بعد'); body.appendChild(h); }
+    if (!body.querySelector('.hsec')) { if (!tracks.length) skel(body, 8); else body.appendChild(el('div', 'hint cen', 'ابدأ الاستماع لتظهر هنا اقتراحاتك')); }
     hotLoad(); }
   /* المناسبة القادمة (خلال 10 أيام) */
   function occNext() { for (let i = 1; i <= 10; i++) { const d = new Date(Date.now() + i * 864e5); let dd, mm; try { const f = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', { day: 'numeric', month: 'numeric' }).formatToParts(d); dd = +f.find((x) => x.type === 'day').value; mm = +f.find((x) => x.type === 'month').value; } catch (e) { return null; }
