@@ -1668,3 +1668,13 @@ textarea.mdin{resize:none}
 @keyframes ptrs{to{transform:rotate(360deg)}}
 .plrau .bands{flex-direction:row!important;max-height:none!important;overflow:visible!important;align-items:stretch;direction:ltr}
 .plrau .bnd{height:auto}
+
+/* الاستوديو: ضبط دقيق للنطاق المحدّد + أعمدة زجاجية */
+.ausel{display:flex;align-items:center;gap:8px;margin:10px 0;padding:8px 10px;border-radius:18px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);direction:ltr}
+.ausel .selb{width:44px;height:44px;border-radius:14px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:#fff;font:inherit;font-size:22px;line-height:1;touch-action:manipulation}
+.ausel .selb:active{background:rgba(232,196,104,.25)}
+.ausel .selb.rz{width:auto;padding:0 14px;font-size:13px;margin-inline-start:auto}
+.ausel .selv{flex:1;text-align:center}.ausel .selv small{display:block;font-size:11px;color:rgba(255,255,255,.55)}.ausel .selv b{font-size:20px;color:#E8C468;font-variant-numeric:tabular-nums}
+.plrau .bnd{border-radius:16px;transition:background .2s,box-shadow .2s;background:rgba(255,255,255,.02)}
+.plrau .bnd.sel{background:rgba(232,196,104,.1);box-shadow:inset 0 0 0 1px rgba(232,196,104,.4)}
+.plrau .bnd.sel>b{color:#fff}

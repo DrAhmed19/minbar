@@ -1252,8 +1252,15 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     const piv = () => { g('auPiV').textContent = (s.pitch > 0 ? '+' : '') + (+s.pitch || 0).toFixed(1); }; piv(); mount('auPi', sld({ min: -12, max: 12, step: 0.1, value: s.pitch || 0, bi: true, def: 0, onInput: (v) => { s.pitch = v; piv(); auMod(true); } }));
     const sv2 = () => { g('auSpV').textContent = '×' + (+st.speed).toFixed(2); }; sv2(); mount('auSp', sld({ min: 0.5, max: 2, step: 0.05, value: st.speed, def: 1, onInput: (v) => { st.speed = v; A.playbackRate = v; sv2(); save(); pills(); } }));
     const B = g('auBands'); B.textContent = ''; AU.bandS = [];
+    let sb = g('auSel'); if (!sb) { sb = el('div', 'ausel'); sb.id = 'auSel'; B.parentNode.insertBefore(sb, B); } if (AU.sel == null) AU.sel = 6;
+    const selUi = () => { const i = AU.sel; sb.textContent = ''; B.querySelectorAll('.bnd').forEach((x, k) => x.classList.toggle('sel', k === i));
+      const mk = (t, d, cls) => { const b = el('button', 'selb' + (cls ? ' ' + cls : ''), t); b.type = 'button'; let h = 0, iv = 0; const f = () => { s.eq[i] = d === 0 ? 0 : Math.max(-12, Math.min(12, Math.round((s.eq[i] + d) * 10) / 10)); const w2 = AU.bandS[i]; if (w2) { w2.set(s.eq[i]); w2.sh(); } selUi(); auMod(true); };
+        b.onpointerdown = (e) => { e.preventDefault(); f(); if (d !== 0) h = setTimeout(() => { iv = setInterval(f, 70); }, 400); }; ['pointerup', 'pointerleave', 'pointercancel'].forEach((n) => b.addEventListener(n, () => { clearTimeout(h); clearInterval(iv); })); return b; };
+      const mid = el('div', 'selv'); mid.innerHTML = '<small></small><b></b>'; mid.firstChild.textContent = fmtF(EQF[i]) + ' Hz'; mid.lastChild.textContent = (s.eq[i] > 0 ? '+' : '') + (+s.eq[i]).toFixed(1) + ' dB';
+      sb.append(mk('+', 0.1), mid, mk('−', -0.1), mk('صفر', 0, 'rz')); };
+    AU.selUi = selUi;
     EQF.forEach((f, i) => { const c = el('div', 'bnd'), v = el('b', ''), lb = el('span', '', fmtF(f)); const sh = () => { v.textContent = (s.eq[i] > 0 ? '+' : '') + (+s.eq[i]).toFixed(1); }; sh();
-      const w = sld({ v: true, min: -12, max: 12, step: 0.1, value: s.eq[i], bi: true, def: 0, onInput: (x) => { s.eq[i] = x; sh(); auMod(true); } }); w.sh = sh; AU.bandS[i] = w; c.append(v, w, lb); B.appendChild(c); });
+      const w = sld({ v: true, min: -12, max: 12, step: 0.1, value: s.eq[i], bi: true, def: 0, onInput: (x) => { s.eq[i] = x; sh(); if (AU.sel !== i) { AU.sel = i; } selUi(); auMod(true); } }); w.sh = sh; AU.bandS[i] = w; c.append(v, w, lb); c.addEventListener('pointerdown', () => { if (AU.sel !== i) { AU.sel = i; selUi(); } }, true); B.appendChild(c); }); selUi();
     const KF = g('auKF'); KF.textContent = ''; [['zb', 'تعزيز الجهير'], ['cp', 'الضاغط'], ['zm', 'تعزيز الوسط'], ['zt', 'تعزيز الحدّة']].forEach(([k, n]) => knob(KF, k, n));
     const KA = g('auKA'); KA.textContent = ''; [['echo', 'الصدى'], ['rev', 'الترديد'], ['wid', 'اتساع المجال'], ['rot', 'الدوران 8D'], ['wah', 'الواوا (AutoWah)']].forEach(([k, n]) => knob(KA, k, n));
   }
@@ -1293,17 +1300,17 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     else if (live && live.pre && !A.paused) { x.beginPath(); x.moveTo(PADL, h - PADB); for (let i = 0; i < FR.length; i++) { const bn = Math.max(0, Math.min(21, Math.round(Math.log(FR[i] / 40) / Math.log(400) * 22))); x.lineTo(fx2(FR[i], w), (h - PADB) - (live.vals[bn] || 0) * (h - PADB - TOP) * 0.9); } x.lineTo(w - 8, h - PADB); x.closePath(); const gr = x.createLinearGradient(0, TOP, 0, h); gr.addColorStop(0, 'rgba(127,224,181,.2)'); gr.addColorStop(1, 'rgba(127,224,181,0)'); x.fillStyle = gr; x.fill(); }
     const gs = eqSolve(st.au.eq), fs = ac ? ac.sampleRate : FS, pa = st.au.preamp;
     x.save(); x.beginPath(); x.rect(PADL, 0, w - PADL - 8, h - PADB); x.clip(); x.beginPath();
-    for (let i = 0; i < FR.length; i++) { const yy = dbY(eqResp(gs, FR[i], fs) + pa, h), xx = fx2(FR[i], w); i ? x.lineTo(xx, yy) : x.moveTo(xx, yy); }
+    for (let i = 0; i < FR.length; i++) { const yy = dbY(Math.max(-14.5, Math.min(14.5, eqResp(gs, FR[i], fs) + pa)), h), xx = fx2(FR[i], w); i ? x.lineTo(xx, yy) : x.moveTo(xx, yy); }
     x.strokeStyle = '#E8C468'; x.lineWidth = 2; x.lineJoin = 'round'; x.stroke(); x.lineTo(w - 8, dbY(0, h)); x.lineTo(PADL, dbY(0, h)); x.closePath(); x.fillStyle = 'rgba(232,196,104,.08)'; x.fill(); x.restore();
-    EQF.forEach((f, i) => { const xx = fx2(f, w), yy = dbY(st.au.eq[i] + pa, h), a = eqDrag === i; x.beginPath(); x.arc(xx, yy, a ? 7 : 4.5, 0, 7); x.fillStyle = a ? '#fff' : '#E8C468'; x.fill(); x.lineWidth = 1.5; x.strokeStyle = '#0a2019'; x.stroke();
+    EQF.forEach((f, i) => { const xx = fx2(f, w), yy = dbY(st.au.eq[i] + pa, h), a = eqDrag === i || AU.sel === i; x.beginPath(); x.arc(xx, yy, a ? 7 : 4.5, 0, 7); x.fillStyle = a ? '#fff' : '#E8C468'; x.fill(); x.lineWidth = 1.5; x.strokeStyle = '#0a2019'; x.stroke();
       if (a) { const t = fmtF(f) + 'Hz  ' + (st.au.eq[i] > 0 ? '+' : '') + st.au.eq[i].toFixed(1) + 'dB'; x.font = '700 10px Cairo,sans-serif'; const tw = x.measureText(t).width + 12, bx = Math.max(PADL, Math.min(w - tw - 8, xx - tw / 2)), by = yy < 34 ? yy + 12 : yy - 28; x.fillStyle = 'rgba(0,0,0,.78)'; x.beginPath(); x.roundRect ? x.roundRect(bx, by, tw, 17, 6) : x.rect(bx, by, tw, 17); x.fill(); x.fillStyle = '#fff'; x.textAlign = 'center'; x.fillText(t, bx + tw / 2, by + 12); } });
     requestAnimationFrame(eqDraw);
   }
   function eqStart() { if (!eqOn) { eqOn = true; requestAnimationFrame(eqDraw); } }
   (function () {
     const cv = g('plrEq');
-    cv.addEventListener('pointerdown', (e) => { const r = cv.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top; let bi = -1, bd = 22 * 22; EQF.forEach((f, i) => { const dx = fx2(f, r.width) - px, dy = dbY(st.au.eq[i] + st.au.preamp, r.height) - py, d = dx * dx + dy * dy; if (d < bd) { bd = d; bi = i; } }); if (bi < 0) return; eqDrag = bi; eqY0 = e.clientY; eqV0 = st.au.eq[bi]; try { cv.setPointerCapture(e.pointerId); } catch (x) {} e.preventDefault(); });
-    cv.addEventListener('pointermove', (e) => { if (eqDrag < 0) return; const r = cv.getBoundingClientRect(), pxPerDb = (r.height - TOP - PADB) / (2 * DB); let d = eqV0 + (eqY0 - e.clientY) / pxPerDb; d = Math.max(-12, Math.min(12, Math.round(d * 10) / 10)); if (d !== st.au.eq[eqDrag]) { st.au.eq[eqDrag] = d; const s2 = AU.bandS && AU.bandS[eqDrag]; if (s2) { s2.set(d); s2.sh(); } auMod(true); } });
+    cv.addEventListener('pointerdown', (e) => { const r = cv.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top; let bi = -1, bd = 22 * 22; EQF.forEach((f, i) => { const dx = fx2(f, r.width) - px, dy = dbY(st.au.eq[i] + st.au.preamp, r.height) - py, d = dx * dx + dy * dy; if (d < bd) { bd = d; bi = i; } }); if (bi < 0) return; eqDrag = bi; AU.sel = bi; if (AU.selUi) AU.selUi(); eqY0 = e.clientY; eqV0 = st.au.eq[bi]; try { cv.setPointerCapture(e.pointerId); } catch (x) {} e.preventDefault(); });
+    cv.addEventListener('pointermove', (e) => { if (eqDrag < 0) return; const r = cv.getBoundingClientRect(), pxPerDb = (r.height - TOP - PADB) / (2 * DB); let d = eqV0 + (eqY0 - e.clientY) / pxPerDb; d = Math.max(-12, Math.min(12, Math.round(d * 10) / 10)); if (d !== st.au.eq[eqDrag]) { st.au.eq[eqDrag] = d; const s2 = AU.bandS && AU.bandS[eqDrag]; if (s2) { s2.set(d); s2.sh(); } if (AU.selUi) AU.selUi(); auMod(true); } });
     const up = () => { eqDrag = -1; }; cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
   })();
   /* ================= التعليقات العائمة ================= */
