@@ -2068,7 +2068,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
       ...(window.YTIMP ? [row('dl', 'استيراد من يوتيوب', 'رابط فيديو أو قائمة أو قناة · المسودات · القنوات المتابَعة', () => window.YTIMP.open(ytEnv())), row('timer', 'عمليات الاستيراد', 'متابعة حية، إيقاف، متابعة، المؤجلة', () => window.YTIMP.open(ytEnv(), 'ops'))] : []),
       row('pulse', 'تحليل الصوت', pend ? pend + ' قصيدة بانتظار التحليل' : 'كل القصائد محلَّلة', () => anRun(true)),
       row('eq', 'الإحصائيات', 'الاستماعات والإعجابات', statsPanel),
-      row('users', 'لوحة الإدارة', 'قبول طلبات الدخول والاستبيانات', () => { meClose(); try { MinbarAuth.openAdmin(); } catch (e) { toast('تعذّر فتح اللوحة'); } })], 'adm');
+      row('users', 'لوحة الإدارة', 'قبول طلبات الدخول والاستبيانات', () => { meClose(); try { MinbarAuth.openAdmin(); } catch (e) { toast('تعذّر فتح اللوحة'); } })], 'meadm');
   }
   g('plrMeB').onclick = meOpen; g('plrMeX').onclick = meClose;
 

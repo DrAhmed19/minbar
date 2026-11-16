@@ -1497,7 +1497,7 @@ textarea.mdin{resize:none}
 .mecard{display:flex;gap:12px;align-items:center;padding:14px;border-radius:18px;background:var(--card);border:1px solid var(--line)}
 .mecard img,.mecard>i{width:52px;height:52px;border-radius:50%;object-fit:cover;flex:none;background:var(--card2);display:grid;place-items:center;font:800 20px Cairo,sans-serif;font-style:normal;color:var(--em)}
 .mecard b{display:block;font:800 15px Cairo,sans-serif}.mecard small{color:var(--mu);font:600 12px Cairo,sans-serif;word-break:break-all}
-.meg{margin:20px 4px 8px;font:800 12.5px Cairo,sans-serif;color:var(--em)}.meg.adm{color:#9a6b00}
+.meg{margin:20px 4px 8px;font:800 12.5px Cairo,sans-serif;color:var(--em)}.meg.meadm{color:#9a6b00}
 .melist{border-radius:18px;background:var(--card);border:1px solid var(--line);overflow:hidden}
 .merow{display:flex;gap:12px;align-items:center;width:100%;padding:12px 14px;border:0;border-top:1px solid var(--line);background:none;color:var(--tx);text-align:start;font:600 14px Cairo,sans-serif;cursor:pointer}.merow:first-child{border-top:0}.merow:active{background:var(--card2)}
 .merow .mei{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:rgba(14,92,70,.1);color:var(--em);flex:none;font-style:normal}
