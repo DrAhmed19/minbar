@@ -2058,7 +2058,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   /* ================= الصفحة الرئيسية ================= */
   const FOLK = 'minbar.follow', SEENK = 'minbar.seen.ids', OFFK = 'minbar.offline';
   const follows = () => jget(FOLK, []), isFol = (r) => follows().includes(r);
-  function hsec(body, title, items, mk, more) { if (!items.length) return; const s = el('section', 'hsec'), h = el('div', 'hsh'); h.appendChild(el('b', '', title)); if (more) { const m = el('button', 'hsm', 'الكل'); m.type = 'button'; m.onclick = more; h.appendChild(m); } const row = el('div', 'hrow'); items.forEach((x) => row.appendChild(mk(x))); s.append(h, row); body.appendChild(s); }
+  function hsec(body, title, items, mk, more, all) { if (!items.length) return; const s = el('section', 'hsec'), h = el('div', 'hsh'); h.appendChild(el('b', '', title)); if (more) { const m = el('button', 'hsm', 'الكل'); m.type = 'button'; m.onclick = more; h.appendChild(m); } else if (all && all.length) { const m = el('button', 'hsm hpa', 'تشغيل الكل'); m.type = 'button'; m.onclick = () => { qFrom(all[0], all); play(tracks.indexOf(all[0]), true); }; h.appendChild(m); } const row = el('div', 'hrow'); items.forEach((x) => row.appendChild(mk(x))); s.append(h, row); body.appendChild(s); }
   function hcard(t, sub, prog) { const c = el('button', 'hcd'); c.type = 'button'; const cv = el('div', 'plrcov'); coverEl(t, cv); c.appendChild(cv); if (prog != null) { const p = el('i', 'hpr'); p.style.setProperty('--p', prog); cv.appendChild(p); } if (offHas(t.id)) cv.appendChild(el('em', 'hoff', '⬇')); c.append(el('b', '', t.title), el('small', '', sub != null ? sub : (t.reciter || ''))); c.onclick = () => { qFrom(t, tracks); play(tracks.indexOf(t), true); }; lpMenu(c, t); return c; }
   let HOT = { at: 0, plays: [], likes: [] };
   async function hotLoad() { const db = fdb(); if (!db || Date.now() - HOT.at < 10 * 60000) return; HOT.at = Date.now();
@@ -2069,11 +2069,26 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     if (cat !== 'الكل') { const L = tracks.filter((t) => t.cat === cat).sort((a, b) => (b.at || 0) - (a.at || 0)); const w = el('div', 'tlist'); L.forEach((t) => w.appendChild(trackRow(t, L))); body.appendChild(w); return; }
     occRender(body); const nx = occNext(); if (nx && !occasion()) { const b = el('div', 'occ soon'); b.append(el('small', '', 'مناسبة قادمة'), el('b', '', nx.t), el('span', '', nx.d === 1 ? 'غداً' : 'بعد ' + nx.d + ' أيام')); body.appendChild(b); }
     const pos = jget(POSK, {}), du = (() => { try { return JSON.parse(localStorage.getItem(DUK) || '{}'); } catch (e) { return {}; } })();
+    /* وصول سريع: شبكة أغلفة مثل يوتيوب ميوزك */
+    { const seenU = new Set(), uniq = (a) => a.filter((t) => t && t.audio !== '' && !seenU.has(t.id) && seenU.add(t.id));
+      let dl = uniq(Object.keys(pos).reverse().map(byId).concat(lhist().map((x) => byId(x.i)), tracks.filter((t) => t.at).sort((a, b) => b.at - a.at))); dl = dl.slice(0, Math.min(9, Math.floor(dl.length / 3) * 3));
+      if (dl.length >= 3) { const s = el('section', 'hsec'), h = el('div', 'hsh'); h.appendChild(el('b', '', 'وصول سريع')); s.appendChild(h); const gd = el('div', 'sdial');
+        dl.forEach((t) => { const c = el('button', 'sdc'); c.type = 'button'; const cv = el('div', 'plrcov'); coverEl(t, cv); c.append(cv, el('b', '', t.title)); c.onclick = () => { qFrom(t, dl); play(tracks.indexOf(t), true); }; lpMenu(c, t); gd.appendChild(c); }); s.appendChild(gd); body.appendChild(s); }
+      /* اختيارات سريعة: أعمدة من 4 قصائد تُسحب أفقياً */
+      const cnt = {}; lhist().forEach((x) => { cnt[x.i] = (cnt[x.i] || 0) + 1; }); const dayN = Math.floor(Date.now() / 864e5);
+      let qp = Object.entries(cnt).sort((a, b) => b[1] - a[1]).map(([id]) => byId(id)).filter(Boolean); if (qp.length < 12) qp = qp.concat(tracks.filter((t) => t.audio !== '' && !qp.includes(t)).sort((a, b) => hash(a.id + dayN) - hash(b.id + dayN))); qp = qp.slice(0, 12);
+      if (qp.length >= 4) { const s = el('section', 'hsec'), h = el('div', 'hsh'); h.appendChild(el('b', '', 'اختيارات سريعة')); const pa = el('button', 'hsm hpa', 'تشغيل الكل'); pa.type = 'button'; pa.onclick = () => { qFrom(qp[0], qp); play(tracks.indexOf(qp[0]), true); }; h.appendChild(pa); const rw = el('div', 'qcols');
+        for (let i = 0; i < qp.length; i += 4) { const col = el('div', 'qcol'); qp.slice(i, i + 4).forEach((t) => col.appendChild(trackRow(t, qp))); rw.appendChild(col); } s.append(h, rw); body.appendChild(s); }
+      /* رفّ الرادود الأكثر استماعاً */
+      const rc = {}; lhist().map((x) => byId(x.i)).filter(Boolean).forEach((t) => { const r = (t.reciter || '').trim(); if (r) rc[r] = (rc[r] || 0) + 1; }); let rn = (Object.entries(rc).sort((a, b) => b[1] - a[1])[0] || [])[0];
+      if (!rn) { const m = {}; tracks.forEach((t) => { const r = (t.reciter || '').trim(); if (r) m[r] = (m[r] || 0) + 1; }); rn = (Object.entries(m).sort((a, b) => b[1] - a[1])[0] || [])[0]; }
+      if (rn) { const L = tracks.filter((t) => (t.reciter || '').trim() === rn).sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 12);
+        if (L.length >= 3) { const s = el('section', 'hsec'), h = el('button', 'hsh har'); h.type = 'button'; const cv = el('div', 'plrcov'); coverEl(L[0], cv); const tx = el('div', 'hat'); tx.append(el('small', '', 'المزيد من'), el('b', '', rn)); h.append(cv, tx); h.insertAdjacentHTML('beforeend', ic('fwd', 20)); h.onclick = () => goLib('rec', rn); const row = el('div', 'hrow'); L.forEach((t) => row.appendChild(hcard(t))); s.append(h, row); body.appendChild(s); } } }
     hsec(body, 'أكمل الاستماع', Object.keys(pos).reverse().map(byId).filter(Boolean).slice(0, 10), (t) => hcard(t, du[t.id] ? 'متبقٍ ' + fmt(du[t.id] - pos[t.id]) : 'من ' + fmt(pos[t.id]), du[t.id] ? (pos[t.id] / du[t.id]).toFixed(3) : 0));
     const fol = follows(); if (fol.length) hsec(body, 'ممن تتابعهم', tracks.filter((t) => fol.includes((t.reciter || '').trim()) || (t.poet && fol.includes(t.poet.trim()))).sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 12), (t) => hcard(t));
     const albs = Object.values(ALB).filter((a) => tracks.some((t) => t.album === a.id)).sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 10);
     hsec(body, 'جديد الإصدارات', albs, (a) => { const L = tracks.filter((t) => t.album === a.id), c = el('button', 'hcd'); c.type = 'button'; const cv = el('div', 'plrcov'); coverEl(L[0], cv); c.append(cv, el('b', '', a.name), el('small', '', (a.reciter || '') + ' · ' + L.length + ' قصيدة')); c.onclick = () => { libV = 'alb'; libSel = { k: 'alb', id: a.id }; render(); g('plrBody').scrollTop = 0; }; return c; }, () => { libV = 'alb'; render(); });
-    hsec(body, 'أُضيفت حديثاً', tracks.filter((t) => t.at).sort((a, b) => b.at - a.at).slice(0, 12), (t) => hcard(t));
+    { const nl = tracks.filter((t) => t.at).sort((a, b) => b.at - a.at).slice(0, 12); hsec(body, 'أُضيفت حديثاً', nl, (t) => hcard(t), null, nl); }
     hsec(body, 'الأكثر إعجاباً هذا الأسبوع', HOT.likes.map(([id, n]) => [byId(id), n]).filter((x) => x[0]), ([t, n]) => hcard(t, '❤ ' + n));
     hsec(body, 'الأكثر استماعاً', HOT.plays.map(([id, n]) => [byId(id), n]).filter((x) => x[0]), ([t, n]) => hcard(t, n + ' استماع'));
     hsec(body, 'التنزيلات (بدون إنترنت)', jget(OFFK, []).map(byId).filter(Boolean), (t) => hcard(t));
