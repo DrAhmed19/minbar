@@ -2068,9 +2068,20 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     try { const s = await db.collection('stats').orderBy('plays', 'desc').limit(12).get(); HOT.plays = []; s.forEach((d) => HOT.plays.push([d.id, d.data().plays || 0])); } catch (e) {}
     try { const wk = firebase.firestore.Timestamp.fromMillis(Date.now() - 7 * 864e5), s = await db.collection('rx').where('at', '>=', wk).limit(800).get(), c = {}; s.forEach((d) => { const x = d.data(); c[x.track] = (c[x.track] || 0) + 1; }); HOT.likes = Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 12); } catch (e) {}
     if (tab === 'lib' && libV === 'home') render(); }
+  /* بطاقة التاريخ والمناسبة: اليوم الهجري والشهر والسنة + مناسبة اليوم أو القادمة */
+  function dateCard(body) {
+    const d = new Date(), P = {}; try { new Intl.DateTimeFormat('ar-u-ca-islamic-umalqura-nu-latn', { day: 'numeric', month: 'long', year: 'numeric' }).formatToParts(d).forEach((x) => { P[x.type] = x.value; }); } catch (e) {}
+    let greg = ''; try { greg = new Intl.DateTimeFormat('ar-IQ-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(d); } catch (e) {}
+    const o = occasion(), nx = o ? null : occNext(), c = el('div', 'dcard'), dt = el('div', 'dcd'), ds = el('div', 'dco');
+    dt.append(el('b', '', P.day || ''), el('span', '', P.month || ''), el('small', '', (P.year || '') + ' هـ')); c.appendChild(dt);
+    if (o) { const L = tracks.filter((t) => o.k.some((k) => [t.title, t.cat, t.poet].join(' ').includes(k))); ds.append(el('small', '', 'مناسبة اليوم'), el('b', '', o.t), el('span', '', L.length ? L.length + ' قصيدة مناسبة' : greg));
+      if (L.length) { const p = el('button', 'dcp'); p.type = 'button'; p.innerHTML = ic('play', 16) + '<span>استمع</span>'; p.onclick = () => { Q.base = L.map((x) => x.id); Q.ids = Q.base.slice(); Q.src = o.t; qSave(); play(tracks.indexOf(L[0]), true); }; ds.appendChild(p); } }
+    else if (nx) ds.append(el('small', '', 'مناسبة قادمة'), el('b', '', nx.t), el('span', '', (nx.d === 1 ? 'غداً' : 'بعد ' + nx.d + ' أيام') + (greg ? ' · ' + greg : '')));
+    else ds.append(el('small', '', 'اليوم'), el('b', '', greg || 'منبر'), el('span', '', 'استمع إلى ما يناسب يومك'));
+    c.appendChild(ds); body.appendChild(c); }
   function homeRender(body) {
     if (cat !== 'الكل') { const L = tracks.filter((t) => t.cat === cat).sort((a, b) => (b.at || 0) - (a.at || 0)); const w = el('div', 'tlist'); L.forEach((t) => w.appendChild(trackRow(t, L))); body.appendChild(w); return; }
-    occRender(body); const nx = occNext(); if (nx && !occasion()) { const b = el('div', 'occ soon'); b.append(el('small', '', 'مناسبة قادمة'), el('b', '', nx.t), el('span', '', nx.d === 1 ? 'غداً' : 'بعد ' + nx.d + ' أيام')); body.appendChild(b); }
+    dateCard(body);
     const pos = jget(POSK, {}), du = (() => { try { return JSON.parse(localStorage.getItem(DUK) || '{}'); } catch (e) { return {}; } })();
     /* وصول سريع: شبكة أغلفة مثل يوتيوب ميوزك */
     { const seenU = new Set(), uniq = (a) => a.filter((t) => t && t.audio !== '' && !seenU.has(t.id) && seenU.add(t.id));
@@ -2185,7 +2196,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     const tidy = (box) => { const sels = [...box.children].filter((x) => x.tagName === 'SELECT'); if (!sels.length) return; const kids = [...box.children], first = kids.indexOf(sels[0]), r1 = el('div', 'fcats'), r2 = el('div', 'fsel');
       kids.slice(0, first).forEach((c) => r1.appendChild(c)); kids.slice(first).forEach((x) => { if (x.tagName === 'SELECT') { x.style.display = 'none'; r2.appendChild(btnFor(x)); } r2.appendChild(x); });
       box.textContent = ''; box.classList.add('fx'); if (r1.children.length) box.appendChild(r1); box.appendChild(r2); };
-    const run = () => root.querySelectorAll('.plrchips').forEach(tidy);
+    const run = () => { root.querySelectorAll('.plrchips').forEach((b) => { tidy(b); b.style.display = tab === 'lib' && libV === 'home' ? 'none' : ''; }); };
     new MutationObserver(run).observe(root, { childList: true, subtree: true }); run();
   })();
   lyStyle(); ui(); loadCatalog();
