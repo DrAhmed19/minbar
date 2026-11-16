@@ -2010,11 +2010,11 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
       it.onclick = () => { if (smpIdx !== i) return; const pz = it.querySelector('.smpz'); if (SA.paused) { SA.play().catch(() => {}); pz.hidden = true; } else { SA.pause(); pz.hidden = false; } };
       sc.appendChild(it); });
     smpObs = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting && e.intersectionRatio > 0.6) smpGo(+e.target.dataset.i); }), { root: sc, threshold: [0.6] });
-    sc.querySelectorAll('.smi').forEach((x) => smpObs.observe(x)); sc.scrollTop = 0; smpGo(0); smpLoop(); }
+    sc.querySelectorAll('.smi').forEach((x) => smpObs.observe(x)); sc.scrollTop = 0; sc.onscroll = () => { const h = sc.clientHeight || 1; if (smpIdx >= 0 && !SA.paused && Math.abs(sc.scrollTop - smpIdx * h) > h * 0.12) { SA.pause(); SA.__held = 1; } }; smpGo(0); smpLoop(); }
   /* سطر الكلمات: يدخل كلمةً كلمة (صعود + وضوح من الضباب)، ويتلوّن تدريجياً مع الإنشاد، ويخرج للأعلى بتلاشٍ */
   function smpLine(box, text) { [...box.children].forEach((o) => { o.classList.add('out'); setTimeout(() => o.remove(), 450); }); if (!text) return null;
     const ln = el('p', 'sl'); text.split(/\s+/).forEach((w, i) => { const s = el('span', '', w); s.style.animationDelay = (i * 70) + 'ms'; ln.appendChild(s); ln.appendChild(document.createTextNode(' ')); }); box.appendChild(ln); return ln; }
-  function smpGo(i) { if (i === smpIdx) return; smpIdx = i; const t = smpList[i]; if (!t) return; const sg = smpSeg(t); SA.__seg = sg; SA.__t = t;
+  function smpGo(i) { if (i === smpIdx) { if (SA.__held) { SA.__held = 0; SA.play().catch(() => {}); } return; } SA.__held = 0; SA.pause(); smpIdx = i; [i + 1, i + 2, i - 1].forEach((j) => { const n = smpList[j]; if (n) { const u = cov(n); if (u) { const im = new Image(); im.src = u; } } }); const t = smpList[i]; if (!t) return; const sg = smpSeg(t); SA.__seg = sg; SA.__t = t;
     g('plrSmpL').querySelectorAll('.smi').forEach((x) => x.classList.toggle('act', +x.dataset.i === i)); const it = g('plrSmpL').children[i]; it.querySelector('.smpz').hidden = true;
     const src = new URL(t.audio, location.href).href; if (SA.src !== src) SA.src = t.audio; const go = () => { try { SA.currentTime = sg.a; } catch (e) {} SA.play().catch(() => { it.querySelector('.smpz').hidden = false; }); };
     if (SA.readyState >= 1) go(); else SA.addEventListener('loadedmetadata', go, { once: true });
