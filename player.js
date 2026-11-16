@@ -1102,9 +1102,10 @@
     const paint = () => { const p = (val - o.min) / span, lo = Math.min(mid, p), hi = Math.max(mid, p); if (o.v) { th.style.bottom = (p * 100) + '%'; fl.style.bottom = (lo * 100) + '%'; fl.style.height = ((hi - lo) * 100) + '%'; } else { th.style.left = (p * 100) + '%'; fl.style.left = (lo * 100) + '%'; fl.style.width = ((hi - lo) * 100) + '%'; } };
     const setV = (v, fire) => { v = Math.max(o.min, Math.min(o.max, Math.round(v / st0) * st0)); v = +v.toFixed(3); if (v === val && !fire) return; val = v; paint(); o.onInput && o.onInput(val); };
     let a0 = 0, v0 = 0, drag = false, tap = 0;
-    th.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); drag = true; a0 = o.v ? e.clientY : e.clientX; v0 = val; th.classList.add('on'); try { th.setPointerCapture(e.pointerId); } catch (x) {} const n = Date.now(); if (n - tap < 300 && o.def != null) { setV(o.def, true); drag = false; } tap = n; });
-    th.addEventListener('pointermove', (e) => { if (!drag) return; const len = o.v ? tr.clientHeight : tr.clientWidth; if (!len) return; const d = o.v ? (a0 - e.clientY) : (e.clientX - a0); setV(v0 + d / len * span); });
-    const end = () => { drag = false; th.classList.remove('on'); }; th.addEventListener('pointerup', end); th.addEventListener('pointercancel', end);
+    w.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); const rc = tr.getBoundingClientRect(); if (e.target !== th) { const len0 = o.v ? rc.height : rc.width; if (len0) { const f = o.v ? 1 - (e.clientY - rc.top) / len0 : (e.clientX - rc.left) / len0; setV(o.min + Math.max(0, Math.min(1, f)) * span); } } drag = true; a0 = o.v ? e.clientY : e.clientX; v0 = val; th.classList.add('on'); try { w.setPointerCapture(e.pointerId); } catch (x) {} const n = Date.now(); if (n - tap < 300 && o.def != null) { setV(o.def, true); drag = false; } tap = n; });
+    w.addEventListener('pointermove', (e) => { if (!drag) return; const len = o.v ? tr.clientHeight : tr.clientWidth; if (!len) return; const d = o.v ? (a0 - e.clientY) : (e.clientX - a0); setV(v0 + d / len * span); });
+    const end = () => { drag = false; th.classList.remove('on'); }; w.addEventListener('pointerup', end); w.addEventListener('pointercancel', end);
+    w.addEventListener('wheel', (e) => { e.preventDefault(); setV(val + (e.deltaY < 0 ? 1 : -1) * st0); }, { passive: false });
     w.set = (v) => { val = v; paint(); }; w.get = () => val; requestAnimationFrame(paint); paint(); return w;
   }
   const mount = (id, w) => { const h = g(id); h.textContent = ''; h.appendChild(w); return w; };
@@ -1204,7 +1205,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     const lk = (key, v, a, b) => { AU.L = AU.L || {}; if (!!AU.L[key] === v || !a || !b) return; try { v ? a.connect(b) : a.disconnect(b); } catch (e) {} AU.L[key] = v; };
     lk('cv', rv > 0, AU.agm2, AU.cv); lk('ed', ec > 0, AU.agm2, AU.ed); lk('fd', !!s.fl, AU.fsrc, AU.fd); lk('ps', on, AU.psIn, AU.ps); set(AU.psDry.gain, on ? 0 : 1); set(AU.psWet.gain, on ? 1 : 0); if (AU.ps) AU.ps.parameters.get('ratio').setValueAtTime(Math.pow(2, ps / 12), T); set(AU.lim.threshold, s.lim ? -1 : 0); set(AU.lim.ratio, s.lim ? 20 : 1);
   }
-  const au = (on) => { g('plrAu').hidden = !on; g('plrBg').hidden = !on; g('plrAuPL').hidden = true; if (on) { auUi(); eqStart(); } };
+  const au = (on) => { g('plrAu').hidden = !on; g('plrBg').hidden = !on; g('plrAuPL').hidden = true; g('plrTg').classList.toggle('on', on); if (on) { auUi(); eqStart(); } };
   g('plrAuX').onclick = () => au(false); g('plrAuR').onclick = () => {
     const s = st.au, k = g('plrAuT').querySelector('.on').dataset.k, d = AUD();
     if (k === 'b') { s.eq = Z12(); s.preamp = 0; s.lim = true; }

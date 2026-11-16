@@ -1622,3 +1622,38 @@ textarea.mdin{resize:none}
 .dco{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:3px;padding:14px 16px;position:relative}
 .dco small{font:700 11.5px Cairo,sans-serif;color:#E8C468;letter-spacing:.2px}.dco b{font:800 18px/1.35 Cairo,sans-serif}.dco span{font:500 12.5px Cairo,sans-serif;opacity:.8}
 .dcp{align-self:flex-start;margin-top:8px;display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;border:0;border-radius:17px;background:#E8C468;color:#3a2a08;font:800 13px Cairo,sans-serif}.dcp .pi{width:16px;height:16px;fill:currentColor}
+
+/* ===== قسم الصوت v2: صفحة كاملة + تصميم ناعم ===== */
+.plrdock .tg,.plrfull .plrdock .tg,.plrfull .plrdock button.tg{opacity:.6;color:inherit;background:none!important}
+.plrfull .plrdock .tg{color:#fff}
+.plrdock .tg.on,.plrfull .plrdock .tg.on,.plrfull .plrdock button.tg.on{opacity:1;color:#E8C468}
+.plrau,.plrfull .plrau{position:absolute!important;inset:0!important;height:100%!important;max-height:100%!important;border-radius:0!important;border:0!important;z-index:20;padding:calc(10px + env(safe-area-inset-top)) 16px calc(14px + env(safe-area-inset-bottom))!important;background:radial-gradient(120% 60% at 50% 0,#17493a 0,#0c2a21 55%,#071811 100%)!important;transform:none}
+.plrau[hidden]{display:none!important}
+.plrau .gr{display:none}
+.plrau .auh{gap:8px;margin-bottom:12px}.plrau .auh>b{font-size:19px}
+.plrau .auh .ib{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.07);display:grid;place-items:center}
+.plrau .aupb{height:38px;border-radius:19px;background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.08)}
+.plrau .autab{display:flex;gap:4px;padding:4px;border-radius:16px;background:rgba(255,255,255,.06);margin-bottom:12px}
+.plrau .autab button{flex:1;height:36px;border:0;border-radius:12px;background:none;color:rgba(255,255,255,.65);font:inherit;font-size:13px;font-weight:700;transition:background .2s,color .2s}
+.plrau .autab button.on{background:#E8C468;color:#2a2106;box-shadow:0 4px 14px rgba(232,196,104,.3)}
+.plrau .eqw{border-radius:20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);padding:6px}
+.plrau .aurow{padding:12px 14px;border-radius:18px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);margin:10px 0}
+.plrau .bands{display:flex;gap:2px;padding:10px 6px;border-radius:20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);height:230px}
+.plrau .bnd{flex:1;min-width:0}
+.plrau .bal{padding:14px;border-radius:18px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);margin:10px 0}
+.plrau .fxh{display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;font-weight:700}.plrau .fxh b{color:#E8C468}
+.plrau .knobs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:10px 0}
+.plrau .kn{border-radius:20px;padding:14px 8px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);transition:background .2s,border-color .2s}
+.plrau .kn.on{background:rgba(232,196,104,.08);border-color:rgba(232,196,104,.35)}
+.plrau .kn svg{width:96px;height:96px}
+.plrau .kn .kt{stroke-width:6}.plrau .kn .kv{stroke-width:6}
+.plrau .pw{border-radius:20px;transition:all .2s}
+.plrau .sl .tr{height:6px;margin-top:-3px;background:rgba(255,255,255,.1)}
+.plrau .sl.v .tr{width:6px;margin-left:-3px}
+.plrau .sl .fl{background:linear-gradient(90deg,#c9a24a,#F4D77E)}
+.plrau .sl.v .fl{background:linear-gradient(0deg,#c9a24a,#F4D77E)}
+.plrau .sl{height:30px;cursor:pointer;touch-action:none}.plrau .sl.v{width:30px;height:100%}
+.plrau .sl .th{width:22px;height:22px;margin:-11px 0 0 -11px;box-shadow:0 2px 8px rgba(0,0,0,.45)}
+.plrau .sl.v .th{margin:0 0 -11px -11px}
+.plrau .bnd>b{font-size:10px}.plrau .bnd>span{font-size:10px}
+.plrau .aupn{padding-bottom:20px}
