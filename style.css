@@ -1706,3 +1706,10 @@ textarea.mdin{resize:none}
 .plrau .bands{padding:14px 6px 12px}
 .plrau .bnd{gap:8px}
 .plrau .bnd>b{font-size:10px;font-variant-numeric:tabular-nums}
+
+/* المخطط للعرض فقط */
+.plrau .eqw,.plrau .eqw canvas{pointer-events:none!important;touch-action:auto!important;cursor:default}
+.plrau .hint.aun,.plrau .aun{font-size:12px;line-height:1.6;padding:8px 12px;border-radius:14px;background:rgba(232,160,70,.1);border:1px solid rgba(232,160,70,.25);color:#f0b365;margin:0}
+.plrau .aupn{min-height:0;flex:1;overflow-y:auto;overscroll-behavior:contain}
+.plrau .bands{flex:1;min-height:230px;max-height:340px}
+.plrau .eqw{flex:none}
