@@ -17,10 +17,8 @@ import 'data.dart';
 class PlayerCtl extends ChangeNotifier {
   /// تفعيل وضع الأداء تلقائياً لهذه الجلسة فقط
   void autoPerf(String why) {
-    if (perf == 1) return;
-    perf = 1;
-    debugPrint('MBPERF auto: $why');
-    notifyListeners();
+    // وضع الأداء ملغى: الجودة الكاملة دائماً
+    return;
   }
 
   final AudioPlayer p = AudioPlayer(audioPipeline: AudioPipeline(androidAudioEffects: [auLoud, auEq]));
@@ -220,7 +218,7 @@ class PlayerCtl extends ChangeNotifier {
         lySplit = v.toInt();
         break;
       case 'perf':
-        perf = v.toInt();
+        perf = 0;
         break;
       case 'cmOn':
         cmOn = v.toInt();

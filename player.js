@@ -258,7 +258,7 @@
   }
   async function startAudio(t) {
     const tok = ++vTok; anLoad(t); const ok = await corsOk(t.audio); if (tok !== vTok) return;
-    const FX = st.fx === true; /* وضع الأداء (الافتراضي): بدون WebAudio = أخف، أبرد، ويستمر بالخلفية */
+    const FX = true; /* أفضل جودة دائماً: معالجة الصوت مفعّلة */
     if (ok && FX && !ac) { A.crossOrigin = 'anonymous'; }
     A.__seekFail = false; A.src = t.audio; /* لا ننزّل نسخة كاملة بالتوازي مع البث (تخنق الاتصال فينقطع الصوت): نؤجلها حتى يستقر التشغيل */ clearTimeout(MB.tm); MB.tm = setTimeout(() => { const c = tracks[cur]; if (c && c.id === t.id) mediaBlob(c); }, 25000); A.playbackRate = st.speed; A.volume = st.uvol == null ? 1 : st.uvol; if (AU.fade && ac) { AU.fade.gain.cancelScheduledValues(0); AU.fade.gain.value = 1; }
     if (ok && FX && !ac) { try { const AC = window.AudioContext || window.webkitAudioContext; try { ac = new AC({ latencyHint: 'playback' }); } catch (x) { ac = new AC(); } const sn = ac.createMediaElementSource(A); an = ac.createAnalyser(); an.fftSize = 2048; an.smoothingTimeConstant = 0.15; auBuild(sn); an.connect(ac.destination); fbuf = new Uint8Array(an.frequencyBinCount); } catch (e) { ac = null; } }
@@ -428,8 +428,8 @@
   /* الوضع الخفيف للأجهزة الضعيفة: تلقائي حسب الجهاز أو حسب الأداء الفعلي */
   /* الوضع الخفيف: للأجهزة الضعيفة فقط، ولا يُحفظ دائماً (كان يُحفظ فيُخفض الجودة إلى الأبد بعد لحظة بطء واحدة) */
   try { localStorage.removeItem('minbar.lite'); } catch (e) {}
-  let LITE = (navigator.hardwareConcurrency || 8) <= 3 || (navigator.deviceMemory || 8) <= 2, lfE = 0.016, lfN = 0;
-  const liteSet = (on) => { LITE = on; root.classList.toggle('lite', on); if (on) vizDpr = Math.min(vizDpr, 1.5); };
+  let LITE = false, lfE = 0.016, lfN = 0;
+  const liteSet = () => {};
   if (LITE) { root.classList.add('lite'); vizDpr = 1.5; }
   /* لما المتصفح تخلص ذاكرة الرسم يفقد الكانفس سياقه ويطلع مربع أبيض بوجه حزين: نخفف الرسم ونعيد بناء الكانفس */
   root.addEventListener('contextlost', (e) => { const cv = e.target; try { liteSet(true); vizDpr = 1; } catch (x) {} setTimeout(() => { try { cv.width = 1; cv.height = 1; } catch (x) {} try { waveDraw(); } catch (x) {} }, 400); }, true);
@@ -1216,7 +1216,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     else { s.pitch = 0; s.fl = false; st.speed = 1; A.playbackRate = 1; pills(); ['echo', 'rev', 'wid', 'rot', 'wah'].forEach((n) => { s.k[n] = 0; s.on[n] = false; }); }
     void d; s.pre = JSON.stringify(s.eq) === JSON.stringify(Z12()) && !Object.values(s.on).some(Boolean) && !s.agc && !s.bal && !s.preamp && !s.pitch && !s.fl ? 'flat' : 'custom'; save(); auApply(); auUi(); toast('أُعيد ضبط قسم «' + g('plrAuT').querySelector('.on').textContent + '»');
   };
-  function auNote() { const n = g('plrAuN'); if (!n) return; if (st.fx !== true) { n.textContent = 'وضع الأداء مفعّل: الرسم يعمل لكن المؤثرات الصوتية متوقفة. لتفعيلها: الأدوات ← وضع الأداء.'; n.hidden = !tracks[cur]; return; } n.textContent = 'المعالجة متاحة للملفات المرفوعة على منبر فقط.'; n.hidden = !!useLive || !tracks[cur]; }
+  function auNote() { const n = g('plrAuN'); if (!n) return; n.textContent = 'المعالجة متاحة للملفات المرفوعة على منبر فقط.'; n.hidden = !!useLive || !tracks[cur]; }
   function auFrom(p, k) { const d = AUD(); d.eq = p.eq.slice(); Object.keys(p.k || {}).forEach((n) => { d.k[n] = p.k[n]; d.on[n] = true; }); if (p.agc) d.agc = true; if (p.preamp) d.preamp = p.preamp; if (p.fl) d.fl = true; d.pre = k; return d; }
   function auPreset(k) { const b = AUP.find((x) => x[0] === k), c = auCustom().find((x) => x.id === k); if (b) st.au = auFrom(b[2], k); else if (c) { st.au = Object.assign(AUD(), JSON.parse(JSON.stringify(c.s))); st.au.pre = k; } else return; save(); auApply(); auUi(); }
   const auName = () => { const b = AUP.find((x) => x[0] === st.au.pre), c = auCustom().find((x) => x.id === st.au.pre); return b ? b[1] : c ? c.n : 'مخصّص'; };
