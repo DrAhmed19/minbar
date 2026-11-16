@@ -1695,3 +1695,14 @@ textarea.mdin{resize:none}
 .plrau .knobs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:0}
 .plrau .kn{padding:16px 8px 12px}
 .plrau .bal{padding:14px 16px}
+
+/* إصلاح: مسار المنزلق العمودي (كان ارتفاعه 6px فيجعل الحركة سريعة جداً) */
+.plrau .sl.v .tr{top:0!important;bottom:0!important;height:auto!important;width:6px!important;left:50%!important;right:auto!important;margin:0 0 0 -3px!important;border-radius:6px;background:rgba(255,255,255,.1)}
+.plrau .sl.v .tr::after{content:"";position:absolute;left:-5px;right:-5px;top:50%;height:1px;background:rgba(255,255,255,.35)}
+.plrau .sl.v .fl{left:0;right:0;border-radius:6px;background:linear-gradient(0deg,#b8913a,#F4D77E)}
+.plrau .sl.v .th{width:22px;height:22px;margin:0 0 -11px -11px;background:#F6DE8E;border:3px solid #1c1612;box-shadow:0 2px 10px rgba(0,0,0,.5),0 0 0 1px rgba(232,196,104,.5)}
+.plrau .sl.v .th.on{background:#fff;transform:scale(1.15)}
+.plrau .sl.v{width:30px;margin:0 auto;height:auto;flex:1}
+.plrau .bands{padding:14px 6px 12px}
+.plrau .bnd{gap:8px}
+.plrau .bnd>b{font-size:10px;font-variant-numeric:tabular-nums}
