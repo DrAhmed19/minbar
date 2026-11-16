@@ -1107,7 +1107,7 @@
       if (o.def != null) { const z = span * 0.045; if (Math.abs(tv - o.def) < z) { if (!snapped) { snapped = true; try { navigator.vibrate && navigator.vibrate(8); } catch (x) {} th.classList.add('snap'); } tv = o.def; } else if (snapped && Math.abs(tv - o.def) > z * 1.6) { snapped = false; th.classList.remove('snap'); } else if (snapped) tv = o.def; }
       setV(tv); });
     let snapped = false;
-    const end = () => { drag = false; th.classList.remove('on'); }; w.addEventListener('pointerup', end); w.addEventListener('pointercancel', end);
+    const end = () => { drag = false; snapped = false; th.classList.remove('on', 'snap'); }; w.addEventListener('pointerup', end); w.addEventListener('pointercancel', end);
     w.addEventListener('wheel', (e) => { e.preventDefault(); setV(val + (e.deltaY < 0 ? 1 : -1) * st0); }, { passive: false });
     w.set = (v) => { val = v; paint(); }; w.get = () => val; requestAnimationFrame(paint); paint(); return w;
   }

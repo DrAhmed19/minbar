@@ -870,10 +870,13 @@ class _EqConsoleState extends State<EqConsole> with SingleTickerProviderStateMix
                 },
                 onVerticalDragStart: (_) {
                   _acc[i] = au.eq[i];
-                  _snapped[i] = au.eq[i] == 0;
+                  _snapped[i] = false;
                 },
                 onVerticalDragUpdate: (d) => _drag(i, d.delta.dy, h - 13),
-                onVerticalDragEnd: (_) => widget.onEnd(),
+                onVerticalDragEnd: (_) {
+                  _snapped[i] = false;
+                  widget.onEnd();
+                },
                 child: CustomPaint(size: Size(fc.maxWidth, h), painter: _FaderPainter(au.eq[i], _snapped[i])),
               );
             }),

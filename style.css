@@ -1769,3 +1769,4 @@ textarea.mdin{resize:none}
 .plrau .bnd .sl.v .th{width:22px!important;height:13px!important;border-radius:3px!important;margin:0 0 -6.5px -11px!important;border:0!important;background:linear-gradient(180deg,#e6dfcc,#a9a08a)!important;box-shadow:0 2px 6px rgba(0,0,0,.6),inset 0 -1px 0 rgba(0,0,0,.25)!important}
 .plrau .bnd .sl.v .th::after{content:"";position:absolute;left:2px;right:2px;top:50%;height:2px;margin-top:-1px;background:#d2553f}
 .plrau .bnd .sl.v .th.snap{box-shadow:0 0 0 3px rgba(123,226,184,.45),0 2px 6px rgba(0,0,0,.6)!important}
+.plrau .sl .th:not(.on):not(.snap){transform:none}
