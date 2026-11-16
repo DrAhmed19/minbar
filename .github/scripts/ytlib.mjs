@@ -145,11 +145,15 @@ export async function importOne(ctx, vid, o = {}) {
   const url = 'https://www.youtube.com/watch?v=' + vid;
   try {
     /* 1) المعلومات أولاً: حتى لا نحمّل بثاً مباشراً أو فيديو طويلاً جداً */
+    if (ctx.stage) await ctx.stage('قراءة المعلومات');
     const info = JSON.parse(await ytTry(ctx, ['-J', '--no-playlist', url]));
     if (['is_live', 'is_upcoming', 'post_live'].includes(info.live_status)) return { st: 'skip', msg: 'بث مباشر أو لم يبدأ بعد' };
     if (!(info.duration > 5)) return { st: 'skip', msg: 'مدة غير صالحة' };
     if (info.duration > MAX_DUR) return { st: 'skip', msg: 'أطول من 3 ساعات' };
     /* 2) الصوت + الغلاف */
+    if (ctx.stage) await ctx.stage('تنزيل الصوت');
+    /* ملاحظة للمعاينة الحية */
+    if (ctx.meta) await ctx.meta({ t: String(info.title || '').slice(0, 120), d: Math.round(info.duration || 0) });
     await ytTry(ctx, ['-f', 'bestaudio[ext=m4a]/bestaudio/best', '-x', '--audio-format', 'm4a', '--audio-quality', '0', '--no-playlist', '--write-thumbnail', '--convert-thumbnails', 'jpg', '-o', path.join(dir, 'a.%(ext)s'), url]);
     const audio = path.join(dir, 'a.m4a'); let sz; try { sz = (await stat(audio)).size; } catch (e) { throw new Error('لم يُنتج ملف الصوت'); }
     if (sz < 30 * 1024) throw new Error('ملف الصوت صغير جداً (تنزيل ناقص)');
@@ -162,6 +166,7 @@ export async function importOne(ctx, vid, o = {}) {
     const th = path.join(dir, 'a.jpg');
     try { await stat(th); coverFile = path.join(dir, 'cover.jpg'); await ctx.exec('ffmpeg', ['-y', '-v', 'error', '-i', th, '-vf', "crop='min(iw,ih)':'min(iw,ih)',scale=1000:1000:flags=lanczos", '-q:v', '3', coverFile]); await stat(coverFile); } catch (e) { coverFile = ''; }
     /* 4) الترجمة الأصلية (اختيارية، فشلها لا يُفشل الاستيراد) */
+    if (ctx.stage) await ctx.stage('الترجمة الأصلية');
     let subs = null, warn = '';
     const sl = o.subs === false ? null : pickSubLang(info);
     if (sl) {
@@ -172,6 +177,7 @@ export async function importOne(ctx, vid, o = {}) {
       } catch (e) { warn = 'تعذّر جلب الترجمة'; }
     }
     /* 5) الرفع والتحقق */
+    if (ctx.stage) await ctx.stage('رفع الصوت والغلاف');
     const akey = 'a/yt' + vid + '.m4a', ckey = 'c/yt' + vid + '.jpg';
     await ctx.upload(akey, audio, 'audio/mp4');
     if (coverFile) await ctx.upload(ckey, coverFile, 'image/jpeg');
@@ -191,9 +197,11 @@ export async function importOne(ctx, vid, o = {}) {
 
 /* ---------- تشغيل دفعة ---------- */
 export async function runBatch(ctx, ids, o, onProgress) {
-  const res = {}; let i = 0;
+  const res = {}; let i = 0; ctx.stopped = false;
   for (const vid of ids) {
+    if (o.shouldStop && await o.shouldStop()) { ctx.stopped = true; break; }
     i++;
+    if (o.onStart) await o.onStart(vid, i, ids.length);
     try { res[vid] = await importOne(ctx, vid, Object.assign({}, o, { pl: (o.plOf && o.plOf[vid]) || [] })); }
     catch (e) { res[vid] = { st: 'fail', msg: friendlyErr(e.message) }; }
     if (onProgress) await onProgress(res, i, ids.length, vid);

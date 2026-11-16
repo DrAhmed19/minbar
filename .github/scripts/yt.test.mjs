@@ -149,3 +149,11 @@ test('قراءة القوائم المسطّحة', () => {
   assert.equal(L.videoEntries(l).length, 2); assert.equal(L.videoEntries(l)[1].x, 'بث مباشر');
   assert.deepEqual(L.playlistEntries(l), [{ id: 'PLabcdefghijklmnopqrstuv', t: 'قائمة' }]);
 });
+
+test('runBatch: الإيقاف يعمل بين الفيديوهات ويُبلّغ المراحل', async () => {
+  const m = await mk(); const stages = [], started = []; let n = 0;
+  m.ctx.stage = (s) => stages.push(s);
+  const res = await L.runBatch(m.ctx, ['aaaaaaaaaa1', 'bbbbbbbbbb1', 'cccccccccc1'], { shouldStop: () => n++ >= 1, onStart: (v) => started.push(v) }, null);
+  assert.deepEqual(Object.keys(res), ['aaaaaaaaaa1']); assert.equal(m.ctx.stopped, true); assert.deepEqual(started, ['aaaaaaaaaa1']);
+  assert.ok(stages.includes('تنزيل الصوت') && stages.includes('رفع الصوت والغلاف'));
+});

@@ -47,7 +47,9 @@
       const go = E.btn('wide primary', 'فحص الرابط', () => startList(u.value.trim(), go)); bx.appendChild(go);
       const dr = E.btn('wide', 'المسودات', () => drafts()); bx.appendChild(dr);
       try { col('ytDrafts').where('status', '==', 'draft').get().then((s) => { if (s.size) dr.textContent = 'المسودات (' + s.size + ')'; }).catch(() => {}); } catch (e) {}
-      bx.appendChild(E.btn('wide', 'القنوات المتابَعة (فحص يومي تلقائي)', () => sources()));
+      bx.appendChild(E.btn('wide', 'القنوات المتابَعة (فحص تلقائي مرتين يومياً)', () => sources()));
+      const op = E.btn('wide', 'العمليات (متابعة وتحكم)', () => ops()); bx.appendChild(op);
+      try { col('ytJobs').orderBy('upd', 'desc').limit(25).get().then((q) => { let n = 0; q.forEach((d) => { const j = d.data(); if ((j.mode === 'import') && ['run', 'wait', 'stale'].includes(stateOf(j)[0])) n++; }); if (n) op.textContent = 'العمليات (' + n + ' جارية أو مؤجلة)'; }).catch(() => {}); } catch (e) {}
       bx.appendChild(E.btn('wide', 'إغلاق', close));
     });
   }
@@ -118,7 +120,7 @@
         go.disabled = true;
         try { await col('ytJobs').doc(id).update({ sel: ids, opts: { reciter: r, cat: cat.value, subs: !!sb.checked }, mode: 'import', status: 'queued', phase: 'بانتظار التشغيل…', msg: '', res: {}, rest: [], done: 0, total: ids.length, upd: Date.now() }); await dispatch(id, 'import'); }
         catch (e) { go.disabled = false; return E.toast(e.message || 'فشل التشغيل'); }
-        progress('استيراد ' + ids.length + ' فيديو', id, (jj) => finish(jj));
+        opDetail(id);
       });
       bx.appendChild(go); bx.appendChild(E.btn('wide', 'رجوع', home)); draw();
     });
@@ -128,6 +130,91 @@
       bx.appendChild(E.el('p', 'hint cen', j.phase || ''));
       Object.entries(j.res || {}).filter(([, r]) => r.st !== 'ok').forEach(([v, r]) => bx.appendChild(E.el('div', 'ytl bad', (r.st === 'skip' ? '↷ ' : '✕ ') + v + ' — ' + r.msg)));
       bx.appendChild(E.btn('wide primary', 'فتح المسودات', drafts)); bx.appendChild(E.btn('wide', 'إغلاق', close));
+    });
+  }
+
+  /* ---------- العمليات: متابعة حية وتحكم حقيقي ---------- */
+  const thumb = (v) => 'https://i.ytimg.com/vi/' + v + '/mqdefault.jpg';
+  const STALE = 6 * 60e3;
+  const restOf = (j) => (j.rest || []).filter((v) => !(j.res && j.res[v]));
+  const cntOf = (j) => { const c = { ok: 0, skip: 0, fail: 0, wait: restOf(j).length }; Object.values(j.res || {}).forEach((r) => { if (c[r.st] != null) c[r.st]++; }); c.total = c.ok + c.skip + c.fail + c.wait; c.done = c.ok + c.skip + c.fail; return c; };
+  const stateOf = (j) => {
+    const left = restOf(j).length;
+    if (j.status === 'running') return Date.now() - (j.upd || 0) > STALE ? ['stale', 'توقفت بشكل غير متوقع'] : ['run', j.stop ? 'تتوقف بعد القصيدة الحالية…' : 'تعمل الآن'];
+    if (j.status === 'queued') return ['wait', Date.now() - (j.upd || 0) > 150000 ? 'لم تبدأ بعد' : 'بانتظار التشغيل'];
+    if (j.status === 'failed') return ['bad', 'فشلت'];
+    if (j.status === 'stopped' || (left && j.paused)) return ['stop', 'موقوفة'];
+    if (left) return ['wait', 'مؤجلة: تكمل تلقائياً'];
+    return ['ok', 'اكتملت'];
+  };
+  async function hardStop() {
+    const tk = await E.idTok();
+    const r = await fetch('api/yt/cancel', { method: 'POST', headers: { authorization: 'Bearer ' + tk, 'content-type': 'application/json' }, body: '{}' });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.ok) throw new Error(j.error || ('تعذّر الإيقاف (' + r.status + ')'));
+    const s = await col('ytJobs').get(), ps = [];
+    s.forEach((d) => { const x = d.data(); if (x.status === 'running' || x.status === 'queued') ps.push(d.ref.update({ status: 'stopped', paused: true, stop: false, cur: '', stage: '', phase: 'أُوقفت فوراً', upd: Date.now() })); });
+    await Promise.all(ps);
+  }
+  function ops() {
+    stop();
+    E.modal('العمليات', (bx, close) => {
+      bx.appendChild(E.el('p', 'hint', 'كل عمليات الاستيراد والفحص: تابع التقدّم، أوقف، أو أكمل. تعمل على سيرفر GitHub فلا تتأثر بإغلاق الموقع أو تحديثه.'));
+      const list = E.el('div', 'ytlist tall'); bx.appendChild(list);
+      const kill = E.btn('wide danger', 'إيقاف كل العمليات فوراً', async () => {
+        if (!confirm('إيقاف كل التشغيلات الجارية فوراً؟ ما استُورد يبقى، والباقي يُحفظ وتكمله لاحقاً.')) return;
+        kill.disabled = true; try { await hardStop(); E.toast('أُوقفت كل العمليات'); } catch (e) { E.toast(e.message || 'تعذّر الإيقاف'); } kill.disabled = false;
+      });
+      bx.append(kill, E.btn('wide', 'رجوع', home));
+      const draw = (docs) => {
+        list.textContent = ''; let n = 0;
+        docs.forEach((d) => {
+          const j = d.data(); if (!(j.mode === 'import' || d.id === 'scan')) return; n++;
+          const [k, lb] = stateOf(j), c = cntOf(j), r = E.el('button', 'ytop ' + k); r.type = 'button';
+          const nm = d.id === 'scan' ? 'فحص القنوات المتابَعة' : (j.title || (j.opts && j.opts.reciter) || 'استيراد');
+          const m = E.el('span'); m.append(E.el('b', '', nm), E.el('small', '', lb + (d.id === 'scan' ? (j.phase ? ' · ' + j.phase : '') : ' · ' + c.done + '/' + c.total + (c.fail ? ' · ✕' + c.fail : '') + (c.wait ? ' · بالانتظار ' + c.wait : ''))));
+          const bar = E.el('i', 'ytbar'); bar.style.setProperty('--p', c.total ? (c.done / c.total).toFixed(3) : (k === 'ok' ? 1 : 0)); m.appendChild(bar);
+          r.append(E.el('i', 'ytdot'), m); if (d.id !== 'scan') r.onclick = () => opDetail(d.id); list.appendChild(r);
+        });
+        if (!n) list.appendChild(E.el('p', 'hint cen', 'لا توجد عمليات بعد'));
+      };
+      let last = [], iv = setInterval(() => { if (!bx.isConnected) return clearInterval(iv); draw(last); }, 15000);
+      stop(); unsub = col('ytJobs').orderBy('upd', 'desc').limit(25).onSnapshot((s) => { if (!bx.isConnected) return stop(); last = s.docs || []; draw(last); }, (e) => E.toast('تعذّر التحميل: ' + (e.code || e.message)));
+    });
+  }
+  function opDetail(id) {
+    E.modal('عملية استيراد', (bx, close) => {
+      const ph = E.el('p', 'hint cen'), pr = E.el('div', 'upp'), now = E.el('div', 'ytnow'), ctl = E.el('div', 'ytctl'), tabs = E.el('div', 'ytch'), list = E.el('div', 'ytlist tall');
+      pr.innerHTML = '<i></i><span></span>'; bx.append(ph, pr, now, ctl, tabs, list, E.btn('wide', 'رجوع', ops));
+      let J = null, tab = 'wait', busy = false;
+      const upd = (o) => col('ytJobs').doc(id).update(Object.assign({ upd: Date.now() }, o));
+      const act = (fn) => async () => { if (busy) return; busy = true; try { await fn(); } catch (e) { E.toast(e.message || 'تعذّر التنفيذ'); } busy = false; if (J) draw(); };
+      const resume = async (extra) => { await upd(Object.assign({ stop: false, paused: false, resume: true, status: 'queued', phase: 'بانتظار التشغيل…', err: '' }, extra || {})); await dispatch(id, 'import'); };
+      function draw() {
+        const j = J, [k, lb] = stateOf(j), c = cntOf(j), tl = {}; (j.entries || []).forEach((e) => { tl[e.id] = e.t; });
+        ph.textContent = lb + (j.phase && k !== 'ok' ? ' — ' + j.phase : '') + (j.msg ? ' — ' + j.msg : ''); ph.classList.toggle('bad', k === 'bad' || k === 'stale');
+        pr.hidden = !c.total; pr.firstChild.style.width = c.total ? Math.round(100 * c.done / c.total) + '%' : '0'; pr.lastChild.textContent = c.done + '/' + c.total;
+        now.textContent = now.hidden = ''; now.hidden = !(k === 'run' && j.cur);
+        if (!now.hidden) { const im = E.el('img', 'ytth'); im.src = thumb(j.cur); im.alt = ''; const m = E.el('span'); m.append(E.el('b', '', j.curT || tl[j.cur] || j.cur), E.el('small', '', (j.stage || 'جارٍ…') + (j.curD ? ' · ' + fmt(j.curD) : ''))); now.append(im, m); }
+        ctl.textContent = '';
+        if (k === 'run') { ctl.append(E.btn('', j.stop ? 'جارٍ الإيقاف…' : 'إيقاف بعد الحالية', act(() => upd({ stop: true, paused: true }))), E.btn('danger', 'إيقاف فوري', act(async () => { if (!confirm('إيقاف فوري؟ القصيدة الجارية تُلغى وتُعاد لاحقاً.')) return; await hardStop(); })));
+          if (j.stop) ctl.firstChild.disabled = true; }
+        else {
+          if (c.wait || k === 'stale' || k === 'stop') ctl.appendChild(E.btn('primary', 'متابعة' + (c.wait ? ' (' + c.wait + ')' : ''), act(() => resume())));
+          if (c.fail) ctl.appendChild(E.btn('', 'إعادة الفاشلة (' + c.fail + ')', act(async () => { const bad = Object.entries(j.res || {}).filter(([, r]) => r.st === 'fail').map(([v]) => v), nr = {}; Object.entries(j.res || {}).forEach(([v, r]) => { if (r.st !== 'fail') nr[v] = r; }); await resume({ res: nr, rest: bad.concat(restOf(j)) }); })));
+          if (c.wait) ctl.appendChild(E.btn('danger', 'إلغاء المتبقي', act(async () => { if (!confirm('إلغاء المتبقي (' + c.wait + ')؟ لن يُستورد.')) return; await upd({ rest: [], paused: false, status: 'done', phase: 'أُلغي المتبقي' }); })));
+          if (c.ok) ctl.appendChild(E.btn('', 'المسودات', drafts));
+        }
+        const T = [['wait', 'بالانتظار', c.wait], ['ok', 'ناجحة', c.ok], ['fail', 'فاشلة', c.fail], ['skip', 'متخطّاة', c.skip]]; tabs.textContent = '';
+        T.forEach(([t, n, v]) => { const b = E.el('button', t === tab ? 'on' : '', n + ' ' + v); b.type = 'button'; b.onclick = () => { tab = t; draw(); }; tabs.appendChild(b); });
+        list.textContent = '';
+        const rows = tab === 'wait' ? restOf(j).map((v) => [v, '']) : Object.entries(j.res || {}).filter(([, r]) => r.st === tab).map(([v, r]) => [v, r.msg || '']);
+        rows.slice(0, 300).forEach(([v, msg]) => { const r = E.el('div', 'ytr' + (tab === 'fail' ? ' badr' : '') + (k === 'run' && v === j.cur ? ' curr' : '')), im = E.el('img', 'ytth'); im.src = thumb(v); im.loading = 'lazy'; im.alt = ''; const m = E.el('span'); m.append(E.el('b', '', (j.res && j.res[v] && j.res[v].title) || tl[v] || v), E.el('small', '', k === 'run' && v === j.cur ? (j.stage || 'جارٍ…') : (msg || (tab === 'wait' ? 'بالانتظار' : '')))); r.append(im, m); r.style.cursor = 'default'; list.appendChild(r); });
+        if (!rows.length) list.appendChild(E.el('p', 'hint cen', 'لا شيء هنا'));
+        if (rows.length > 300) list.appendChild(E.el('p', 'hint cen', 'يُعرض أول 300 من ' + rows.length));
+      }
+      watch(bx, col('ytJobs').doc(id), (j) => { J = j; draw(); });
+      const iv = setInterval(() => { if (!bx.isConnected) return clearInterval(iv); if (J) draw(); }, 8000);
     });
   }
 
@@ -234,5 +321,5 @@
     });
   }
 
-  window.YTIMP = { open(env) { if (!env || !env.isOwner || !env.isOwner()) return; E = env; home(); } };
+  window.YTIMP = { open(env, screen) { if (!env || !env.isOwner || !env.isOwner()) return; E = env; if (screen === 'ops') ops(); else home(); } };
 })();
