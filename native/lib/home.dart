@@ -262,7 +262,13 @@ class _HomeShellState extends State<HomeShell> {
           return Expanded(
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTap: () => setState(() => nav == 1 ? sub = i : msub = i),
+              onTap: () => setState(() {
+                if (nav == 1) {
+                  sub = i;
+                } else {
+                  msub = i;
+                }
+              }),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeOut,
