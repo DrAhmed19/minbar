@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:audio_session/audio_session.dart';
@@ -321,7 +322,7 @@ Widget _box(Widget child) => Container(
       child: child,
     );
 
-SliderThemeData _sth() => SliderThemeData(activeTrackColor: kGold, inactiveTrackColor: Colors.white12, thumbColor: kGold2, overlayColor: kGold.withOpacity(0.15), trackHeight: 6, thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 11, elevation: 3), overlayShape: const RoundSliderOverlayShape(overlayRadius: 20));
+SliderThemeData _sth() => SliderThemeData(activeTrackColor: kGold, inactiveTrackColor: Colors.white12, thumbColor: kGold2, overlayColor: kGold.withOpacity(0.15), trackHeight: 6, thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 11, elevation: 3), overlayShape: const RoundSliderOverlayShape(overlayRadius: 26));
 
 List<Widget> _bands(BuildContext c, StateSetter ss, VoidCallback edited) => [
       Container(
@@ -504,8 +505,13 @@ Widget _knob(StateSetter ss, VoidCallback edited, String k, String name) {
       padding: const EdgeInsets.fromLTRB(10, 14, 10, 12),
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), color: on ? const Color(0x14E8C468) : _card, border: Border.all(color: on ? const Color(0x59E8C468) : const Color(0x14FFFFFF))),
       child: Column(children: [
-      GestureDetector(
-        onPanUpdate: (d) {
+      RawGestureDetector(
+        behavior: HitTestBehavior.opaque,
+        gestures: {
+          _WinPan: GestureRecognizerFactoryWithHandlers<_WinPan>(() => _WinPan(), (r) {
+            r
+              ..dragStartBehavior = DragStartBehavior.down
+              ..onUpdate = (d) {
           // تدوير حقيقي حول مركز المقبض (60،55)
           final p = d.localPosition - const Offset(60, 55), q = p - d.delta;
           var da = math.atan2(p.dy, p.dx) - math.atan2(q.dy, q.dx);
@@ -514,8 +520,10 @@ Widget _knob(StateSetter ss, VoidCallback edited, String k, String name) {
           au.k[k] = (au.k[k]! + da / (math.pi * 1.5) * 100).clamp(0.0, 100.0);
           au.on[k] = au.k[k]! > 0;
           ss(() {});
+        }
+              ..onEnd = (_) => edited();
+          }),
         },
-        onPanEnd: (_) => edited(),
         child: SizedBox(width: 120, height: 110, child: CustomPaint(painter: _KnobPainter(au.k[k]! / 100, on))),
       ),
       const SizedBox(height: 8),
@@ -860,22 +868,30 @@ class _EqConsoleState extends State<EqConsole> with SingleTickerProviderStateMix
           Expanded(
             child: LayoutBuilder(builder: (_, fc) {
               final h = fc.maxHeight;
-              return GestureDetector(
+              return RawGestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onDoubleTap: () {
-                  au.eq[i] = 0;
-                  au.pre = 'custom';
-                  widget.onChange();
-                  widget.onEnd();
-                },
-                onVerticalDragStart: (_) {
-                  _acc[i] = au.eq[i];
-                  _snapped[i] = false;
-                },
-                onVerticalDragUpdate: (d) => _drag(i, d.delta.dy, h - 13),
-                onVerticalDragEnd: (_) {
-                  _snapped[i] = false;
-                  widget.onEnd();
+                gestures: {
+                  _WinVDrag: GestureRecognizerFactoryWithHandlers<_WinVDrag>(() => _WinVDrag(), (r) {
+                    r
+                      ..dragStartBehavior = DragStartBehavior.down
+                      ..onStart = (_) {
+                        _acc[i] = au.eq[i];
+                        _snapped[i] = false;
+                      }
+                      ..onUpdate = (d) => _drag(i, d.delta.dy, h - 13)
+                      ..onEnd = (_) {
+                        _snapped[i] = false;
+                        widget.onEnd();
+                      };
+                  }),
+                  DoubleTapGestureRecognizer: GestureRecognizerFactoryWithHandlers<DoubleTapGestureRecognizer>(() => DoubleTapGestureRecognizer(), (r) {
+                    r.onDoubleTap = () {
+                      au.eq[i] = 0;
+                      au.pre = 'custom';
+                      widget.onChange();
+                      widget.onEnd();
+                    };
+                  }),
                 },
                 child: CustomPaint(size: Size(fc.maxWidth, h), painter: _FaderPainter(au.eq[i], _snapped[i])),
               );
@@ -961,4 +977,34 @@ class _FaderPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_FaderPainter o) => o.v != v || o.snap != snap;
+}
+
+
+/// يفوز دائماً على تمرير الصفحة: اللمس على الفيدر أو المقبض ما يحرّك الصفحة
+class _WinVDrag extends VerticalDragGestureRecognizer {
+  _WinVDrag() {
+    gestureSettings = const DeviceGestureSettings(touchSlop: 2);
+  }
+  @override
+  void addAllowedPointer(PointerDownEvent event) {
+    super.addAllowedPointer(event);
+    resolve(GestureDisposition.accepted);
+  }
+
+  @override
+  void rejectGesture(int pointer) => acceptGesture(pointer);
+}
+
+class _WinPan extends PanGestureRecognizer {
+  _WinPan() {
+    gestureSettings = const DeviceGestureSettings(touchSlop: 2);
+  }
+  @override
+  void addAllowedPointer(PointerDownEvent event) {
+    super.addAllowedPointer(event);
+    resolve(GestureDisposition.accepted);
+  }
+
+  @override
+  void rejectGesture(int pointer) => acceptGesture(pointer);
 }
