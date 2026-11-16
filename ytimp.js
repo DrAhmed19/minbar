@@ -114,9 +114,9 @@
       const go = E.btn('wide primary', 'استيراد المحدد', async () => {
         const ids = items.filter((x) => x.sel && !x.off).map((x) => x.e.id), r = rec.value.trim();
         if (!ids.length) return E.toast('حدّد فيديو واحداً على الأقل'); if (!r) return E.toast('اكتب اسم الرادود');
-        if (ids.length > 60 && !confirm('سيستغرق الاستيراد نحو ' + Math.round(ids.length * 0.8 / 60 * 10) / 10 + ' ساعة. المتابعة؟')) return;
+        if (ids.length > 120 ? !confirm('العدد كبير: يُستورد 120 الآن والباقي (' + (ids.length - 120) + ') تلقائياً على دفعات، مرتين يومياً (نحو ' + Math.ceil((ids.length - 120) / 240) + ' يوم). المتابعة؟') : ids.length > 60 && !confirm('سيستغرق الاستيراد نحو ' + Math.round(ids.length * 0.8 / 60 * 10) / 10 + ' ساعة. المتابعة؟')) return;
         go.disabled = true;
-        try { await col('ytJobs').doc(id).update({ sel: ids, opts: { reciter: r, cat: cat.value, subs: !!sb.checked }, mode: 'import', status: 'queued', phase: 'بانتظار التشغيل…', msg: '', res: {}, done: 0, total: ids.length, upd: Date.now() }); await dispatch(id, 'import'); }
+        try { await col('ytJobs').doc(id).update({ sel: ids, opts: { reciter: r, cat: cat.value, subs: !!sb.checked }, mode: 'import', status: 'queued', phase: 'بانتظار التشغيل…', msg: '', res: {}, rest: [], done: 0, total: ids.length, upd: Date.now() }); await dispatch(id, 'import'); }
         catch (e) { go.disabled = false; return E.toast(e.message || 'فشل التشغيل'); }
         progress('استيراد ' + ids.length + ' فيديو', id, (jj) => finish(jj));
       });

@@ -104,16 +104,36 @@ async function modeList() {
   await jobPatch({ status: 'done', phase: 'جاهزة للاختيار', kind, title: clip(title, 120), entries, playlists });
 }
 
-async function modeImport() {
-  const job = await store.get('ytJobs/' + JOB); if (!job) throw new Error('لا توجد مهمة بهذا المعرّف');
-  const ids = [...new Set((job.sel || []).filter((x) => L.RE_ID.test(x)))].slice(0, 500); if (!ids.length) throw new Error('لم يُحدَّد أي فيديو');
+const CAP = 120;   // أقصى عدد قصائد في التشغيلة الواحدة؛ الباقي يُكمَل تلقائياً في التشغيلات التالية (مرتين يومياً)
+
+async function importJob(jid, resume) {
+  const jp = (o) => store.patch('ytJobs/' + jid, Object.assign({ upd: Date.now() }, o));
+  const job = await store.get('ytJobs/' + jid); if (!job) throw new Error('لا توجد مهمة بهذا المعرّف');
+  const reg = await registry();
+  const base = resume && Array.isArray(job.rest) ? job.rest : (job.sel || []);
+  const all = [...new Set(base.filter((x) => L.RE_ID.test(x)))].filter((v) => !(resume && (reg[v] === 'draft' || reg[v] === 'published')));
+  if (!all.length) { await jp({ status: 'done', rest: [], phase: 'اكتمل' }); return { ok: 0, skip: 0, fail: 0 }; }
+  const ids = all.slice(0, CAP), rest = all.slice(CAP);
   const o = job.opts || {}, plOf = {};
   (job.entries || []).forEach((e) => { if (e.p && e.p.length) plOf[e.id] = e.p.map((i) => job.playlists && job.playlists[i]).filter(Boolean).map((p) => ({ id: p.id, t: p.t })); });
-  await jobPatch({ status: 'running', phase: 'بدء الاستيراد (' + ids.length + ')', res: {}, done: 0, total: ids.length });
-  const res = await L.runBatch(ctx, ids, { reciter: o.reciter || '', cat: o.cat || 'لطميات', subs: o.subs !== false, plOf, job: JOB, names: [o.reciter, job.title], force: true },(r, i, n, vid) => jobPatch({ res: r, done: i, total: n, phase: '(' + i + '/' + n + ') ' + clip((job.entries.find((e) => e.id === vid) || {}).t, 60) }));
-  const c = { ok: 0, skip: 0, fail: 0 }; Object.values(res).forEach((r) => { c[r.st]++; });
-  await jobPatch({ status: 'done', phase: 'اكتمل: ' + c.ok + ' مسودة' + (c.skip ? ' · ' + c.skip + ' متخطّاة' : '') + (c.fail ? ' · ' + c.fail + ' فشلت' : ''), res, done: ids.length, total: ids.length });
+  const prev = (resume && job.res) || {}, tot0 = resume ? (job.total || 0) : all.length;
+  await jp({ status: 'running', phase: 'بدء الاستيراد (' + ids.length + ')', res: prev, done: 0, total: ids.length, rest: all, tot: tot0 || all.length });
+  const res = await L.runBatch(ctx, ids, { reciter: o.reciter || '', cat: o.cat || 'لطميات', subs: o.subs !== false, plOf, job: jid, names: [o.reciter, job.title], force: true }, (r, i, n, vid) => jp({ res: Object.assign({}, prev, r), done: i, total: n, phase: '(' + i + '/' + n + ') ' + clip(((job.entries || []).find((e) => e.id === vid) || {}).t, 60) }));
+  const merged = Object.assign({}, prev, res), c = { ok: 0, skip: 0, fail: 0 }; Object.values(merged).forEach((r) => { c[r.st]++; });
+  await jp({ status: 'done', rest, res: merged, done: ids.length, total: ids.length, phase: 'اكتمل: ' + c.ok + ' مسودة' + (c.skip ? ' · ' + c.skip + ' متخطّاة' : '') + (c.fail ? ' · ' + c.fail + ' فشلت' : '') + (rest.length ? ' · تبقّى ' + rest.length + ' تُستورد تلقائياً في التشغيلات القادمة' : '') });
+  return c;
+}
+
+async function modeImport() {
+  const c = await importJob(JOB, false);
   if (c.fail && !c.ok) process.exitCode = 1;
+}
+
+/* إكمال الدفعات المتبقية من مهام استيراد كبيرة (دفعة واحدة لكل تشغيل) */
+async function drainQueue() {
+  const q = (await store.list('ytJobs', ['rest', 'mode'])).filter((j) => j.id !== JOB && Array.isArray(j.rest) && j.rest.length);
+  if (!q.length) return '';
+  try { const c = await importJob(q[0].id, true); return 'إكمال الطابور: ' + c.ok + ' مسودة' + (c.fail ? ' · فشل ' + c.fail : ''); } catch (e) { return 'إكمال الطابور: ' + L.friendlyErr(e.message); }
 }
 
 async function modeScan() {
@@ -145,6 +165,7 @@ async function modeScan() {
       lines.push((s.name || s.url) + ': ' + (ok ? ok + ' جديدة' : 'لا جديد') + (fail ? ' · فشل ' + fail : ''));
     } catch (e) { nFail++; lines.push((s.name || s.url) + ': ' + L.friendlyErr(e.message)); await store.patch('ytSrc/' + s.id, { last: { at: Date.now(), n: 0, msg: L.friendlyErr(e.message) } }).catch(() => {}); }
   }
+  const qm = await drainQueue(); if (qm) lines.push(qm);
   await store.patch('ytJobs/' + JOB, { upd: Date.now(), status: 'done', phase: nNew ? 'أُضيفت ' + nNew + ' مسودة جديدة' : 'لا جديد', msg: lines.join(' | ').slice(0, 900), nNew });
   if (nFail && !nNew && srcs.length) process.exitCode = 1;
 }

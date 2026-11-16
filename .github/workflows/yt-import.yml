@@ -6,7 +6,8 @@ on:
       job: { description: 'معرّف المهمة', required: true }
       mode: { description: 'list | import | scan', required: true, default: scan }
   schedule:
-    - cron: '17 3 * * *'   # 06:17 بتوقيت بغداد يومياً
+    - cron: '17 3 * * *'   # 06:17 بتوقيت بغداد
+    - cron: '17 15 * * *'  # 18:17 بتوقيت بغداد (فحص القنوات وإكمال طابور الاستيراد الكبير)
 concurrency: { group: yt-import, cancel-in-progress: false }
 permissions: { contents: read }
 jobs:
