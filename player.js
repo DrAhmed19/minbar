@@ -1454,6 +1454,17 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   swipe(g('plrTp'), [g('plrTp')], () => tp(false), g('plrTp'));  swipe(g('plrAdm'), [g('plrAdm')], () => admShow(false), g('plrAdm')); swipe(g('plrAu'), [g('plrAu').querySelector('.gr'), g('plrAu').querySelector('.auh')], () => au(false)); swipe(g('plrCm'), [g('plrCm')], () => cmS(false), g('plrCmList')); swipe(g('plrCv'), [g('plrCv')], cvClose);
   swipe(g('plrLys'), [g('plrLyH')], closeLys);
   swipe(g('plrFull'), [g('plrFull')], closeFull);
+  /* السحب للأسفل للتحديث: علامة منبر + إعادة تحميل الكتالوج، وتحديث تلقائي بعد غياب طويل */
+  (function () {
+    const body = g('plrBody'); if (!body) return; const ind = el('div', 'ptr'); ind.innerHTML = '<img src="icons/brand-mark.png" alt="">'; root.appendChild(ind);
+    let y0 = 0, dy = 0, on = false, busy = false;
+    const reload = async () => { busy = true; ind.classList.add('spin'); try { const r = await (navigator.serviceWorker && navigator.serviceWorker.getRegistration()); if (r) await r.update(); } catch (e) {} setTimeout(() => location.reload(), 350); };
+    body.addEventListener('touchstart', (e) => { if (busy || body.scrollTop > 0 || e.touches.length !== 1) return; on = true; y0 = e.touches[0].clientY; dy = 0; }, { passive: true });
+    body.addEventListener('touchmove', (e) => { if (!on) return; dy = e.touches[0].clientY - y0; if (dy <= 0 || body.scrollTop > 0) { ind.style.transform = ''; ind.style.opacity = 0; return; } const p = Math.min(dy * 0.5, 90); ind.style.opacity = Math.min(1, p / 50); ind.style.transform = 'translate(-50%,' + p + 'px) rotate(' + p * 4 + 'deg)'; }, { passive: true });
+    const end = () => { if (!on) return; on = false; if (dy * 0.5 > 64) { ind.style.transform = 'translate(-50%,64px)'; reload(); } else { ind.style.transform = ''; ind.style.opacity = 0; } };
+    body.addEventListener('touchend', end); body.addEventListener('touchcancel', end);
+    let hid = 0; document.addEventListener('visibilitychange', () => { if (document.hidden) hid = Date.now(); else if (hid && Date.now() - hid > 600000 && A.paused && !busy) location.reload(); });
+  })();
   /* زر الرجوع: يغلق أعلى طبقة مفتوحة، ويرجع true إذا تعامل معها */
   function back() {
     if (root.hidden) return false;

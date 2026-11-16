@@ -1660,3 +1660,9 @@ textarea.mdin{resize:none}
 
 .plrau .aupn{scrollbar-width:none}.plrau .aupn::-webkit-scrollbar{display:none}
 .plrau,.plrau *{scrollbar-width:none}
+
+/* السحب للتحديث */
+.ptr{position:absolute;top:calc(64px + env(safe-area-inset-top));left:50%;width:44px;height:44px;margin-left:0;transform:translate(-50%,0);opacity:0;z-index:30;border-radius:50%;background:#0C4A39;box-shadow:0 6px 20px rgba(0,0,0,.3);display:grid;place-items:center;pointer-events:none;transition:opacity .2s}
+.ptr img{width:26px;height:26px}
+.ptr.spin img{animation:ptrs .9s linear infinite}.ptr.spin{opacity:1!important}
+@keyframes ptrs{to{transform:rotate(360deg)}}
