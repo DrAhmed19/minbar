@@ -22,9 +22,25 @@
   const field = (bx, ph, v) => { const i = E.el('input', 'mdin'); i.placeholder = ph; i.value = v || ''; bx.appendChild(i); return i; };
   const catSel = (bx, v) => { const s = E.el('select', 'mdin'); [...new Set(CATS.concat(E.tracks().map((x) => x.cat).filter(Boolean)))].forEach((c) => { const o = E.el('option', '', c); o.value = c; s.appendChild(o); }); s.value = v || CATS[0]; bx.appendChild(s); return s; };
 
+  /* تصحيح تاريخ القصائد المستوردة سابقاً (التي نُشرت قبل إضافة التاريخ): يُضبط على تاريخ نشرها بيوتيوب مرة واحدة */
+  let bfDone = false;
+  async function backfill() {
+    if (bfDone || !E.tracks().length) return; bfDone = true;
+    try {
+      const L = []; (await col('ytDrafts').where('status', '==', 'published').get()).forEach((x) => L.push(x.data()));
+      const T = E.tracks(), ALB = E.ALB(); let n = 0;
+      for (const d of L) {
+        const ms = dateMs(d.ud), t = ms && d.trackId && T.find((x) => x.id === d.trackId);
+        if (t && !t.atYt && t.at !== ms) { await col('tracks').doc(t.id).update({ at: ms, atYt: 1 }); t.at = ms; t.atYt = 1; n++; }
+      }
+      for (const a of Object.values(ALB)) { if (!a.yt) continue; const mx = Math.max(0, ...T.filter((x) => x.album === a.id && x.atYt).map((x) => x.at || 0)); if (mx && mx !== a.at) { await col('albums').doc(a.id).update({ at: mx }); a.at = mx; n++; } }
+      if (n) { E.toast('صُحّح تاريخ ' + n + ' عنصر حسب تاريخ نشره بيوتيوب'); E.fsLoad(); }
+    } catch (e) { bfDone = false; }
+  }
+
   /* ---------- الرئيسية ---------- */
   function home() {
-    stop();
+    stop(); backfill();
     E.modal('استيراد من يوتيوب', (bx, close) => {
       bx.appendChild(E.el('p', 'hint', 'ألصق رابط فيديو أو قائمة تشغيل أو قناة (يوتيوب أو يوتيوب ميوزك). تُحفظ القصائد مسودات، وتراجعها قبل النشر.'));
       const u = field(bx, 'رابط يوتيوب'); u.dir = 'ltr'; u.inputMode = 'url';
@@ -116,21 +132,25 @@
   }
 
   /* ---------- المسودات ---------- */
+  /* تاريخ النشر على يوتيوب (YYYYMMDD) ← وقت بالميلي ثانية، به تُرتَّب القصائد والإصدارات */
+  const dateMs = (u) => { const m = /^(\d{4})(\d\d)(\d\d)$/.exec(String(u || '')); return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], 12) : 0; };
   async function publish(d, f) {
-    const ALB = E.ALB(), title = f.ti.value.trim(), reciter = f.re.value.trim();
+    const ALB = E.ALB(), title = f.ti.value.trim(), reciter = f.re.value.trim(), rel = dateMs(d.ud);
     if (!title || !reciter) throw new Error('العنوان والرادود مطلوبان');
     let alb = f.al.value, coverUsed = false;
     if (alb.indexOf('new:') === 0) {
       const plid = alb.slice(4), pl = (d.pl || []).find((p) => p.id === plid) || { t: 'إصدار' }, ex = Object.values(ALB).find((a) => a.yt === plid);
       if (ex) alb = ex.id;
       else {
-        alb = 'al' + Date.now().toString(36); const ad = { name: pl.t, reciter, at: Date.now(), yt: plid };
+        alb = 'al' + Date.now().toString(36); const ad = { name: pl.t, reciter, at: rel || Date.now(), yt: plid };
         if (d.cover) { try { const b = await (await fetch(d.cover)).blob(); const r = await E.upPut('c/' + alb + Date.now().toString(36) + '.jpg', b, 'image/jpeg'); ad.cover = r.url.replace(/^\//, ''); } catch (e) {} }
         await col('albums').doc(alb).set(ad); ALB[alb] = Object.assign({ id: alb }, ad);
       }
     }
+    if (alb && rel && ALB[alb] && rel > (ALB[alb].at || 0)) { await col('albums').doc(alb).update({ at: rel }); ALB[alb].at = rel; }   // الإصدار يتبع أحدث قصائده
     const id = 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    const o = { title, reciter, poet: f.po.value.trim(), cat: f.cat.value, upd: Date.now(), at: Date.now(), audio: d.audio, size: d.size || 0, dur: d.dur || 0, yt: d.vid };
+    const o = { title, reciter, poet: f.po.value.trim(), cat: f.cat.value, upd: Date.now(), at: rel || Date.now(), audio: d.audio, size: d.size || 0, dur: d.dur || 0, yt: d.vid };
+    if (rel) o.atYt = 1;
     if (alb) o.album = alb; else if (d.cover) { o.cover = d.cover; coverUsed = true; }
     let EN = null; try { EN = await E.energyOf(await (await fetch(d.audio)).blob()); o.sample = E.bestSegE(EN); } catch (e) {}
     await col('tracks').doc(id).set(o, { merge: true });

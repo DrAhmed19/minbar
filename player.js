@@ -1775,6 +1775,8 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
         const s2 = cv.nextSibling; if (!cv.files[0]) s2.textContent = v ? 'غلاف خاص بهذه القصيدة (اختياري — وإلا غلاف الإصدار)' : (ed ? 'استبدال الغلاف (اختياري)' : 'صورة الغلاف (اختياري)'); }; ab.onchange = abUi; abUi();
       const lyT = el('textarea', 'mdin lyta'); lyT.rows = 6; lyT.placeholder = 'كلمات القصيدة (اختياري) — الصق النص كاملاً واترك سطراً فارغاً بين المقاطع.\nأول مقطع هو المستهل ويتوزّع بعد كل مقطع، ثم تضبط الأوقات من المحرر.'; const curL = t ? linesOf(t) : []; lyT.value = curL.map((x) => x.l).join('\n'); bx.appendChild(lyT); const lyOrig = lyT.value.trim();
       const smI = inp('بداية العينة (اختياري، مثل 1:25)', t && t.sample ? fmt(t.sample.a) : '');
+      /* تاريخ النشر الأصلي: به تُرتَّب القصائد (وليس تاريخ إضافتها) */
+      bx.appendChild(el('small', 'hint', 'تاريخ نشر القصيدة (به يُرتَّب العرض، اتركه فارغاً لتاريخ اليوم)')); const dI = el('input', 'mdin'); dI.type = 'date'; const d0 = t && t.at ? new Date(t.at).toISOString().slice(0, 10) : ''; dI.value = d0; bx.appendChild(dI);
       const pr = el('div', 'upp'); pr.innerHTML = '<i></i><span></span>'; pr.hidden = true; bx.appendChild(pr);
       const setP = (f, m) => { pr.hidden = false; pr.firstChild.style.width = Math.round(f * 100) + '%'; pr.lastChild.textContent = m; };
       const go = el('button', 'pri', ed ? 'حفظ التعديلات' : 'رفع القصيدة'); go.type = 'button'; bx.appendChild(go); const cn = el('button', 'cn', 'إلغاء'); cn.type = 'button'; cn.onclick = close; bx.appendChild(cn);
@@ -1791,7 +1793,8 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
           if (cf) { setP(0.88, 'رفع الغلاف…'); const b = await coverJpg(cf); const r = await upPut('c/' + id + Date.now().toString(36) + '.jpg', b, 'image/jpeg'); if (ed && keyOf(t.ownCover)) old.push(keyOf(t.ownCover)); o.cover = r.url.replace(/^\//, ''); }
           const lyN = lyT.value.trim(), lyCh = lyN !== lyOrig || (af && lyN); let lyLines = null;
           if (lyCh && lyN) lyLines = lyN;
-          setP(0.95, 'حفظ البيانات…'); if (!ed) o.at = Date.now(); await db.collection('tracks').doc(id).set(o, { merge: true }); old.forEach(upDelKey);
+          if (dI.value && dI.value !== d0) { o.at = Date.parse(dI.value + 'T12:00:00Z'); o.atYt = 1; }
+          setP(0.95, 'حفظ البيانات…'); if (!ed && !o.at) o.at = Date.now(); await db.collection('tracks').doc(id).set(o, { merge: true }); old.forEach(upDelKey);
           if (lyLines) { try { await lySaveText(ed ? t : { id, title: T }, lyLines, o.dur || (t && t.dur), EN); } catch (e) {} }
           setP(1, 'تم'); toast(ed ? 'حُفظت التعديلات' : 'أُضيفت القصيدة'); close(); fsLoad(); } catch (e) { go.disabled = false; cn.disabled = false; setP(0, e.message || 'فشل الرفع'); toast(e.message || 'فشل الرفع'); } };
     }); }
