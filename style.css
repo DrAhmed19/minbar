@@ -1752,3 +1752,20 @@ textarea.mdin{resize:none}
 .plrfull[data-th] .plrdock button.tg{color:#fff!important;opacity:.6!important;background:none!important}
 .plrfull[data-th] .plrdock button.tg.on{color:var(--thA,#E8C468)!important;opacity:1!important}
 .plrau .sl .th.snap{box-shadow:0 0 0 4px color-mix(in srgb,var(--ac) 35%,transparent),0 2px 10px rgba(0,0,0,.5)!important;transform:scale(1.12)}
+
+/* ===== النطاقات: لوحة استوديو ===== */
+.plrau .eqw{background:#07120d!important;border:1px solid #1f3a2c!important;box-shadow:inset 0 0 24px rgba(47,191,143,.12),inset 0 1px 0 rgba(255,255,255,.04)!important;height:180px}
+.plrau .bands{background:linear-gradient(180deg,#1b1611,#120e0a)!important;border:1px solid #2f271f!important;padding:10px 4px!important;gap:3px!important;height:auto!important;min-height:300px;max-height:none!important}
+.plrau .bnd{flex:1;display:flex!important;flex-direction:column;align-items:center;gap:6px!important;padding:8px 0 6px!important;border-radius:8px!important;background:#1d1813!important;box-shadow:inset 0 0 0 1px #2a2219!important}
+.plrau .bnd+.bnd::before{display:none}
+.plrau .bnd .led{order:0;display:block;width:8px;height:44px;border-radius:2px;position:relative;background:repeating-linear-gradient(180deg,transparent 0 3px,#1d1813 3px 5px),linear-gradient(180deg,#e0503c 0 14%,#e8c468 14% 36%,#2fbf8f 36% 100%)}
+.plrau .bnd .led::after{content:"";position:absolute;left:0;right:0;top:0;height:calc((1 - var(--lv,0)) * 100%);background:rgba(18,14,10,.82);transition:height .08s linear}
+.plrau .bnd>b{order:1;font:600 9px ui-monospace,Menlo,monospace!important;color:#7be2b8!important;background:#07120d;border:1px solid #1f3a2c;border-radius:4px;padding:2px 0;width:calc(100% - 6px);text-align:center}
+.plrau .bnd .sl.v{order:2;flex:1;min-height:150px;width:24px!important}
+.plrau .bnd>span{order:3;font-size:9px!important;color:#b3a78f!important;background:#26201a;border-radius:4px;padding:2px 0;width:calc(100% - 6px);text-align:center}
+.plrau .bnd .sl.v .tr{width:4px!important;margin-left:-2px!important;background:#050403!important;box-shadow:0 0 0 1px #2f271f}
+.plrau .bnd .sl.v .tr::after{left:-8px;right:-8px;background:rgba(255,255,255,.4)}
+.plrau .bnd .sl.v .fl{background:linear-gradient(0deg,#b8913a,#F4D77E)!important;opacity:.8}
+.plrau .bnd .sl.v .th{width:22px!important;height:13px!important;border-radius:3px!important;margin:0 0 -6.5px -11px!important;border:0!important;background:linear-gradient(180deg,#e6dfcc,#a9a08a)!important;box-shadow:0 2px 6px rgba(0,0,0,.6),inset 0 -1px 0 rgba(0,0,0,.25)!important}
+.plrau .bnd .sl.v .th::after{content:"";position:absolute;left:2px;right:2px;top:50%;height:2px;margin-top:-1px;background:#d2553f}
+.plrau .bnd .sl.v .th.snap{box-shadow:0 0 0 3px rgba(123,226,184,.45),0 2px 6px rgba(0,0,0,.6)!important}
