@@ -520,7 +520,11 @@ class _CurvePainter extends CustomPainter {
 Widget _knob(StateSetter ss, VoidCallback edited, String k, String name) {
   final on = au.on[k] == true;
   return Expanded(
-    child: _box(Column(children: [
+    child: Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.fromLTRB(10, 14, 10, 12),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), color: on ? const Color(0x14E8C468) : _card, border: Border.all(color: on ? const Color(0x59E8C468) : const Color(0x14FFFFFF))),
+      child: Column(children: [
       GestureDetector(
         onPanUpdate: (d) {
           // تدوير حقيقي حول مركز المقبض (60،55)
@@ -548,7 +552,8 @@ Widget _knob(StateSetter ss, VoidCallback edited, String k, String name) {
           child: Row(mainAxisSize: MainAxisSize.min, children: [PIcon(Ic.power, color: on ? kGold : Colors.white60, size: 15), const SizedBox(width: 6), Text(name, style: tx(13.5, c: on ? kGold : Colors.white70))]),
         ),
       ),
-    ])),
+    ]),
+    ),
   );
 }
 
@@ -611,20 +616,23 @@ class _KnobPainter extends CustomPainter {
 List<Widget> _adv(StateSetter ss, VoidCallback edited) {
   Widget row(String t, String val, String lo, String hi, double v, double mn, double mx, ValueChanged<double> f, VoidCallback end) => _box(Column(children: [
         Row(children: [Text(t, style: tx(15, c: Colors.white)), const Spacer(), Text(val, style: tx(14, c: kGold))]),
-        Row(children: [
-          Text(lo, style: tx(12, c: Colors.white54)),
-          Expanded(child: SliderTheme(data: _sth(), child: Slider(value: v.clamp(mn, mx), min: mn, max: mx, onChanged: f, onChangeEnd: (_) => end()))),
-          Text(hi, style: tx(12, c: Colors.white54)),
-        ]),
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: Row(children: [
+            Text(lo, style: tx(12, c: Colors.white54)),
+            Expanded(child: SliderTheme(data: _sth(), child: Slider(value: v.clamp(mn, mx), min: mn, max: mx, onChanged: f, onChangeEnd: (_) => end()))),
+            Text(hi, style: tx(12, c: Colors.white54)),
+          ]),
+        ),
       ]));
   final pc = app.player;
   return [
-    row('طبقة الصوت', au.pitch.toStringAsFixed(1), '+12', '-12', -au.pitch, -12, 12, (v) {
-      au.pitch = -(v * 2).round() / 2;
+    row('طبقة الصوت', au.pitch.toStringAsFixed(1), '-12', '+12', au.pitch, -12, 12, (v) {
+      au.pitch = (v * 10).round() / 10;
       ss(() {});
     }, edited),
-    row('سرعة التشغيل', '×${pc.speed.toStringAsFixed(2)}', '2×', '0.5×', 2.5 - pc.speed, 0.5, 2, (v) {
-      pc.setSpeed(((2.5 - v) * 20).round() / 20);
+    row('سرعة التشغيل', '×${pc.speed.toStringAsFixed(2)}', '0.5×', '2×', pc.speed, 0.5, 2, (v) {
+      pc.setSpeed((v * 20).round() / 20);
       ss(() {});
     }, () {}),
     Row(children: [_knob(ss, edited, 'rev', 'الترديد'), const SizedBox(width: 10), _knob(ss, edited, 'wid', 'اتساع المجال')]),
