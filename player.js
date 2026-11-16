@@ -1205,7 +1205,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     const lk = (key, v, a, b) => { AU.L = AU.L || {}; if (!!AU.L[key] === v || !a || !b) return; try { v ? a.connect(b) : a.disconnect(b); } catch (e) {} AU.L[key] = v; };
     lk('cv', rv > 0, AU.agm2, AU.cv); lk('ed', ec > 0, AU.agm2, AU.ed); lk('fd', !!s.fl, AU.fsrc, AU.fd); lk('ps', on, AU.psIn, AU.ps); set(AU.psDry.gain, on ? 0 : 1); set(AU.psWet.gain, on ? 1 : 0); if (AU.ps) AU.ps.parameters.get('ratio').setValueAtTime(Math.pow(2, ps / 12), T); set(AU.lim.threshold, s.lim ? -1 : 0); set(AU.lim.ratio, s.lim ? 20 : 1);
   }
-  const au = (on) => { g('plrAu').hidden = !on; g('plrBg').hidden = !on; g('plrAuPL').hidden = true; g('plrTg').classList.toggle('on', on); if (on) { auUi(); eqStart(); } };
+  const au = (on) => { g('plrAu').hidden = !on; g('plrBg').hidden = !on; g('plrAuPL').hidden = true; g('plrTg').classList.toggle('on', on); const thSet = () => { g('plrAu').dataset.th = String(st.au.pre || 'flat').replace(/[^a-z0-9]/gi, '').slice(0, 12) || 'flat'; }; clearInterval(AU.thIv); if (on) { thSet(); AU.thIv = setInterval(thSet, 250); auUi(); eqStart(); } };
   g('plrAuX').onclick = () => au(false); g('plrAuR').onclick = () => {
     const s = st.au, k = g('plrAuT').querySelector('.on').dataset.k, d = AUD();
     if (k === 'b') { s.eq = Z12(); s.preamp = 0; s.lim = true; }
