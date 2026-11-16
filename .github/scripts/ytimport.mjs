@@ -139,6 +139,31 @@ async function modeImport() {
   if (c.fail && !c.ok) process.exitCode = 1;
 }
 
+/* تصحيح الصور: القصائد المنشورة بلا صورة خاصة تأخذ صورتها من يوتيوب (مربّعة 1000px) بدل صورة الإصدار */
+async function modeCovers() {
+  await jobPatch({ status: 'running', phase: 'فحص القصائد المنشورة…', done: 0, total: 0, msg: '' });
+  const todo = [];
+  for (const d of (await store.list('ytDrafts', ['status', 'trackId', 'covFix'])).filter((x) => x.status === 'published' && x.trackId && !x.covFix)) {
+    const t = await store.get('tracks/' + d.trackId);
+    if (t && !t.cover && !t.covYt) todo.push({ vid: d.id, tid: d.trackId }); else await store.patch('ytDrafts/' + d.id, { covFix: 1 });   // سليمة أو محذوفة: تُعلَّم ولا تُفحص ثانية
+  }
+  let ok = 0, fail = 0; const bad = [];
+  for (let i = 0; i < todo.length; i++) {
+    const { vid, tid } = todo[i]; await jobPatch({ total: todo.length, done: i, phase: '(' + (i + 1) + '/' + todo.length + ')' });
+    try {
+      let buf = null;
+      for (const n of ['maxresdefault', 'sddefault', 'hqdefault']) { const r = await fetch('https://i.ytimg.com/vi/' + vid + '/' + n + '.jpg'); if (r.ok) { const b = Buffer.from(await r.arrayBuffer()); if (b.length > 4000) { buf = b; break; } } }
+      if (!buf) throw new Error('لا توجد صورة في يوتيوب');
+      const src = path.join(WORK, 'cv-' + vid + '.jpg'), out = path.join(WORK, 'cvq-' + vid + '.jpg'); await writeFile(src, buf);
+      await run('ffmpeg', ['-y', '-v', 'error', '-i', src, '-vf', "crop='min(iw,ih)':'min(iw,ih)',scale=1000:1000:flags=lanczos", '-q:v', '3', out]);
+      await upload('c/yt' + vid + '.jpg', out, 'image/jpeg');
+      await store.patch('tracks/' + tid, { cover: 'media/u/c/yt' + vid + '.jpg', covYt: 1 }); await store.patch('ytDrafts/' + vid, { covFix: 1 }); ok++;
+    } catch (e) { fail++; bad.push(vid + ': ' + L.friendlyErr(e.message)); }
+  }
+  await jobPatch({ status: 'done', done: todo.length, total: todo.length, phase: todo.length ? 'صُحّحت ' + ok + ' قصيدة' + (fail ? ' · فشلت ' + fail : '') : 'لا شيء يحتاج تصحيحاً', msg: bad.slice(0, 5).join(' | ').slice(0, 600) });
+  if (fail && !ok) process.exitCode = 1;
+}
+
 /* إكمال الدفعات المتبقية من مهام استيراد كبيرة (دفعة واحدة لكل تشغيل) */
 async function drainQueue() {
   const q = (await store.list('ytJobs', ['rest', 'paused'])).filter((j) => j.id !== JOB && !j.paused && Array.isArray(j.rest) && j.rest.length);
@@ -183,7 +208,7 @@ async function modeScan() {
 try {
   await mkdir(WORK, { recursive: true });
   console.log('yt-dlp js-runtimes:', JSR, '· cookies:', !!COOKIES, '· mode:', MODE, '· job:', JOB);
-  if (MODE === 'list') await modeList(); else if (MODE === 'import') await modeImport(); else if (MODE === 'scan') await modeScan(); else throw new Error('نمط غير معروف: ' + MODE);
+  if (MODE === 'list') await modeList(); else if (MODE === 'import') await modeImport(); else if (MODE === 'scan') await modeScan(); else if (MODE === 'covers') await modeCovers(); else throw new Error('نمط غير معروف: ' + MODE);
 } catch (e) {
   console.error('::error::' + e.message);
   try { await jobPatch({ status: 'failed', phase: 'فشل', msg: L.friendlyErr(e.message) }); } catch (x) { console.error('تعذّر تسجيل الفشل:', x.message); }

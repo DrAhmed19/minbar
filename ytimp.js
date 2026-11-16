@@ -47,11 +47,20 @@
       const go = E.btn('wide primary', 'فحص الرابط', () => startList(u.value.trim(), go)); bx.appendChild(go);
       const dr = E.btn('wide', 'المسودات', () => drafts()); bx.appendChild(dr);
       try { col('ytDrafts').where('status', '==', 'draft').get().then((s) => { if (s.size) dr.textContent = 'المسودات (' + s.size + ')'; }).catch(() => {}); } catch (e) {}
-      bx.appendChild(E.btn('wide', 'القنوات المتابَعة (فحص تلقائي مرتين يومياً)', () => sources()));
       const op = E.btn('wide', 'العمليات (متابعة وتحكم)', () => ops()); bx.appendChild(op);
+      try { col('ytDrafts').where('status', '==', 'published').get().then((q) => { let n = 0; q.forEach((x) => { const d = x.data(); if (d.trackId && !d.covFix) n++; }); if (n) bx.insertBefore(E.btn('wide primary', 'تصحيح صور القصائد المنشورة (' + n + ')', () => fixCovers()), op); }).catch(() => {}); } catch (e) {}
+      bx.appendChild(E.btn('wide', 'القنوات المتابَعة (فحص تلقائي مرتين يومياً)', () => sources()));
       try { col('ytJobs').orderBy('upd', 'desc').limit(25).get().then((q) => { let n = 0; q.forEach((d) => { const j = d.data(); if ((j.mode === 'import') && ['run', 'wait', 'stale'].includes(stateOf(j)[0])) n++; }); if (n) op.textContent = 'العمليات (' + n + ' جارية أو مؤجلة)'; }).catch(() => {}); } catch (e) {}
       bx.appendChild(E.btn('wide', 'إغلاق', close));
     });
+  }
+
+  /* تصحيح القصائد المنشورة سابقاً: كانت تأخذ صورة الإصدار؛ يُعاد جلب صورة كل قصيدة من يوتيوب (على GitHub) وتُربط بها */
+  async function fixCovers() {
+    const id = jid('cv');
+    try { await col('ytJobs').doc(id).set({ mode: 'covers', status: 'queued', phase: 'بانتظار التشغيل…', upd: Date.now() }); await dispatch(id, 'covers'); }
+    catch (e) { return E.toast(e.message || 'فشل التشغيل'); }
+    progress('تصحيح صور القصائد', id, (j) => { E.fsLoad(); E.toast(j.phase || 'تم'); home(); });
   }
 
   async function startList(url, goBtn) {
@@ -238,11 +247,12 @@
     const id = 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     const o = { title, reciter, poet: f.po.value.trim(), cat: f.cat.value, upd: Date.now(), at: rel || Date.now(), audio: d.audio, size: d.size || 0, dur: d.dur || 0, yt: d.vid };
     if (rel) o.atYt = 1;
-    if (alb) o.album = alb; else if (d.cover) { o.cover = d.cover; coverUsed = true; }
+    if (alb) o.album = alb;
+    if (d.cover) { o.cover = d.cover; o.covYt = 1; coverUsed = true; }   // صورة القصيدة نفسها لها الأولوية على صورة الإصدار
     let EN = null; try { EN = await E.energyOf(await (await fetch(d.audio)).blob()); o.sample = E.bestSegE(EN); } catch (e) {}
     await col('tracks').doc(id).set(o, { merge: true });
     if (f.sb && f.sb.checked && d.subs && d.subs.length) { try { await E.lySaveText({ id, title }, d.subs.map((x) => x.l).join('\n'), o.dur, EN); } catch (e) {} }
-    await col('ytDrafts').doc(d.vid).update({ status: 'published', trackId: id, albumId: alb || '', pub: Date.now() });
+    await col('ytDrafts').doc(d.vid).update({ status: 'published', covFix: 1, trackId: id, albumId: alb || '', pub: Date.now() });
     if (!coverUsed && d.cover) E.upDelKey(keyOf(d.cover));
     return id;
   }
