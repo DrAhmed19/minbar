@@ -463,7 +463,8 @@ Future<void> showPermsOnce(BuildContext context) async {
 
 /// صفحة المستخدم: هويته وإحصاءاته وكل ما يخصه (المفضلة، السجل، المحمّل، ملفاته) + الإعدادات
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  final bool embedded;
+  const ProfilePage({super.key, this.embedded = false});
   @override
   State<ProfilePage> createState() => _ProfilePageState();
 }
@@ -513,7 +514,7 @@ class _ProfilePageState extends State<ProfilePage> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: kCream,
-        appBar: AppBar(backgroundColor: kCream, elevation: 0, scrolledUnderElevation: 0, foregroundColor: kGreen, title: Text('حسابي', style: tx(19, w: FontWeight.w800, c: kGreen))),
+        appBar: widget.embedded ? null : AppBar(backgroundColor: kCream, elevation: 0, scrolledUnderElevation: 0, foregroundColor: kGreen, title: Text('حسابي', style: tx(19, w: FontWeight.w800, c: kGreen))),
         body: ListView(padding: const EdgeInsets.only(bottom: 30), children: [
           Container(
             margin: const EdgeInsets.fromLTRB(14, 4, 14, 10),
@@ -547,7 +548,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 Text('بياناتك كضيف (المفضلة والقوائم) خاصة بهذا الجهاز. سجّل الدخول بحساب Google لتكون لك ولتظهر إعجاباتك وتعليقاتك للآخرين.', style: tx(12, c: kMuted, h: 1.7)),
                 const SizedBox(height: 10),
                 GoldButton('تسجيل الدخول بحساب Google', () {
-                  Navigator.pop(context);
+                  if (!widget.embedded) Navigator.pop(context);
                   a.signOut();
                 }),
               ],
@@ -564,7 +565,7 @@ class _ProfilePageState extends State<ProfilePage> {
               leading: Container(width: 40, height: 40, decoration: BoxDecoration(color: Colors.red.withOpacity(.08), borderRadius: BorderRadius.circular(12)), child: Center(child: PIcon(Ic.power, color: Colors.red.shade700, size: 20))),
               title: Text('تسجيل الخروج', style: tx(14.5, w: FontWeight.w700, c: Colors.red.shade700)),
               onTap: () {
-                Navigator.pop(context);
+                if (!widget.embedded) Navigator.pop(context);
                 a.signOut();
               },
             ),

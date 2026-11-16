@@ -164,7 +164,7 @@ class Ic {
       search = 'search', x = 'x', users = 'users', back = 'back', plus = 'plus', reset = 'reset', down = 'down', power = 'power', check = 'check', dl = 'dl', arch = 'arch', hand = 'hand',
       chat = 'chat', info = 'info', flame = 'flame', spark = 'spark', color = 'color', lay = 'lay', speed = 'speed', wave = 'wave',
       queue = 'queue', share = 'share', eq = 'eq', more = 'more', text = 'text', moon = 'moon', rw = 'rw', fw = 'fw', rep = 'rep', shuf = 'shuf', timer = 'timer',
-      filter = 'filter', sort = 'sort', folder = 'folder', music = 'music', gear = 'gear', note = 'note', user = 'user', wifiOff = 'wifiOff';
+      filter = 'filter', sort = 'sort', folder = 'folder', music = 'music', gear = 'gear', note = 'note', user = 'user', wifiOff = 'wifiOff', home = 'home', compass = 'compass';
 }
 
 Map<String, String> _icons = {};
@@ -180,6 +180,8 @@ Future<void> loadIcons() async {
     _icons['music'] = '<path d="M9 18V6l11-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>';
     _icons['user'] = '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>';
     _icons['wifiOff'] = '<path d="M2 8.8a15 15 0 0 1 4-2.4M22 8.8a15 15 0 0 0-9-3.7M5 12.9a10 10 0 0 1 5-2.7M19 12.9a10 10 0 0 0-2.4-1.9M8.5 16.4a5 5 0 0 1 7 0M12 20h.01M2 2l20 20"/>';
+    _icons['home'] = '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/>';
+    _icons['compass'] = '<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>';
     _icons['dl'] = '<path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19h14"/>';
   } catch (_) {}
 }

@@ -30,7 +30,7 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell> {
-  int nav = 0, sub = 0;
+  int nav = 0, sub = 0, msub = 0;
   String cat = 'الكل';
   String q = '';
   bool searching = false;
@@ -158,10 +158,11 @@ class _HomeShellState extends State<HomeShell> {
           });
           return;
         }
-        if (nav != 0 || sub != 0) {
+        if (nav != 0 || sub != 0 || msub != 0) {
           setState(() {
             nav = 0;
             sub = 0;
+            msub = 0;
           });
           return;
         }
@@ -183,7 +184,7 @@ class _HomeShellState extends State<HomeShell> {
             child: Column(children: [
               Container(
                 decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x330E5C46), Color(0x000E5C46)])),
-                child: Column(children: [_header(), if (app.repo.noNet) _offBanner(), if (nav == 0 && !searching && !app.repo.noNet) _subTabs()]),
+                child: Column(children: [_header(), if (app.repo.noNet) _offBanner(), if ((nav == 1 || nav == 2) && !searching && !app.repo.noNet) _subTabs()]),
               ),
               Expanded(child: _body()),
               _mini(),
@@ -215,7 +216,7 @@ class _HomeShellState extends State<HomeShell> {
         child: Row(children: [
           Image.asset('assets/brand-mark.png', width: 34, height: 34),
           const SizedBox(width: 9),
-          if (!searching) Text('منبر', style: tx(21, w: FontWeight.w800, c: const Color(0xFF083B2D))),
+          if (!searching) Text(const ['منبر', 'استكشاف', 'مكتبتي', 'منبر', 'صفحتي'][nav], style: tx(21, w: FontWeight.w800, c: const Color(0xFF083B2D))),
           if (searching)
             Expanded(
               child: TextField(
@@ -238,7 +239,6 @@ class _HomeShellState extends State<HomeShell> {
             ),
           if (!searching) const Spacer(),
           if (!searching) _ib('mic', () => recognizePoem(context), 'التعرف على القصيدة'),
-          if (!searching) _ib(Ic.users, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage())), 'حسابي'),
           _ib(searching ? Ic.x : Ic.search, () => setState(() {
                 searching = !searching;
                 if (!searching) {
@@ -250,22 +250,25 @@ class _HomeShellState extends State<HomeShell> {
       );
 
   Widget _subTabs() {
-    const names = ['الرئيسية', 'القصائد', 'الإصدارات', 'الرواديد'];
+    final names = nav == 1 ? const ['التصنيفات', 'الإصدارات', 'الرواديد', 'الشعراء', 'القصائد'] : const ['المفضلة', 'قوائمي', 'السجل', 'التنزيلات'];
+    final cur = nav == 1 ? sub : msub;
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      margin: const EdgeInsets.fromLTRB(14, 0, 14, 8),
       padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(color: const Color(0xFFE9E2D0), borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(color: kGreen.withOpacity(.07), borderRadius: BorderRadius.circular(16)),
       child: Row(
-        children: List.generate(4, (i) {
-          final on = sub == i;
+        children: List.generate(names.length, (i) {
+          final on = cur == i;
           return Expanded(
             child: GestureDetector(
-              onTap: () => setState(() => sub = i),
+              behavior: HitTestBehavior.opaque,
+              onTap: () => setState(() => nav == 1 ? sub = i : msub = i),
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
                 padding: const EdgeInsets.symmetric(vertical: 9),
-                decoration: BoxDecoration(color: on ? Colors.white : Colors.transparent, borderRadius: BorderRadius.circular(12)),
-                child: Text(names[i], textAlign: TextAlign.center, style: tx(13, c: on ? kGreen : kMuted, w: on ? FontWeight.w800 : FontWeight.w600)),
+                decoration: BoxDecoration(color: on ? Colors.white : Colors.transparent, borderRadius: BorderRadius.circular(12), boxShadow: on ? const [BoxShadow(color: Color(0x1F0E3C2D), blurRadius: 8, offset: Offset(0, 2))] : null),
+                child: Text(names[i], textAlign: TextAlign.center, maxLines: 1, style: tx(12, c: on ? const Color(0xFF083B2D) : const Color(0xFF4D6A5E), w: on ? FontWeight.w800 : FontWeight.w600)),
               ),
             ),
           );
@@ -281,25 +284,96 @@ class _HomeShellState extends State<HomeShell> {
       final l = _found;
       return l.isEmpty ? _empty('ما لقيت نتائج') : _list(l);
     }
-    if (nav == 1) {
-      final l = r.tracks.where((t) => r.isFav(t.id)).toList();
-      return l.isEmpty ? _empty('ما عندك مفضلة بعد') : _list(l);
-    }
-    if (nav == 3) return _playlists();
-    if (r.noNet && nav == 0) {
+    if (nav == 4) return const ProfilePage(embedded: true);
+    if (nav == 2) return _library();
+    if (r.noNet && (nav == 0 || nav == 1)) {
       final l = r.playableOffline;
       return l.isEmpty ? _empty('ما عندك قصائد محمّلة. حمّل قصائد وأنت متصل لتسمعها بدون إنترنت، أو أضف ملفات من جهازك من تبويب القوائم.') : _list(l);
     }
-    switch (sub) {
-      case 1:
-        return _poems();
-      case 2:
-        return _albums();
-      case 3:
-        return _reciters();
-      default:
-        return HomeTab(onPlay: _play, onSub: (i) => setState(() => sub = i));
+    if (nav == 1) {
+      switch (sub) {
+        case 1:
+          return _albums();
+        case 2:
+          return _people(false);
+        case 3:
+          return _people(true);
+        case 4:
+          return _poems();
+        default:
+          return _cats();
+      }
     }
+    return HomeTab(onPlay: _play, onSub: (i) => setState(() {
+          nav = 1;
+          sub = i;
+        }));
+  }
+
+  Widget _library() {
+    final r = app.repo;
+    switch (msub) {
+      case 1:
+        return _playlists();
+      case 2:
+        final h = [for (final id in r.recent.reversed) if (r.byId(id) != null) r.byId(id)!];
+        return h.isEmpty ? _empty('لا يوجد سجل استماع بعد') : _list(h);
+      case 3:
+        final d = r.tracks.where((t) => r.offline.contains(t.id)).toList();
+        return d.isEmpty ? _empty('لا توجد تنزيلات. من ⋮ بجانب القصيدة اختر التنزيل.') : _list(d);
+      default:
+        final l = r.tracks.where((t) => r.isFav(t.id)).toList();
+        return l.isEmpty ? _empty('ما عندك مفضلة بعد') : _list(l);
+    }
+  }
+
+  static const _catCols = [
+    [Color(0xFF0E5C46), Color(0xFF14805F)],
+    [Color(0xFF8A5A14), Color(0xFFC58A22)],
+    [Color(0xFF3B3A6B), Color(0xFF5A58A6)],
+    [Color(0xFF7A2E2E), Color(0xFFB04848)],
+    [Color(0xFF1F4F6B), Color(0xFF2F7FA6)],
+    [Color(0xFF4A3B2A), Color(0xFF7A6246)],
+  ];
+
+  Widget _cats() {
+    final m = <String, List<Track>>{};
+    for (final t in app.repo.tracks) {
+      m.putIfAbsent(t.cat.isEmpty ? 'أخرى' : t.cat, () => []).add(t);
+    }
+    if (m.isEmpty) return _empty('لا توجد قصائد بعد');
+    final ks = m.keys.toList()..sort((a, b) => m[b]!.length.compareTo(m[a]!.length));
+    return GridView.builder(
+      padding: const EdgeInsets.fromLTRB(14, 6, 14, 14),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: ks.length == 1 ? 1 : 2, mainAxisSpacing: 12, crossAxisSpacing: 12, childAspectRatio: ks.length == 1 ? 2.6 : 1.45),
+      itemCount: ks.length,
+      itemBuilder: (_, i) {
+        final l = m[ks[i]]!;
+        final c = _catCols[i % _catCols.length];
+        return GestureDetector(
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GroupPage(ks[i], l))),
+          child: Container(
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: c), boxShadow: const [BoxShadow(color: Color(0x2E0E3C2D), blurRadius: 16, offset: Offset(0, 8))]),
+            child: Stack(children: [
+              Positioned(
+                left: -14,
+                bottom: -14,
+                child: Transform.rotate(angle: -.28, child: Cover(l.first.coverUrl, size: 72, radius: 12)),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(ks[i], maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(16, w: FontWeight.w800, c: Colors.white)),
+                  const SizedBox(height: 2),
+                  Text('${l.length} قصيدة', style: tx(12, c: Colors.white70, w: FontWeight.w500)),
+                ]),
+              ),
+            ]),
+          ),
+        );
+      },
+    );
   }
 
   Widget _offBanner() => Container(
@@ -515,32 +589,47 @@ class _HomeShellState extends State<HomeShell> {
     if (al.isEmpty) return _empty('لا توجد إصدارات بعد');
     return GridView.builder(
       padding: const EdgeInsets.all(14),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 14, crossAxisSpacing: 14, childAspectRatio: 0.82),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 14, crossAxisSpacing: 14, childAspectRatio: 0.8),
       itemCount: al.length,
       itemBuilder: (_, i) => AlbumCard(al[i], big: true),
     );
   }
 
-  Widget _reciters() {
+  Widget _people(bool poet) {
     final m = <String, List<Track>>{};
     for (final t in app.repo.tracks) {
-      final k = t.reciter.trim().isEmpty ? 'غير معروف' : t.reciter.trim();
-      m.putIfAbsent(k, () => []).add(t);
+      final k = (poet ? t.poet : t.reciter).trim();
+      if (k.isEmpty) {
+        if (poet) continue;
+      }
+      m.putIfAbsent(k.isEmpty ? 'غير معروف' : k, () => []).add(t);
     }
+    if (m.isEmpty) return _empty(poet ? 'لا توجد أسماء شعراء بعد' : 'لا توجد رواديد بعد');
     final ks = m.keys.toList()..sort((a, b) => m[b]!.length.compareTo(m[a]!.length));
-    return ListView.builder(
-      itemCount: ks.length,
-      itemBuilder: (_, i) {
-        final l = m[ks[i]]!;
-        final na = l.map((t) => t.album).where((e) => e.isNotEmpty).toSet().length;
-        return ListTile(
-          leading: Cover(l.first.coverUrl, size: 48, radius: 24),
-          title: Text(ks[i], style: tx(14.5, w: FontWeight.w800)),
-          subtitle: Text('${l.length} قصيدة${na > 0 ? ' · $na إصدار' : ''}', style: tx(12, c: kMuted, w: FontWeight.w500)),
-          trailing: Transform.flip(flipX: true, child: const PIcon(Ic.back, color: kMuted)),
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GroupPage(ks[i], l, reciter: ks[i]))),
-        );
-      },
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(14, 6, 14, 14),
+      children: [
+        Container(
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22), boxShadow: const [BoxShadow(color: Color(0x120E3C2D), blurRadius: 16, offset: Offset(0, 4))]),
+          child: Column(children: [
+            for (var i = 0; i < ks.length; i++) ...[
+              if (i > 0) const Divider(height: 1, indent: 16, endIndent: 16, color: Color(0x120E5C46)),
+              Builder(builder: (_) {
+                final l = m[ks[i]]!;
+                final na = l.map((t) => t.album).where((e) => e.isNotEmpty).toSet().length;
+                return ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                  leading: Cover(l.first.coverUrl, size: 56, radius: 28),
+                  title: Text(ks[i], style: tx(15, w: FontWeight.w800)),
+                  subtitle: Text('${l.length} قصيدة${(!poet && na > 0) ? ' · $na إصدار' : ''}', style: tx(12, c: kMuted, w: FontWeight.w500)),
+                  trailing: Transform.flip(flipX: true, child: const PIcon(Ic.back, color: kMuted, size: 18)),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GroupPage(ks[i], l, reciter: poet ? null : ks[i]))),
+                );
+              }),
+            ],
+          ]),
+        ),
+      ],
     );
   }
 
@@ -658,6 +747,14 @@ class _HomeShellState extends State<HomeShell> {
       onVerticalDragEnd: (d) {
         if ((d.primaryVelocity ?? 0) < -250) openPlayer(context);
       },
+      onHorizontalDragEnd: (d) {
+        final v = d.primaryVelocity ?? 0;
+        if (v < -300) {
+          app.player.next();
+        } else if (v > 300) {
+          app.player.prev();
+        }
+      },
       child: Container(
         margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: const [BoxShadow(color: Color(0x2E0E5C46), blurRadius: 24, offset: Offset(0, 8))]),
@@ -698,13 +795,17 @@ class _HomeShellState extends State<HomeShell> {
     Widget item(int i, String ic, String s, {VoidCallback? f}) {
       final on = nav == i;
       return Expanded(
-        child: InkWell(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
           onTap: f ?? () => setState(() => nav = i),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 9),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOut,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(color: on ? kGreen.withOpacity(.1) : Colors.transparent, borderRadius: BorderRadius.circular(20)),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              PIcon(ic, color: on ? kGreen : kMuted, size: 23),
-              const SizedBox(height: 2),
+              PIcon(ic, color: on ? kGreen : kMuted, size: 24),
+              const SizedBox(height: 3),
               Text(s, style: tx(11, c: on ? kGreen : kMuted, w: on ? FontWeight.w800 : FontWeight.w600)),
             ]),
           ),
@@ -718,12 +819,18 @@ class _HomeShellState extends State<HomeShell> {
         top: false,
         child: Directionality(
           textDirection: TextDirection.rtl,
-          child: Row(children: [
-            item(0, Ic.lib, 'المكتبة'),
-            item(1, Ic.heart, 'المفضلة'),
-            item(2, Ic.pulse, 'عينات', f: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SamplesPage()))),
-            item(3, Ic.plist, 'القوائم'),
-          ]),
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(14, 4, 14, 8),
+            padding: const EdgeInsets.all(5),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(26), boxShadow: const [BoxShadow(color: Color(0x380E3C2D), blurRadius: 28, offset: Offset(0, 10))]),
+            child: Row(children: [
+              item(0, Ic.home, 'الرئيسية'),
+              item(1, Ic.compass, 'استكشاف'),
+              item(2, Ic.lib, 'مكتبتي'),
+              item(3, Ic.pulse, 'عينات', f: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SamplesPage()))),
+              item(4, Ic.user, 'صفحتي'),
+            ]),
+          ),
         ),
       ),
     );
@@ -834,7 +941,7 @@ class HomeTab extends StatelessWidget {
         // جديد الإصدارات
         final albs = r.albums.values.where((a) => all.any((t) => t.album == a.id)).toList()..sort((a, b) => b.at.compareTo(a.at));
         if (albs.isNotEmpty) {
-          body.add(_sec('جديد الإصدارات', onSub == null ? null : () => onSub!(2)));
+          body.add(_sec('جديد الإصدارات', onSub == null ? null : () => onSub!(1)));
           body.add(_row([for (final a in albs.take(10)) AlbumCard(a)], h: 186));
         }
 
