@@ -1829,13 +1829,13 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   let smartSel = null, lastMine = 'fav', lastExp = 'cat';
   const navOf = () => (tab === 'lib' ? (libV === 'home' ? 'home' : 'explore') : (MINE.includes(tab) ? 'mine' : tab));
   const navSync = () => root.querySelectorAll('.plrnav button').forEach((x) => x.classList.toggle('on', x.dataset.t === navOf()));
-  const hist = () => jget(HISK, []);
-  function histAdd(id) { const h = hist(), n = Date.now(); if (h.length && h[0].i === id && n - h[0].t < 30000) return; h.unshift({ i: id, t: n }); jset(HISK, h.slice(0, 400)); }
+  const lhist = () => jget(HISK, []);
+  function histAdd(id) { const h = lhist(), n = Date.now(); if (h.length && h[0].i === id && n - h[0].t < 30000) return; h.unshift({ i: id, t: n }); jset(HISK, h.slice(0, 400)); }
   function mineTabs() { const hd = g('plrLt'); hd.textContent = ''; hd.hidden = false; const w = el('div', 'libtabs');
     [['fav', 'المفضلة'], ['pls', 'قوائمي'], ['smart', 'ذكية'], ['hist', 'السجل'], ['off', 'التنزيلات'], ['fol', 'أتابعهم']].forEach(([k, n]) => { const b = el('button', tab === k ? 'on' : '', n); b.type = 'button'; b.onclick = () => { tab = k; lastMine = k; plSel = null; smartSel = null; render(); g('plrBody').scrollTop = 0; }; w.appendChild(b); }); hd.appendChild(w); }
   /* قوائم ذكية تُبنى تلقائياً من استماعك وتاريخ نشر القصائد */
   function smartLists() {
-    const h = hist(), cnt = {}; h.forEach((x) => { cnt[x.i] = (cnt[x.i] || 0) + 1; });
+    const h = lhist(), cnt = {}; h.forEach((x) => { cnt[x.i] = (cnt[x.i] || 0) + 1; });
     const fol = follows(), now = Date.now(), byAt = (a, b) => (b.at || 0) - (a.at || 0), heard = new Set(Object.keys(cnt));
     const top = Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 30).map(([id]) => byId(id)).filter(Boolean);
     const recent = tracks.filter((t) => t.at && now - t.at < 30 * 864e5).sort(byAt);
@@ -1852,7 +1852,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
       const G = el('div', 'reclist'); S.forEach(([n, s, L], i) => G.appendChild(row(L[0], n, s + ' · ' + L.length + ' قصيدة', () => { smartSel = i; render(); g('plrBody').scrollTop = 0; }))); body.appendChild(G); return;
     }
     if (tab === 'hist') {
-      const h = hist().filter((x) => byId(x.i)); if (!h.length) { body.appendChild(el('div', 'hint cen', 'لا يوجد سجل استماع بعد')); return; }
+      const h = lhist().filter((x) => byId(x.i)); if (!h.length) { body.appendChild(el('div', 'hint cen', 'لا يوجد سجل استماع بعد')); return; }
       const d0 = new Date(); d0.setHours(0, 0, 0, 0); const day = (t) => { const k = Math.round((d0 - new Date(new Date(t).setHours(0, 0, 0, 0))) / 864e5); return k <= 0 ? 'اليوم' : k === 1 ? 'أمس' : new Date(t).toLocaleDateString('ar-IQ', { day: 'numeric', month: 'long' }); };
       const lst = h.map((x) => byId(x.i)); let last = ''; h.slice(0, 150).forEach((x) => { const d = day(x.t); if (d !== last) { last = d; body.appendChild(el('h5', 'hdy', d)); } body.appendChild(trackRow(byId(x.i), lst)); });
       const cl = el('button', 'btn small', 'مسح السجل'); cl.type = 'button'; cl.onclick = () => { if (!confirm('مسح سجل الاستماع؟')) return; jset(HISK, []); render(); }; body.appendChild(cl); return;
