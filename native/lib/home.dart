@@ -914,15 +914,8 @@ class HomeTab extends StatelessWidget {
         final all = r.tracks;
         final body = <Widget>[];
 
-        // مناسبة اليوم / القادمة
+        body.add(_dateCard(context, all));
         final o = occasionToday();
-        if (o != null) {
-          final l = all.where((t) => o.k.any((k) => '${t.title} ${t.cat} ${t.poet}'.contains(k))).toList();
-          body.add(_occ('مناسبة اليوم', o.t, l.isNotEmpty ? '${l.length} قصيدة مناسبة' : 'لا توجد قصائد مصنّفة لهذه المناسبة بعد', l.isEmpty ? null : () => Navigator.push(context, MaterialPageRoute(builder: (_) => GroupPage(o.t, l))), play: l.isEmpty ? null : () => app.player.playList(l, 0)));
-        } else {
-          final nx = occasionNext();
-          if (nx != null) body.add(_occ('مناسبة قادمة', nx.t, nx.d == 1 ? 'غداً' : 'بعد ${nx.d} أيام', null));
-        }
 
         // أكمل الاستماع
         final cont = r.recent.reversed.map(r.byId).whereType<Track>().where((t) {
@@ -935,6 +928,45 @@ class HomeTab extends StatelessWidget {
             for (final t in cont)
               _card(t, all, sub: (r.durs[t.id] ?? 0) > 0 ? 'متبقٍ ${fmt(((r.durs[t.id]! - r.posOf(t.id)) / 1000).toDouble())}' : 'من ${fmt(r.posOf(t.id) / 1000)}', prog: (r.durs[t.id] ?? 0) > 0 ? r.posOf(t.id) / r.durs[t.id]! : 0.0),
           ]));
+        }
+
+        // وصول سريع
+        final seen = <String>{};
+        final dial = <Track>[];
+        for (final t in [...cont, ...r.recent.reversed.map(r.byId).whereType<Track>(), ...all.where((t) => t.at > 0)]) {
+          if (seen.add(t.id)) dial.add(t);
+          if (dial.length >= 9) break;
+        }
+        if (dial.length >= 3) {
+          body.add(_sec('وصول سريع'));
+          body.add(Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 3,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+              children: [for (final t in dial) _dialTile(t, dial)],
+            ),
+          ));
+        }
+
+        // اختيارات سريعة
+        final picks = r.hotPlays.map((e) => r.byId(e.key)).whereType<Track>().toList();
+        final qp = (picks.length >= 4 ? picks : all).take(12).toList();
+        if (qp.length >= 4) {
+          body.add(_sec('اختيارات سريعة'));
+          body.add(SizedBox(
+            height: 4 * 66.0,
+            child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
+              for (var c = 0; c < qp.length; c += 4)
+                SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.86,
+                  child: Column(children: [for (final t in qp.skip(c).take(4)) SizedBox(height: 66, child: TrackTile(t, onTap: () => onPlay(qp, t)))]),
+                ),
+            ]),
+          ));
         }
 
         // رواديد تتابعهم
@@ -977,7 +1009,7 @@ class HomeTab extends StatelessWidget {
           body.add(_row([for (final t in offs) _card(t, offs)]));
         }
 
-        if (body.isEmpty || (body.length == 1 && o == null)) {
+        if (body.length <= 1 && o == null) {
           body.add(Padding(padding: const EdgeInsets.all(40), child: Center(child: Text(all.isEmpty ? 'لا توجد قصائد بعد' : 'ابدأ الاستماع لتظهر هنا اقتراحاتك', style: tx(14, c: kMuted)))));
         }
         return RefreshIndicator(
@@ -989,6 +1021,92 @@ class HomeTab extends StatelessWidget {
           child: ListView(padding: const EdgeInsets.only(bottom: 14), children: body),
         );
       },
+    );
+  }
+
+  static const _hm = ['', 'محرم', 'صفر', 'ربيع الأول', 'ربيع الآخر', 'جمادى الأولى', 'جمادى الآخرة', 'رجب', 'شعبان', 'رمضان', 'شوال', 'ذو القعدة', 'ذو الحجة'];
+  static const _gm = ['', 'كانون الثاني', 'شباط', 'آذار', 'نيسان', 'أيار', 'حزيران', 'تموز', 'آب', 'أيلول', 'تشرين الأول', 'تشرين الثاني', 'كانون الأول'];
+
+  Widget _dialTile(Track t, List<Track> ctx) => GestureDetector(
+        onTap: () => onPlay(ctx, t),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Stack(fit: StackFit.expand, children: [
+            LayoutBuilder(builder: (_, c) => Cover(t.coverUrl, size: c.maxWidth, radius: 0)),
+            Container(decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x00000000), Color(0xB3000000)]))),
+            Positioned(left: 8, right: 8, bottom: 7, child: Text(t.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: tx(11.5, c: Colors.white))),
+          ]),
+        ),
+      );
+
+  Widget _dateCard(BuildContext context, List<Track> all) {
+    final now = DateTime.now(), h = hijriOf(now);
+    final o = occasionToday();
+    String k = '', t = '', s = '';
+    VoidCallback? go;
+    VoidCallback? play;
+    if (o != null) {
+      final l = all.where((x) => o.k.any((w) => '${x.title} ${x.cat} ${x.poet}'.contains(w))).toList();
+      k = 'مناسبة اليوم';
+      t = o.t;
+      s = l.isNotEmpty ? '${l.length} قصيدة مناسبة' : 'لا توجد قصائد مصنّفة لهذه المناسبة بعد';
+      if (l.isNotEmpty) {
+        go = () => Navigator.push(context, MaterialPageRoute(builder: (_) => GroupPage(o.t, l)));
+        play = () => app.player.playList(l, 0);
+      }
+    } else {
+      final nx = occasionNext();
+      if (nx != null && nx.d <= 10) {
+        k = 'مناسبة قادمة';
+        t = nx.t;
+        s = nx.d == 1 ? 'غداً' : 'بعد ${nx.d} أيام';
+      } else {
+        k = 'التاريخ';
+        t = '${now.day} ${_gm[now.month]} ${now.year}';
+      }
+    }
+    return GestureDetector(
+      onTap: go,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(14, 6, 14, 6),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: const LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF0C4A39), Color(0xFF123A2F)]),
+          boxShadow: const [BoxShadow(color: Color(0x330E3C2D), blurRadius: 18, offset: Offset(0, 8))],
+        ),
+        child: Row(children: [
+          Column(mainAxisSize: MainAxisSize.min, children: [
+            Text('${h.d}', style: tx(44, c: kGold, w: FontWeight.w800, h: 1.0)),
+            const SizedBox(height: 4),
+            Text(_hm[h.m], style: tx(14, c: Colors.white, w: FontWeight.w700)),
+            Text('${h.y} هـ', style: tx(11.5, c: Colors.white60, w: FontWeight.w500)),
+          ]),
+          Container(width: 1, height: 70, margin: const EdgeInsets.symmetric(horizontal: 16), color: const Color(0x33E8C468)),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(k, style: tx(11.5, c: kGold, w: FontWeight.w700)),
+              const SizedBox(height: 3),
+              Text(t, maxLines: 2, overflow: TextOverflow.ellipsis, style: tx(17, c: Colors.white, w: FontWeight.w800)),
+              if (s.isNotEmpty) ...[
+                const SizedBox(height: 3),
+                Text(s, style: tx(12, c: Colors.white70, w: FontWeight.w500)),
+              ],
+              if (play != null) ...[
+                const SizedBox(height: 10),
+                GestureDetector(
+                  onTap: play,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), color: kGold),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [const PIcon(Ic.play, color: Color(0xFF2A2106), size: 15), const SizedBox(width: 6), Text('استمع', style: tx(13, c: const Color(0xFF2A2106)))]),
+                  ),
+                ),
+              ],
+            ]),
+          ),
+        ]),
+      ),
     );
   }
 
