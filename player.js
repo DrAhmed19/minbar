@@ -600,10 +600,13 @@
     favB.classList.remove('pop'); void favB.offsetWidth; favB.classList.add('pop'); const k = g('plrRx').querySelector('.rxb'); if (k) rxSend('❤️', k); };
   function openFull() { g('plrFull').hidden = false; applyViz();  }
   function closeFull() { tp(false); qs(false); au(false); cmS(false); g('plrFull').hidden = true; }
-  g('plrMini').onclick = openFull; (function () { const m = g('plrMini'), f = g('plrFull'); let y0 = 0, dy = 0, drag = false, t0 = 0;
-    m.addEventListener('touchstart', (e) => { y0 = e.touches[0].clientY; dy = 0; drag = false; t0 = Date.now(); }, { passive: true });
-    m.addEventListener('touchmove', (e) => { dy = y0 - e.touches[0].clientY; if (!drag && dy > 8) { drag = true; f.style.transition = 'none'; f.hidden = false; f.style.visibility = 'visible'; applyViz(); } if (drag) { e.preventDefault(); const H = root.clientHeight; f.style.transform = `translateY(${Math.max(0, H - dy - 80)}px)`; } }, { passive: false });
-    m.addEventListener('touchend', () => { if (!drag) return; drag = false; const H = root.clientHeight, v = dy / Math.max(1, Date.now() - t0); f.style.transition = ''; f.style.visibility = ''; requestAnimationFrame(() => { f.style.transform = ''; if (dy > H * 0.25 || v > 0.5) openFull(); else closeFull(); }); });
+  g('plrMini').onclick = () => { if (Date.now() - (g('plrMini')._sw || 0) < 400) return; openFull(); }; (function () { const m = g('plrMini'), f = g('plrFull'); let y0 = 0, x0 = 0, dx = 0, dy = 0, drag = false, t0 = 0, hz = 0;
+    m.addEventListener('touchstart', (e) => { y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; dy = 0; dx = 0; hz = 0; drag = false; t0 = Date.now(); }, { passive: true });
+    m.addEventListener('touchmove', (e) => { dx = e.touches[0].clientX - x0; if (!hz && !drag && Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(y0 - e.touches[0].clientY) * 1.3) { hz = 1; m.style.transition = 'none'; } if (hz) { if (e.cancelable) e.preventDefault(); m.style.transform = `translateX(${dx}px)`; m.style.opacity = String(Math.max(0.35, 1 - Math.abs(dx) / 420)); return; }
+      dy = y0 - e.touches[0].clientY; if (!drag && dy > 8) { drag = true; f.style.transition = 'none'; f.hidden = false; f.style.visibility = 'visible'; applyViz(); } if (drag) { e.preventDefault(); const H = root.clientHeight; f.style.transform = `translateY(${Math.max(0, H - dy - 80)}px)`; } }, { passive: false });
+    m.addEventListener('touchend', () => { if (hz) { hz = 0; m._sw = Date.now(); const W = m.offsetWidth || 360, go = Math.abs(dx) > W * 0.28 && tracks.length > 1, d = dx < 0 ? 1 : -1; m.style.transition = 'transform .2s ease, opacity .2s ease';
+        if (go) { m.style.transform = `translateX(${dx < 0 ? -W : W}px)`; m.style.opacity = '0'; setTimeout(() => { step(d); m.style.transition = 'none'; m.style.transform = `translateX(${dx < 0 ? W : -W}px)`; requestAnimationFrame(() => { m.style.transition = 'transform .22s ease, opacity .22s ease'; m.style.transform = ''; m.style.opacity = ''; }); }, 190); } else { m.style.transform = ''; m.style.opacity = ''; } return; }
+      if (!drag) return; drag = false; const H = root.clientHeight, v = dy / Math.max(1, Date.now() - t0); f.style.transition = ''; f.style.visibility = ''; requestAnimationFrame(() => { f.style.transform = ''; if (dy > H * 0.25 || v > 0.5) openFull(); else closeFull(); }); });
   })(); g('plrClose').onclick = closeFull;
   function pills() {
     const sp = g('plrSpeedP'), sl = g('plrSleepP'); sp.textContent = ''; sl.textContent = '';
