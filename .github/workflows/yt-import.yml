@@ -11,7 +11,8 @@ concurrency: { group: yt-import, cancel-in-progress: false }
 permissions: { contents: read }
 jobs:
   run:
-    runs-on: ubuntu-latest
+    # للتبديل: أضف متغيراً في الريبو (Variables) اسمه YT_RUNNER وقيمته self-hosted ليعمل الاستيراد من جهازك بدل سيرفر GitHub
+    runs-on: ${{ vars.YT_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 340
     steps:
       - name: فحص الإعداد

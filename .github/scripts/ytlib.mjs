@@ -85,7 +85,8 @@ export function cuesToLines(cues, kind) {
 /* ---------- أخطاء مفهومة ---------- */
 export function friendlyErr(msg) {
   const m = String(msg || '');
-  if (/confirm you.?re not a bot|sign in to confirm|cookies/i.test(m)) return 'يوتيوب حظر سيرفر GitHub (يحتاج ملف cookies)';
+  if (/COOKIES_EXPIRED/.test(m)) return 'cookies منتهية أو مرفوضة: جدّد السر YT_COOKIES';
+  if (/confirm you.?re not a bot|sign in to confirm/i.test(m)) return 'يوتيوب حظر سيرفر GitHub (أضف السر YT_COOKIES أو شغّل من جهازك)';
   if (/private video|video unavailable|has been removed|account.*terminated|not available/i.test(m)) return 'الفيديو خاص أو محذوف أو غير متاح';
   if (/members-only|join this channel|subscriber/i.test(m)) return 'الفيديو لأعضاء القناة فقط';
   if (/HTTP Error 429|too many requests/i.test(m)) return 'يوتيوب حدّ الطلبات مؤقتاً';
@@ -116,11 +117,17 @@ export function fromFs(f) {
 
 /* ---------- محاولات yt-dlp ---------- */
 export async function ytTry(ctx, args) {
+  /* الترتيب: بدون cookies أولاً؛ إذا حظر يوتيوب السيرفر وكانت cookies مضبوطة نستعملها لبقية الطلبات (يُحفظ ذلك في ctx.needCookies) */
+  const BOT = /not a bot|sign in to confirm|confirm you/i;
   let last;
   for (let i = 0; i < 2; i++) {
-    try { return await ctx.ytdlp(args, { cookies: false }); } catch (e) {
+    try { return await ctx.ytdlp(args, { cookies: !!(ctx.hasCookies && ctx.needCookies) }); } catch (e) {
       last = e;
-      if (ctx.hasCookies && /not a bot|sign in|confirm you|429|403/i.test(e.message)) { try { return await ctx.ytdlp(args, { cookies: true }); } catch (e2) { last = e2; } }
+      if (ctx.hasCookies && !ctx.needCookies && BOT.test(e.message)) {
+        ctx.needCookies = true;
+        try { return await ctx.ytdlp(args, { cookies: true }); } catch (e2) { last = e2; }
+      }
+      if (ctx.needCookies && BOT.test(last.message)) throw new Error('COOKIES_EXPIRED');   // cookies مرفوضة: لا نكرر الطلب حتى لا نضرّ الحساب
       if (/private|unavailable|removed|members-only|live event|premiere/i.test(e.message)) break;   // لا فائدة من الإعادة
       await sleep(ctx.retryMs == null ? 6000 : ctx.retryMs);
     }

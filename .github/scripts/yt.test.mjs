@@ -62,7 +62,8 @@ test('Firestore: تحويل القيم ذهاباً وإياباً', () => {
 });
 
 test('friendlyErr', () => {
-  assert.match(L.friendlyErr('Sign in to confirm you’re not a bot'), /cookies/);
+  assert.match(L.friendlyErr('Sign in to confirm you’re not a bot'), /YT_COOKIES/);
+  assert.match(L.friendlyErr('COOKIES_EXPIRED'), /جدّد/);
   assert.match(L.friendlyErr('ERROR: Private video'), /خاص/);
 });
 
@@ -128,8 +129,18 @@ test('runBatch: فشل واحد لا يوقف الباقي، وcookies فقط ع
   const m = await mk(); m.ctx.hasCookies = true; const seen = []; const orig = m.ctx.ytdlp;
   m.ctx.ytdlp = async (a, o) => { seen.push(!!(o && o.cookies)); if (a.includes('-J') && a[a.length - 1].endsWith('bbbbbbbbbb1')) throw new Error('Sign in to confirm you’re not a bot'); return orig(a, o); };
   const res = await L.runBatch(m.ctx, ['aaaaaaaaaa1', 'bbbbbbbbbb1', 'cccccccccc1'], {}, null);
-  assert.equal(res.aaaaaaaaaa1.st, 'ok'); assert.equal(res.bbbbbbbbbb1.st, 'fail'); assert.match(res.bbbbbbbbbb1.msg, /cookies/); assert.equal(res.cccccccccc1.st, 'ok');
+  assert.equal(res.aaaaaaaaaa1.st, 'ok'); assert.equal(res.bbbbbbbbbb1.st, 'fail'); assert.match(res.bbbbbbbbbb1.msg, /جدّد/); assert.equal(res.cccccccccc1.st, 'ok');
   assert.ok(seen.includes(true));
+});
+
+test('cookies: تُستعمل بعد أول حظر فقط، وإذا رُفضت يتوقف التكرار', async () => {
+  const m = await mk(); m.ctx.hasCookies = true; const log = []; const orig = m.ctx.ytdlp;
+  m.ctx.ytdlp = async (a, o) => { log.push(!!(o && o.cookies)); if (!(o && o.cookies)) throw new Error('Sign in to confirm you’re not a bot'); return orig(a, o); };
+  const r = await L.importOne(m.ctx, 'dQw4w9WgXcQ', {});
+  assert.equal(r.st, 'ok'); assert.deepEqual(log.slice(0, 2), [false, true]); assert.ok(log.slice(2).every(Boolean));   // بعد أول حظر كل الطلبات بـ cookies
+  const n = await mk(); n.ctx.hasCookies = true; let calls = 0;
+  n.ctx.ytdlp = async () => { calls++; throw new Error('Sign in to confirm you’re not a bot'); };
+  await assert.rejects(() => L.importOne(n.ctx, 'dQw4w9WgXcQ', {}), /COOKIES_EXPIRED/); assert.equal(calls, 2);          // محاولتان فقط
 });
 
 test('قراءة القوائم المسطّحة', () => {
