@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
@@ -94,12 +95,21 @@ class _SamplesPageState extends State<SamplesPage> {
   Future<void> _go(int i) async {
     if (i < 0 || i >= list.length) return;
     final t = list[i];
+    app.player.p.pause();
     setState(() {
       page = i;
       segEnd = 0;
       pos = 0;
     });
     repoLy(t);
+    for (final j in [i + 1, i + 2, i - 1]) {
+      if (j >= 0 && j < list.length) {
+        final u = list[j].coverUrl;
+        if (u.isNotEmpty) precacheImage(CachedNetworkImageProvider(u), context).catchError((_) {});
+        _best(list[j]);
+        repoLy(list[j]);
+      }
+    }
     final st = await _best(t);
     if (!mounted || page != i) return;
     segStart = st;

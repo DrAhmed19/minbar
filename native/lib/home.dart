@@ -29,7 +29,7 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   int nav = 0, sub = 0, msub = 0;
   String cat = 'الكل';
   String q = '';
@@ -67,8 +67,17 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState st) {
+    if (st == AppLifecycleState.resumed) {
+      app.repo.refresh();
+      app.repo.loadHot();
+    }
+  }
+
+  @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     app.repo.addListener(_r);
     app.player.addListener(_r);
     if (app.repo.loaded) app.player.restore();
@@ -125,6 +134,7 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     app.repo.removeListener(_r);
     app.player.removeListener(_r);
     _sc.dispose();
@@ -396,10 +406,19 @@ class _HomeShellState extends State<HomeShell> {
 
   Widget _empty(String s) => Center(child: Text(s, style: tx(14, c: kMuted)));
 
-  Widget _list(List<Track> l) => ListView.builder(
-        padding: const EdgeInsets.only(bottom: 12),
-        itemCount: l.length,
-        itemBuilder: (_, i) => TrackTile(l[i], onTap: () => _play(l, l[i])),
+  Widget _list(List<Track> l) => RefreshIndicator(
+        color: kGold,
+        backgroundColor: kGreen,
+        onRefresh: () async {
+          await app.repo.refresh();
+          app.repo.loadHot();
+        },
+        child: ListView.builder(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.only(bottom: 12),
+          itemCount: l.length,
+          itemBuilder: (_, i) => TrackTile(l[i], onTap: () => _play(l, l[i])),
+        ),
       );
 
   // ترتيب وفلاتر صفحة القصائد (تُحفظ أثناء الجلسة)
@@ -601,10 +620,18 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
+  String _pn(String n, bool poet) {
+    if (!poet) return n;
+    for (final p in const ['الشاعر ', 'الشاعرة ', 'شاعر ']) {
+      if (n.startsWith(p)) return n.substring(p.length).trim();
+    }
+    return n;
+  }
+
   Widget _people(bool poet) {
     final m = <String, List<Track>>{};
     for (final t in app.repo.tracks) {
-      final k = (poet ? t.poet : t.reciter).trim();
+      final k = _pn((poet ? t.poet : t.reciter).trim(), poet);
       if (k.isEmpty) {
         if (poet) continue;
       }
@@ -1013,7 +1040,8 @@ class HomeTab extends StatelessWidget {
           body.add(Padding(padding: const EdgeInsets.all(40), child: Center(child: Text(all.isEmpty ? 'لا توجد قصائد بعد' : 'ابدأ الاستماع لتظهر هنا اقتراحاتك', style: tx(14, c: kMuted)))));
         }
         return RefreshIndicator(
-          color: kGreen,
+          color: kGold,
+          backgroundColor: kGreen,
           onRefresh: () async {
             await r.refresh();
             r.loadHot();
