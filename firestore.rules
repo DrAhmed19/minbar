@@ -115,6 +115,10 @@ service cloud.firestore { match /databases/{db}/documents {
     allow read: if true;
     allow write: if isAdmin();
   }
+  // استيراد يوتيوب (للمالك فقط): مسودات، مهام، قنوات متابَعة
+  match /ytDrafts/{id} { allow read, write: if isAdmin(); }
+  match /ytJobs/{id} { allow read, write: if isAdmin(); }
+  match /ytSrc/{id} { allow read, write: if isAdmin(); }
   // وضع المجلس: الرمز 6 أرقام. الغرفة تُقرأ بالرمز فقط (لا قائمة)، والمضيف وحده يكتب ويُنهي، والحقول محدّدة الأنواع والأحجام
   function mjOk(d) {
     return d.keys().hasOnly(['uid','ended','q','qs','track','pos','ref','playing','rate','at','ly'])

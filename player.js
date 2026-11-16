@@ -1755,7 +1755,8 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     }); }
   function upMenu(t) { if (!isOwner()) return toast('الإضافة متاحة للمالك فقط'); const ed = !!t;
     modal(ed ? 'تعديل القصيدة' : 'إضافة قصيدة', (bx, close) => {
-      if (!ed) { bx.appendChild(btn('wide primary', 'رفع إصدار كامل (عدة قصائد مرة واحدة)', () => { close(); albumUp(); })); bx.appendChild(btn('wide', 'إدارة إصدار (أسماء وشعراء وكلمات قصائده)', () => { close(); albumLyrics(); })); const bk = btn('wide', 'كلمات جماعية لعدة قصائد', () => { close(); bulkLyrics(); }); bx.appendChild(bk); }
+      if (!ed) { bx.appendChild(btn('wide primary', 'رفع إصدار كامل (عدة قصائد مرة واحدة)', () => { close(); albumUp(); })); bx.appendChild(btn('wide', 'إدارة إصدار (أسماء وشعراء وكلمات قصائده)', () => { close(); albumLyrics(); })); const bk = btn('wide', 'كلمات جماعية لعدة قصائد', () => { close(); bulkLyrics(); }); bx.appendChild(bk);
+        if (window.YTIMP) bx.appendChild(btn('wide', 'استيراد من يوتيوب', () => { close(); window.YTIMP.open({ isOwner, modal, el, btn, toast, fdb, idTok, upPut, upDelKey, pickIn, energyOf, bestSegE, lySaveText, fsLoad, tracks: () => tracks, ALB: () => ALB }); })); }
       const inp = (ph, v) => { const i = el('input', 'mdin'); i.placeholder = ph; i.value = v || ''; bx.appendChild(i); return i; };
       /* اختيار من القائمة (الرواديد/الشعراء السابقين) مع إمكانية كتابة اسم جديد */
       const pick = (ph, v, k) => { const w = el('div', 'pkw'), i = el('input', 'mdin'); i.placeholder = ph + ' — اختر أو اكتب اسماً جديداً'; i.value = v || ''; const ch = el('div', 'pkc'); w.append(i, ch); bx.appendChild(w);

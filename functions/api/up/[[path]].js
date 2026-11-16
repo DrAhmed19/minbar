@@ -2,12 +2,15 @@
    التخزين: R2 (الربط R2 أو minbar-media) إن وُجد، وإلا KV (MEDIA) */
 import { ownerFrom, json } from '../../../srv/auth.js';
 const KEY = /^(a|c|u|n)\/[A-Za-z0-9_-]{3,64}\.(mp3|m4a|aac|ogg|opus|wav|jpg|jpeg|png|webp|bin)$/;
+function sameKey(a, b) { if (!a || !b || b.length < 24 || a.length !== b.length) return false; let d = 0; for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i); return d === 0; }
 export async function onRequest({ request, env, params }) {
   const bucket = env.R2 || env['minbar-media'];
   if (!bucket && !env.MEDIA) return json({ error: 'لم يُربط مخزن' }, 500);
   const key = [].concat(params.path || []).join('/');
   if (!KEY.test(key)) return json({ error: 'مسار غير صالح' }, 400);
-  if (!(await ownerFrom(request))) return json({ error: 'غير مصرّح' }, 403);
+  /* مفتاح الاستيراد (من GitHub Actions) محصور: رفع فقط، ومسارات yt* فقط (صوت m4a وغلاف jpg)، ولا حذف */
+  const viaImport = request.method === 'PUT' && /^(a|c)\/yt[A-Za-z0-9_-]{8,}\.(m4a|jpg)$/.test(key) && sameKey(request.headers.get('x-import-key'), env.IMPORT_KEY);
+  if (!viaImport && !(await ownerFrom(request))) return json({ error: 'غير مصرّح' }, 403);
   if (request.method === 'PUT') {
     const max = bucket ? 90 * 1024 * 1024 : 25 * 1024 * 1024 - 1024;
     const len = +request.headers.get('content-length') || 0; if (len > max) return json({ error: 'الملف أكبر من ' + (bucket ? 90 : 25) + ' ميغابايت' }, 413);

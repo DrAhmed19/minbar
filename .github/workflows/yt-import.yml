@@ -1,0 +1,55 @@
+# استيراد قصائد من يوتيوب إلى مسودات منبر (للمالك فقط): يُشغَّل من لوحة الإدارة أو يومياً لفحص القنوات المتابَعة
+name: استيراد يوتيوب
+on:
+  workflow_dispatch:
+    inputs:
+      job: { description: 'معرّف المهمة', required: true }
+      mode: { description: 'list | import | scan', required: true, default: scan }
+  schedule:
+    - cron: '17 3 * * *'   # 06:17 بتوقيت بغداد يومياً
+concurrency: { group: yt-import, cancel-in-progress: false }
+permissions: { contents: read }
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - name: فحص الإعداد
+        id: gate
+        env: { IMPORT_KEY: '${{ secrets.IMPORT_KEY }}', EVENT: '${{ github.event_name }}' }
+        run: |
+          if [ -z "$IMPORT_KEY" ]; then
+            if [ "$EVENT" = schedule ]; then echo "لم يُضبط السر IMPORT_KEY بعد: تخطّي الفحص اليومي"; echo "skip=1" >> "$GITHUB_OUTPUT"; exit 0; fi
+            echo "::error::أضف السر IMPORT_KEY في إعدادات الريبو (Settings ← Secrets ← Actions)"; exit 1
+          fi
+      - if: steps.gate.outputs.skip != '1'
+        uses: actions/checkout@v4
+      - if: steps.gate.outputs.skip != '1'
+        uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - if: steps.gate.outputs.skip != '1'
+        uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - name: الأدوات
+        if: steps.gate.outputs.skip != '1'
+        run: |
+          command -v ffmpeg >/dev/null && command -v ffprobe >/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
+          pip install -U "yt-dlp[default]"
+          yt-dlp --version && ffmpeg -version | head -1
+          npm i --no-save google-auth-library@9
+      - name: اختبار المنطق
+        if: steps.gate.outputs.skip != '1'
+        run: node --test .github/scripts/yt.test.mjs
+      - name: تشغيل
+        if: steps.gate.outputs.skip != '1'
+        env:
+          MODE: ${{ inputs.mode || 'scan' }}
+          JOB: ${{ inputs.job || 'scan' }}
+          SITE: ${{ vars.SITE || 'https://minbar-95z.pages.dev' }}
+          IMPORT_KEY: ${{ secrets.IMPORT_KEY }}
+          YT_COOKIES: ${{ secrets.YT_COOKIES }}
+          FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
+        run: |
+          printf '%s' "$FIREBASE_SA" > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          node .github/scripts/ytimport.mjs
