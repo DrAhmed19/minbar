@@ -1657,3 +1657,6 @@ textarea.mdin{resize:none}
 .plrau .sl.v .th{margin:0 0 -11px -11px}
 .plrau .bnd>b{font-size:10px}.plrau .bnd>span{font-size:10px}
 .plrau .aupn{padding-bottom:20px}
+
+.plrau .aupn{scrollbar-width:none}.plrau .aupn::-webkit-scrollbar{display:none}
+.plrau,.plrau *{scrollbar-width:none}

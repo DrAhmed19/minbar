@@ -222,12 +222,10 @@ const _bg = Color(0xFF1C1612), _card = Color(0x0FFFFFFF), _line = Color(0x24FFFF
 
 void showAudioSheet(BuildContext context) {
   var tab = 0;
-  showMSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: _bg,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-    builder: (c) => StatefulBuilder(builder: (c, ss) {
+  Navigator.push(
+    context,
+    PageRouteBuilder(
+      pageBuilder: (c, _, __) => StatefulBuilder(builder: (c, ss) {
       void ch() {
         au.pre = kAUP.any((p) => p.id == au.pre) || auCustom.any((x) => x['id'] == au.pre) ? au.pre : 'custom';
         auApply();
@@ -247,11 +245,10 @@ void showAudioSheet(BuildContext context) {
       final tabs = ['النطاقات', 'المؤثرات', 'متقدّم'];
       return Directionality(
         textDirection: TextDirection.rtl,
-        child: SizedBox(
-          height: MediaQuery.of(c).size.height * 0.86,
+        child: Scaffold(
+          backgroundColor: _bg,
+          body: SafeArea(
           child: Column(children: [
-            const SizedBox(height: 10),
-            Container(width: 54, height: 5, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(3))),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
               child: Row(children: [
@@ -308,20 +305,23 @@ void showAudioSheet(BuildContext context) {
               ]),
             ),
           ]),
+          ),
         ),
       );
     }),
+      transitionsBuilder: (_, a, __, ch) => SlideTransition(position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)), child: ch),
+    ),
   );
 }
 
 Widget _box(Widget child) => Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(22), color: _card, border: Border.all(color: _line)),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(24), color: _card, border: Border.all(color: const Color(0x14FFFFFF))),
       child: child,
     );
 
-SliderThemeData _sth() => SliderThemeData(activeTrackColor: kGold, inactiveTrackColor: Colors.white12, thumbColor: kGold2, overlayColor: kGold.withOpacity(0.15), trackHeight: 5);
+SliderThemeData _sth() => SliderThemeData(activeTrackColor: kGold, inactiveTrackColor: Colors.white12, thumbColor: kGold2, overlayColor: kGold.withOpacity(0.15), trackHeight: 6, thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 11, elevation: 3), overlayShape: const RoundSliderOverlayShape(overlayRadius: 20));
 
 List<Widget> _bands(BuildContext c, StateSetter ss, VoidCallback edited) => [
       _box(SizedBox(height: 170, child: EqGraph(onChange: () {
@@ -367,9 +367,9 @@ List<Widget> _bands(BuildContext c, StateSetter ss, VoidCallback edited) => [
                     child: RotatedBox(
                       quarterTurns: 3,
                       child: SliderTheme(
-                        data: _sth().copyWith(trackHeight: 3, thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 9)),
+                        data: _sth().copyWith(trackHeight: 5, thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10, elevation: 3)),
                         child: Slider(value: au.eq[i], min: -12, max: 12, onChanged: (v) {
-                          au.eq[i] = (v * 2).round() / 2;
+                          au.eq[i] = (v * 10).round() / 10;
                           ss(() {});
                         }, onChangeEnd: (_) => edited()),
                       ),
@@ -423,7 +423,7 @@ class _EqGraphState extends State<EqGraph> with SingleTickerProviderStateMixin {
     if (i == null) return;
     final half = (s.height - _cb) / 2 - 10;
     final g = (((s.height - _cb) / 2 - o.dy) / half * 12).clamp(-12.0, 12.0);
-    au.eq[i] = (g * 2).round() / 2;
+    au.eq[i] = (g * 10).round() / 10;
     au.pre = 'custom';
     widget.onChange();
   }
@@ -569,7 +569,7 @@ List<Widget> _effects(StateSetter ss, VoidCallback edited) {
         textDirection: TextDirection.ltr,
         child: Row(children: [
           Text('يسار', style: tx(12, c: Colors.white54)),
-          Expanded(child: Slider(value: au.bal, min: -1, max: 1, activeColor: kGold, inactiveColor: Colors.white12, onChanged: (v) {
+          Expanded(child: Slider(value: au.bal, min: -1, max: 1, divisions: 100, activeColor: kGold, inactiveColor: Colors.white12, onChanged: (v) {
             au.bal = (v.abs() < 0.04 ? 0.0 : v);
             ss(() {});
           }, onChangeEnd: (_) => edited())),
