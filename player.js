@@ -38,7 +38,7 @@
 
   const root = document.createElement('div'); root.id = 'plr'; root.className = 'ovl plr'; root.hidden = true;
   root.innerHTML = `
-  <div class="ovh"><div class="brand"><img src="icons/brand-mark.png" alt=""><span>منبر</span></div><div class="plrsb"><button class="ib" id="plrMeB" aria-label="صفحتي">${ic('user', 22)}</button><button class="ib" id="plrRecB" aria-label="التعرّف على القصيدة">${ic('mic', 21)}</button><button class="aqc" id="plrAq" type="button" hidden><i></i><b></b><small></small></button><button class="ib" id="plrAddB" aria-label="إضافة قصيدة" hidden>${ic('plus', 22)}</button><button class="ib" id="plrSearchB" aria-label="بحث">${ic('search', 22)}</button></div></div>
+  <div class="ovh"><div class="brand"><img src="icons/brand-mark.png" alt=""><span>منبر</span></div><div class="plrsb"><button class="ib" id="plrRecB" aria-label="التعرّف على القصيدة">${ic('mic', 21)}</button><button class="aqc" id="plrAq" type="button" hidden><i></i><b></b><small></small></button><button class="ib" id="plrAddB" aria-label="إضافة قصيدة" hidden>${ic('plus', 22)}</button><button class="ib" id="plrSearchB" aria-label="بحث">${ic('search', 22)}</button></div></div>
   <div class="plrlt" id="plrLt" hidden></div>
   <div class="plrsearch" id="plrSearch" hidden><input id="plrQ" placeholder="ابحث باسم القصيدة أو الرادود أو الشاعر" autocomplete="off"></div>
   <div class="plrchips" id="plrCats"></div>
@@ -51,7 +51,6 @@
   <nav class="plrnav"><button data-t="home" class="on">${ic('home', 22)}<span>الرئيسية</span></button><button data-t="explore">${ic('compass', 22)}<span>استكشاف</span></button><button data-t="mine" id="plrNavPl">${ic('lib', 22)}<span>مكتبتي</span></button><button data-t="smp">${ic('pulse', 22)}<span>عينات</span></button><button data-t="me">${ic('user', 22)}<span>صفحتي</span></button></nav>
   <div class="plrhs" id="plrHs" hidden><div class="hst"></div><div class="hsw"><p class="hsc"></p><p class="hsn"></p></div><div class="hsp"><i></i></div><div class="hsctl"><button class="hspp" type="button">${ic('pause', 22)}</button><button class="hsx" type="button">${ic('x', 22)}</button></div></div>
   <div class="plrsmp" id="plrSmp" hidden><div class="smhd"><b>عينات</b><button class="ib" id="plrSmpX" aria-label="إغلاق">${ic('x', 20)}</button></div><div class="smpl" id="plrSmpL"></div></div>
-  <div class="plrme" id="plrMe" hidden><div class="meh"><b>صفحتي</b><button class="ib" id="plrMeX" aria-label="إغلاق">${ic('x', 20)}</button></div><div class="mel" id="plrMeL"></div></div>
   <div class="plrfull lay-a" id="plrFull" hidden>
     <div class="plrbgi" id="plrBgI"></div><img class="plrbgf" id="plrBgF" alt="">
     <canvas class="plrviz" id="plrViz"></canvas>
@@ -221,7 +220,7 @@
     cs.forEach((c) => { const b = document.createElement('button'); b.className = 'plrchip' + (c === cat ? ' on' : ''); b.textContent = c; b.onclick = () => { cat = c; render(); }; bar.appendChild(b); }); if ((tab === 'lib' && libV === 'all') || tab === 'fav') libTools(bar);
     const body = g('plrBody'); body.textContent = ''; g('plrLt').hidden = true; view = filtered(); if (MINE.includes(tab)) mineTabs(); g('plrCats').hidden = tab !== 'fav' && !(tab === 'lib' && (libV === 'home' || libV === 'all'));
     if (tab === 'pls') { if (!plSel) return plRender(body); const pl = pls().find((x) => x.id === plSel); if (!pl) { plSel = null; return render(); } const hb = el('div', 'plhd'); const bk = el('button', 'ib'); bk.innerHTML = ic('next', 18); bk.onclick = () => { plSel = null; render(); }; const nm = el('b', '', pl.name); const pa = el('button', 'btn small primary', 'تشغيل الكل'); pa.onclick = () => plPlay(pl); const dl = el('button', 'btn small', 'حذف'); dl.onclick = () => { if (!confirm('حذف القائمة «' + pl.name + '»؟')) return; plsSet(pls().filter((x) => x.id !== pl.id)); plSel = null; render(); }; hb.append(bk, nm, pa, dl); body.appendChild(hb); }
-    g('plrCats').hidden = !(tab === 'fav' || (tab === 'lib' && (libV === 'home' || libV === 'all'))); if (['smart', 'hist', 'off', 'fol'].includes(tab)) return mineRender(body); if (tab === 'lib' && libRender(body)) return; if (tab === 'lib' && tracks.length) body.insertBefore(el('div'), null);
+    g('plrCats').hidden = !(tab === 'fav' || (tab === 'lib' && (libV === 'home' || libV === 'all'))); if (tab === 'me') return meRender(body); if (['smart', 'hist', 'off', 'fol'].includes(tab)) return mineRender(body); if (tab === 'lib' && libRender(body)) return; if (tab === 'lib' && tracks.length) body.insertBefore(el('div'), null);
     if (!view.length) { const d = document.createElement('div'); d.className = 'hint'; d.style.textAlign = 'center'; d.textContent = tab === 'fav' ? 'لا توجد عناصر في المفضلة' : (tracks.length ? 'لا توجد نتائج' : 'لا توجد قصائد بعد'); body.appendChild(d); return; }
     const grid = document.createElement('div'); grid.className = 'plrgrid' + (cmpV ? ' cmp' : '');
     view.forEach((t) => {
@@ -1087,9 +1086,8 @@
   g('plrQ').oninput = () => { q = g('plrQ').value; render(); };
   root.querySelectorAll('.plrnav button').forEach((b) => b.onclick = () => { plSel = null; smartSel = null; libSel = null; b.classList.remove('newdot'); const k = b.dataset.t; try { navigator.vibrate && navigator.vibrate(6); } catch (e) {}
     if (k === 'smp') { root.querySelectorAll('.plrnav button').forEach((x) => x.classList.toggle('on', x === b)); smpOpen(); return; }
-    if (k === 'me') { meOpen(); return; }
     if (k === 'studio') { root.hidden = true; const h = $('home'); if (h && h.hidden && !$('btnHome').hidden) { /* داخل المحرر */ } return; }
-    if (k === 'home') { tab = 'lib'; libV = 'home'; cat = 'الكل'; } else if (k === 'explore') { tab = 'lib'; libV = lastExp; cat = 'الكل'; } else if (k === 'mine') tab = lastMine;
+    if (k === 'home') { tab = 'lib'; libV = 'home'; cat = 'الكل'; } else if (k === 'explore') { tab = 'lib'; libV = lastExp; cat = 'الكل'; } else if (k === 'mine') tab = lastMine; else if (k === 'me') tab = 'me';
     navSync(); render(); g('plrBody').scrollTop = 0;
   });
   document.addEventListener('click', (e) => { if (e.target && e.target.id === 'homeToPlr') open(); });
@@ -1841,7 +1839,8 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   const MINE = ['fav', 'pls', 'smart', 'hist', 'off', 'fol'], HISK = 'minbar.hist';
   let smartSel = null, lastMine = 'fav', lastExp = 'cat';
   const navOf = () => (tab === 'lib' ? (libV === 'home' ? 'home' : 'explore') : (MINE.includes(tab) ? 'mine' : tab));
-  const navSync = () => root.querySelectorAll('.plrnav button').forEach((x) => x.classList.toggle('on', x.dataset.t === navOf()));
+  const PGT = { home: 'منبر', explore: 'استكشاف', mine: 'مكتبتي', me: 'صفحتي' };
+  const navSync = () => { root.querySelectorAll('.plrnav button').forEach((x) => x.classList.toggle('on', x.dataset.t === navOf())); const sp = root.querySelector('.ovh .brand span'); if (sp) sp.textContent = PGT[navOf()] || 'منبر'; };
   const lhist = () => jget(HISK, []);
   function histAdd(id) { const h = lhist(), n = Date.now(); if (h.length && h[0].i === id && n - h[0].t < 30000) return; h.unshift({ i: id, t: n }); jset(HISK, h.slice(0, 400)); }
   function mineTabs() { const hd = g('plrLt'); hd.textContent = ''; hd.hidden = false; const w = el('div', 'libtabs');
@@ -2124,13 +2123,13 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
 
   /* ================= صفحتي: حساب المستخدم + قسم الإدارة (يُبنى للمالك فقط) ================= */
   const ytEnv = () => ({ isOwner, modal, el, btn, toast, fdb, idTok, upPut, upDelKey, pickIn, energyOf, bestSegE, lySaveText, fsLoad, tracks: () => tracks, ALB: () => ALB });
-  const meClose = () => { g('plrMe').hidden = true; };
-  function meOpen() {
-    const w = g('plrMe'), L = g('plrMeL'); L.textContent = ''; w.hidden = false;
+  const meClose = () => {};
+  function meRender(L) {
     let u = null; try { u = firebase.auth().currentUser; } catch (e) {}
     const cd = el('div', 'mecard'), nm = (u && u.displayName) || 'زائر';
     if (u && u.photoURL) { const im = el('img'); im.referrerPolicy = 'no-referrer'; im.alt = ''; im.src = u.photoURL; cd.appendChild(im); } else cd.appendChild(el('i', '', nm.slice(0, 1)));
     const m = el('div'); m.append(el('b', '', nm), el('small', '', (u && u.email) || 'غير مسجّل الدخول')); cd.appendChild(m); L.appendChild(cd);
+    const sr = el('div', 'mestats'); [[st.fav.length, 'مفضلة'], [new Set(lhist().map((x) => x.i)).size, 'استمعت لها'], [follows().length, 'أتابعهم']].forEach(([n, l]) => { const s = el('div'); s.append(el('b', '', String(n)), el('small', '', l)); sr.appendChild(s); }); L.appendChild(sr);
     const row = (icn, n, s, f, cls) => { const t = el('button', 'merow' + (cls ? ' ' + cls : '')); t.type = 'button'; t.innerHTML = '<i class="mei">' + ic(icn, 19) + '</i><span><b></b><small></small></span>'; t.querySelector('b').textContent = n; t.querySelector('small').textContent = s || ''; if (!s) t.querySelector('small').remove(); t.onclick = f; return t; };
     const grp = (title, items, cls) => { L.appendChild(el('h5', 'meg' + (cls ? ' ' + cls : ''), title)); const l = el('div', 'melist'); items.forEach((i) => l.appendChild(i)); L.appendChild(l); };
     const mine = [row('heart', 'المفضلة', st.fav.length ? st.fav.length + ' قصيدة' : 'لا توجد قصائد بعد', () => { meClose(); tab = 'fav'; lastMine = 'fav'; navSync(); render(); }),
@@ -2146,8 +2145,6 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
       row('eq', 'الإحصائيات', 'الاستماعات والإعجابات', statsPanel),
       row('users', 'لوحة الإدارة', 'قبول طلبات الدخول والاستبيانات', () => { meClose(); try { MinbarAuth.openAdmin(); } catch (e) { toast('تعذّر فتح اللوحة'); } })], 'meadm');
   }
-  g('plrMeB').onclick = meOpen; g('plrMeX').onclick = meClose;
-
   function modesSheet() { sheet((bx, close) => { bx.classList.add('mdsh');
       const h = el('div', 'mdh'); h.innerHTML = '<b>' + ic('arch', 22) + '<span>أجواء الاستماع</span></b><small>اختر الجو المناسب لمكان استماعك</small>'; bx.appendChild(h);
       const gr = el('div', 'mdg'); bx.appendChild(gr);
