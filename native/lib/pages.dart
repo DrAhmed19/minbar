@@ -125,7 +125,7 @@ class _GateState extends State<Gate> with TickerProviderStateMixin {
                     const SizedBox(height: 14),
                     NameMark(width: 230, write: (el - 0.5) / 1.3, shine: (el - 1.9) / 0.7),
                     const SizedBox(height: 10),
-                    Opacity(opacity: fade(1.9), child: Text(_greet(), style: tx(15, c: const Color(0xFF9FBDB0)))),
+                    Opacity(opacity: fade(1.9), child: Text('إهداء إلى باسم الكربلائي', style: tx(14, c: const Color(0xFFA9C6B8)))),
                   ]),
                 ),
               ]);
