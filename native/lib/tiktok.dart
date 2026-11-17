@@ -49,7 +49,7 @@ class _TikTokPageState extends State<TikTokPage> {
     ..setJavaScriptMode(JavaScriptMode.unrestricted)
     ..setBackgroundColor(Colors.white)
     ..setNavigationDelegate(NavigationDelegate(onNavigationRequest: _nav))
-    ..loadRequest(Uri.parse('https://www.tiktok.com/embed/@$kTikTokUser'));
+    ..loadRequest(Uri.parse('${kBase}tt.html?p=$kTikTokUser'));
 
   @override
   void initState() {
@@ -78,8 +78,7 @@ class _TikTokPageState extends State<TikTokPage> {
   /// أي رابط يحاول يطلع من مشغل التضمين (فتح التطبيق، الملف الشخصي...) نفتحه خارجياً
   NavigationDecision _nav(NavigationRequest r) {
     final u = r.url;
-    if (u.contains('/embed') || u.contains('/player/') || u.startsWith('about:') || u.contains('tiktokcdn') || u.contains('ttwstatic')) return NavigationDecision.navigate;
-    if (!r.isMainFrame) return NavigationDecision.navigate;
+    if (!r.isMainFrame || u.startsWith(kBase) || u.startsWith('about:')) return NavigationDecision.navigate;
     launchUrl(Uri.parse(u), mode: LaunchMode.externalApplication);
     return NavigationDecision.prevent;
   }
@@ -175,10 +174,19 @@ class _TikTokPageState extends State<TikTokPage> {
           SliverToBoxAdapter(
             child: Container(
               margin: const EdgeInsets.fromLTRB(14, 4, 14, 6),
-              height: 470,
+              height: 430,
               clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withOpacity(.05), blurRadius: 14, offset: const Offset(0, 4))]),
               child: WebViewWidget(controller: _prof),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Center(
+              child: TextButton(
+                style: TextButton.styleFrom(backgroundColor: const Color(0xFFFE2C55), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                onPressed: () => launchUrl(Uri.parse('https://www.tiktok.com/@$kTikTokUser'), mode: LaunchMode.externalApplication),
+                child: Text('فتح الحساب في TikTok', style: tx(13.5, w: FontWeight.w700, c: Colors.white)),
+              ),
             ),
           ),
           SliverToBoxAdapter(
@@ -244,12 +252,12 @@ class _TtPlayerState extends State<TtPlayer> {
       },
       onNavigationRequest: (r) {
         final u = r.url;
-        if (!r.isMainFrame || u.contains('/embed') || u.contains('/player/') || u.startsWith('about:')) return NavigationDecision.navigate;
+        if (!r.isMainFrame || u.startsWith(kBase) || u.startsWith('about:')) return NavigationDecision.navigate;
         launchUrl(Uri.parse(u), mode: LaunchMode.externalApplication);
         return NavigationDecision.prevent;
       },
     ))
-    ..loadRequest(Uri.parse('https://www.tiktok.com/embed/v2/${widget.it.vid}?lang=ar'));
+    ..loadRequest(Uri.parse('${kBase}tt.html?v=${widget.it.vid}&u=${RegExp(r'@([\w.-]+)').firstMatch(widget.it.url)?.group(1) ?? kTikTokUser}'));
 
   @override
   void initState() {

@@ -11,13 +11,17 @@
   function shell() {
     root = document.createElement('div'); root.className = 'ttpg';
     root.innerHTML = '<div class="tth"><button class="ttb" type="button" aria-label="رجوع">‹</button><b>مقاطعنا على تيك توك</b><span></span></div>'
-      + '<div class="ttbody"><div class="ttprof"><iframe src="https://www.tiktok.com/embed/@' + USER + '" loading="lazy" allow="encrypted-media; fullscreen" title="حساب تيك توك"></iframe></div>'
+      + '<div class="ttbody"><div class="ttprof"><blockquote class="tiktok-embed" cite="https://www.tiktok.com/@' + USER + '" data-unique-id="' + USER + '" data-embed-type="creator" style="max-width:780px;min-width:288px;margin:0"><section></section></blockquote></div>'
+      + '<a class="ttopen" href="https://www.tiktok.com/@' + USER + '" target="_blank" rel="noopener">فتح الحساب في TikTok</a>'
       + '<div class="ttsec"><b>مقاطع مختارة</b><span class="ttadm" hidden><input id="ttIn" dir="ltr" placeholder="الصق رابط مقطع تيك توك"><button type="button" id="ttAdd">إضافة</button></span></div>'
       + '<div class="ttgrid"></div></div>';
     document.body.appendChild(root);
     root.querySelector('.ttb').onclick = close;
     root.querySelector('#ttAdd').onclick = add;
+    embedJs();
   }
+  /* سكربت التضمين الرسمي من تيك توك: نعيد تحميله كل مرة حتى يحوّل أي تضمين جديد بالصفحة */
+  function embedJs() { const o = document.getElementById('ttEmbedJs'); if (o) o.remove(); const sc = document.createElement('script'); sc.id = 'ttEmbedJs'; sc.async = true; sc.src = 'https://www.tiktok.com/embed.js'; document.body.appendChild(sc); }
   function close() { if (root) { root.remove(); root = null; } }
   async function load() {
     const g = root.querySelector('.ttgrid'); g.innerHTML = '<div class="tthint">جارٍ التحميل…</div>';
@@ -35,10 +39,11 @@
   }
   function play(vid) {
     document.querySelectorAll('audio,video').forEach((a) => { try { a.pause(); } catch (e) {} });
+    const it = items.find((x) => x.vid === vid) || {}, url = it.url || ('https://www.tiktok.com/@' + USER + '/video/' + vid);
     const m = document.createElement('div'); m.className = 'ttplay';
-    m.innerHTML = '<button type="button" class="ttx" aria-label="إغلاق">✕</button><iframe src="https://www.tiktok.com/embed/v2/' + encodeURIComponent(vid) + '?lang=ar" allow="autoplay; encrypted-media; fullscreen" allowfullscreen title="مقطع تيك توك"></iframe>';
+    m.innerHTML = '<button type="button" class="ttx" aria-label="إغلاق">✕</button><div class="ttpv"><blockquote class="tiktok-embed" cite="' + esc(url) + '" data-video-id="' + esc(vid) + '" style="max-width:605px;min-width:325px;margin:0"><section></section></blockquote></div><a class="ttopen" href="' + esc(url) + '" target="_blank" rel="noopener">فتح في TikTok</a>';
     m.querySelector('.ttx').onclick = () => m.remove(); m.onclick = (e) => { if (e.target === m) m.remove(); };
-    document.body.appendChild(m);
+    document.body.appendChild(m); embedJs();
   }
   async function add() {
     if (busy) return; const inp = root.querySelector('#ttIn'), u = inp.value.trim(); if (!u) return toast('الصق رابط المقطع أولاً');

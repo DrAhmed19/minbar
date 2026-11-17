@@ -1,0 +1,9 @@
+<!doctype html><html lang="ar"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تيك توك</title>
+<style>html,body{margin:0;background:transparent;min-height:100%}body{display:flex;justify-content:center;align-items:flex-start}body.v{background:#000;align-items:center;min-height:100vh}.tiktok-embed{margin:0!important;width:100%}</style></head>
+<body><div id="b"></div><script>
+/* صفحة تضمين تيك توك الرسمية (تُستخدم داخل التطبيق): ?v=رقم المقطع&u=الحساب أو ?p=الحساب لبطاقة الحساب */
+(function(){var q=new URLSearchParams(location.search),v=(q.get('v')||'').replace(/\D/g,''),u=(q.get('u')||q.get('p')||'a1h9mad').replace(/[^\w.-]/g,''),b=document.getElementById('b'),bq=document.createElement('blockquote');bq.className='tiktok-embed';var s=document.createElement('section');
+if(v){document.body.className='v';bq.setAttribute('cite','https://www.tiktok.com/@'+u+'/video/'+v);bq.setAttribute('data-video-id',v);bq.style.maxWidth='605px';bq.style.minWidth='325px';}
+else{bq.setAttribute('cite','https://www.tiktok.com/@'+u);bq.setAttribute('data-unique-id',u);bq.setAttribute('data-embed-type','creator');bq.style.maxWidth='780px';bq.style.minWidth='288px';}
+bq.appendChild(s);b.appendChild(bq);var sc=document.createElement('script');sc.async=true;sc.src='https://www.tiktok.com/embed.js';document.body.appendChild(sc);})();
+</script></body></html>
