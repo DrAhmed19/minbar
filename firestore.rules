@@ -117,6 +117,11 @@ service cloud.firestore { match /databases/{db}/documents {
     allow read: if true;
     allow write: if isAdmin();
   }
+  // مقاطع تيك توك المختارة: الكل يقرأ، والمشرف وحده يضيف ويحذف
+  match /tiktok/{id} {
+    allow read: if true;
+    allow write: if isAdmin();
+  }
   // الإصدارات (الألبومات): الكل يقرأ، والمالك وحده يكتب
   match /albums/{id} {
     allow read: if true;

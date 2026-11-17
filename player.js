@@ -2194,6 +2194,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     const grp = (title, items, cls) => { L.appendChild(el('h5', 'meg' + (cls ? ' ' + cls : ''), title)); const l = el('div', 'melist'); items.forEach((i) => l.appendChild(i)); L.appendChild(l); };
     const mine = [row('heart', 'المفضلة', st.fav.length ? st.fav.length + ' قصيدة' : 'لا توجد قصائد بعد', () => { meClose(); tab = 'fav'; lastMine = 'fav'; navSync(); render(); }),
       row('info', 'الإصدار ' + APPV, 'اضغط للتحقق من التحديث', () => { toast('جارٍ التحقق من التحديث…'); const go = () => setTimeout(() => location.reload(), 1200); try { navigator.serviceWorker.getRegistration().then((r) => (r ? r.update() : 0)).then(go, go); } catch (e) { go(); } })];
+    if (window.TikTokPage) mine.splice(1, 0, row('play', 'مقاطعنا على تيك توك', 'مقاطع مختارة بمشاهداتها وتعليقاتها', () => { meClose(); TikTokPage.open(); }));
     if (u && window.MinbarAuth && MinbarAuth.signOut) mine.push(row('power', 'تسجيل الخروج', '', () => { meClose(); MinbarAuth.signOut(); }, 'dang'));
     else if (!u) mine.push(row('user', 'تسجيل الدخول بحساب Google', 'لحفظ مفضّلتك والتعليق والتفاعل', () => { meClose(); try { localStorage.removeItem('basim.user'); } catch (e) {} location.reload(); }));
     grp('حسابي', mine);
