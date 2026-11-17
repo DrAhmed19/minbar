@@ -372,7 +372,7 @@ class AuthCtl extends ChangeNotifier {
 
   /// معرّف عميل Google (يُمرَّر وقت البناء). إذا موجود نفتح نافذة اختيار الحساب الأصلية داخل التطبيق،
   /// وإذا فشلت لأي سبب نرجع لطريقة Firebase العادية حتى ما يتعطل الدخول
-  static const kGcid = String.fromEnvironment('GCID');
+  static const kGcid = String.fromEnvironment('GCID', defaultValue: '123319772563-8f3s18nrs35suufmhfq0bf9058122cok.apps.googleusercontent.com');
   bool busy = false;
   GoogleSignIn? _gs;
 
