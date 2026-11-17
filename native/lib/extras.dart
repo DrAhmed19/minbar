@@ -559,7 +559,7 @@ class _ProfilePageState extends State<ProfilePage> {
           _item(Ic.dl, 'المحمّلة للاستماع بدون إنترنت', '${dls.length} قصيدة', () => go(GroupPage('المحمّلة', dls))),
           _item(Ic.folder, 'ملفات من جهازك', '${r.locals.length} ملف', () => go(const LocalPage())),
           const Divider(height: 24, indent: 18, endIndent: 18),
-          _item(Ic.timer, 'ضبط التاريخ الهجري', 'يُحسب من الجهاز بدون إنترنت، وتصحّحه إن اختلف عن رؤية الهلال', () async {
+          _item(Ic.timer, 'ضبط التاريخ الهجري', 'يُحسب من الجهاز بدون إنترنت، وتصحّحه إن اختلف يوم', () async {
             final h = hijriOf(DateTime.now());
             final v = await showDialog<int>(
               context: context,
@@ -576,7 +576,7 @@ class _ProfilePageState extends State<ProfilePage> {
             );
             if (v != null) {
               hijriAdj = v;
-              (await SharedPreferences.getInstance()).setInt('hijriAdj', v);
+              (await SharedPreferences.getInstance()).setInt('hijriLocal', v);
               app.repo.notifyListeners();
             }
           }),

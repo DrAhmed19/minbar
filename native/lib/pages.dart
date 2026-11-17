@@ -82,7 +82,7 @@ class _GateState extends State<Gate> with TickerProviderStateMixin {
       );
     }
     if (!ready) return AnnotatedRegion<SystemUiOverlayStyle>(value: light, child: _splash(0));
-    return AnnotatedRegion<SystemUiOverlayStyle>(value: light, child: LoginPage(onRetry: () => setState(() {})));
+    return AnnotatedRegion<SystemUiOverlayStyle>(value: light, child: Material(type: MaterialType.transparency, child: LoginPage(onRetry: () => setState(() {}))));
   }
 
   /// x: 0 = الافتتاح، 1 = انتهى الانتقال (الشعار يصغر ويطير لمكانه بأعلى الرئيسية والخلفية تختفي)

@@ -295,7 +295,7 @@ class Repo extends ChangeNotifier {
   Future<void> init() async {
     _p = await SharedPreferences.getInstance();
     _watchNet();
-    hijriAdj = _p!.getInt('hijriAdj') ?? 0;
+    hijriAdj = _p!.getInt('hijriLocal') ?? _p!.getInt('hijriRemote') ?? 0;
     try {
       locals = (jsonDecode(_p!.getString('locals') ?? '[]') as List).whereType<Map>().map(Track.fromJson).toList();
     } catch (_) {}
@@ -564,6 +564,15 @@ class Repo extends ChangeNotifier {
     if (DateTime.now().difference(_hotAt).inMinutes < 10) return;
     _hotAt = DateTime.now();
     final db = FirebaseFirestore.instance;
+    try {
+      // ضبط التاريخ الهجري العام (يحدده المشرف): يُحفظ للعمل بدون إنترنت
+      final h = await db.doc('hijri/adj').get();
+      final v = (h.data()?['v'] as num?)?.toInt();
+      if (v != null) {
+        await _p?.setInt('hijriRemote', v);
+        if (_p?.getInt('hijriLocal') == null) hijriAdj = v;
+      }
+    } catch (_) {}
     try {
       final s = await db.collection('stats').orderBy('plays', descending: true).limit(12).get();
       hotPlays = s.docs.map((d) => MapEntry(d.id, ((d.data()['plays'] ?? 0) as num).toInt())).toList();
