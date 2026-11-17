@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:async';
 import 'package:audio_session/audio_session.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
@@ -66,6 +67,10 @@ Future<void> _start() async {
       authDomain: 'minbar-8f037.firebaseapp.com',
     ),
   );
+  try {
+    await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(true);
+    await FirebaseAnalytics.instance.logAppOpen();
+  } catch (_) {}
   /* جلسة صوت موسيقى: إيقاف عند المكالمات/فصل السماعة وتخفيض الصوت مع الإشعارات */
   try {
     final ses = await AudioSession.instance;
