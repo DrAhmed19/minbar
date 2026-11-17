@@ -573,6 +573,17 @@ class Repo extends ChangeNotifier {
         if (_p?.getInt('hijriLocal') == null) hijriAdj = v;
       }
     } catch (_) {}
+    // توفير حصة Firestore: الأكثر استماعاً/إعجاباً يُحفظ 3 ساعات بالجهاز
+    final hc = _p?.getString('hot.v1');
+    final hat = _p?.getInt('hot.at') ?? 0;
+    if (hc != null && DateTime.now().millisecondsSinceEpoch - hat < 3 * 3600000) {
+      try {
+        final j = jsonDecode(hc) as Map;
+        hotPlays = [for (final e in (j['p'] as List)) MapEntry('${e[0]}', (e[1] as num).toInt())];
+        hotLikes = [for (final e in (j['l'] as List)) MapEntry('${e[0]}', (e[1] as num).toInt())];
+        notifyListeners();
+      } catch (_) {}
+    } else {
     try {
       final s = await db.collection('stats').orderBy('plays', descending: true).limit(12).get();
       hotPlays = s.docs.map((d) => MapEntry(d.id, ((d.data()['plays'] ?? 0) as num).toInt())).toList();
@@ -600,6 +611,11 @@ class Repo extends ChangeNotifier {
   Future<void> loadAllLyrics() async {
     if (_allLyLoading || allLy.isNotEmpty) return;
     _allLyLoading = true;
+      try {
+        await _p?.setString('hot.v1', jsonEncode({'p': [for (final e in hotPlays) [e.key, e.value]], 'l': [for (final e in hotLikes) [e.key, e.value]]}));
+        await _p?.setInt('hot.at', DateTime.now().millisecondsSinceEpoch);
+      } catch (_) {}
+    }
     try {
       final at = _p?.getInt('allLy2.at') ?? 0;
       final cached = _p?.getString('allLy2');

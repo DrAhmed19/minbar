@@ -1863,7 +1863,9 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     try { const d = await fdb().doc('lyrApproved/' + t.id).get(); if (d.exists) old = JSON.parse(d.data().json || '[]'); } catch (e) {}
     const o = window.LYED.retime(old, r.lines, dur || t.dur || 300, (ls, d) => estLines(ls, d, EN)); return applyGlobal(t, o.arr, true); }
   /* المالك: تحميل كل الكلمات المعتمدة مرة بالجلسة حتى تظهر صحيحة بأدوات الإدارة */
-  async function glyAll() { const db = fdb(); if (!db || glyAll.done) return; glyAll.done = true; try { const s = await db.collection('lyrApproved').get(); s.forEach((d) => { try { GLY[d.id] = JSON.parse(d.data().json || '[]'); } catch (e) {} }); } catch (e) { glyAll.done = false; } }
+  async function glyAll() { const db = fdb(); if (!db || glyAll.done) return; glyAll.done = true;
+    try { const c = JSON.parse(localStorage.getItem('basim.gly') || 'null'); if (c && Date.now() - c.at < 7 * 86400000 && c.d) { Object.keys(c.d).forEach((k) => { GLY[k] = c.d[k]; }); return; } } catch (e) {}
+    try { const s = await db.collection('lyrApproved').get(); const o = {}; s.forEach((d) => { try { GLY[d.id] = JSON.parse(d.data().json || '[]'); o[d.id] = GLY[d.id]; } catch (e) {} }); try { localStorage.setItem('basim.gly', JSON.stringify({ at: Date.now(), d: o })); } catch (e) {} } catch (e) { glyAll.done = false; } }
   async function upDel(t) { if (!confirm('حذف «' + t.title + '» نهائياً؟')) return; const db = fdb(); try { await db.collection('tracks').doc(t.id).delete(); [keyOf(t.audio), keyOf(t.ownCover)].filter(Boolean).forEach(upDelKey); toast('حُذفت القصيدة'); fsLoad(); } catch (e) { toast('تعذّر الحذف: ' + (e.code || e.message)); } }
   g('plrAddB').onclick = () => upMenu(null);
   try { firebase.auth().onAuthStateChanged(() => { g('plrAddB').hidden = !isOwner(); fsLoad(); if (isOwner()) glyAll(); }); } catch (e) {}
@@ -2096,8 +2098,11 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   function hcard(t, sub, prog) { const c = el('button', 'hcd'); c.type = 'button'; const cv = el('div', 'plrcov'); coverEl(t, cv); c.appendChild(cv); if (prog != null) { const p = el('i', 'hpr'); p.style.setProperty('--p', prog); cv.appendChild(p); } if (offHas(t.id)) cv.appendChild(el('em', 'hoff', '⬇')); c.append(el('b', '', t.title), el('small', '', sub != null ? sub : (t.reciter || ''))); c.onclick = () => { qFrom(t, tracks); play(tracks.indexOf(t), true); }; lpMenu(c, t); return c; }
   let HOT = { at: 0, plays: [], likes: [] };
   async function hotLoad() { const db = fdb(); if (!db || Date.now() - HOT.at < 10 * 60000) return; HOT.at = Date.now();
+    /* توفير حصة Firestore: الأكثر استماعاً/إعجاباً يُحفظ 3 ساعات بالجهاز بدل قراءة ~800 مستند بكل فتح */
+    try { const c = JSON.parse(localStorage.getItem('basim.hot') || 'null'); if (c && Date.now() - c.at < 3 * 3600000) { HOT.plays = c.plays || []; HOT.likes = c.likes || []; if (tab === 'lib' && libV === 'home') render(); return; } } catch (e) {}
     try { const s = await db.collection('stats').orderBy('plays', 'desc').limit(12).get(); HOT.plays = []; s.forEach((d) => HOT.plays.push([d.id, d.data().plays || 0])); } catch (e) {}
     try { const wk = firebase.firestore.Timestamp.fromMillis(Date.now() - 7 * 864e5), s = await db.collection('rx').where('at', '>=', wk).limit(800).get(), c = {}; s.forEach((d) => { const x = d.data(); c[x.track] = (c[x.track] || 0) + 1; }); HOT.likes = Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 12); } catch (e) {}
+    try { localStorage.setItem('basim.hot', JSON.stringify({ at: Date.now(), plays: HOT.plays, likes: HOT.likes })); } catch (e) {}
     if (tab === 'lib' && libV === 'home') render(); }
   /* بطاقة التاريخ والمناسبة: اليوم الهجري والشهر والسنة + مناسبة اليوم أو القادمة */
   function dateCard(body) {
