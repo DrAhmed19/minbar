@@ -45,11 +45,6 @@ class TikTokPage extends StatefulWidget {
 class _TikTokPageState extends State<TikTokPage> {
   List<TtItem> _items = [];
   bool _loading = true, _adding = false;
-  late final WebViewController _prof = WebViewController()
-    ..setJavaScriptMode(JavaScriptMode.unrestricted)
-    ..setBackgroundColor(Colors.white)
-    ..setNavigationDelegate(NavigationDelegate(onNavigationRequest: _nav))
-    ..loadRequest(Uri.parse('${kBase}tt.html?p=$kTikTokUser'));
 
   @override
   void initState() {
@@ -174,10 +169,13 @@ class _TikTokPageState extends State<TikTokPage> {
           SliverToBoxAdapter(
             child: Container(
               margin: const EdgeInsets.fromLTRB(14, 4, 14, 6),
-              height: 430,
-              clipBehavior: Clip.antiAlias,
+              padding: const EdgeInsets.symmetric(vertical: 26),
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withOpacity(.05), blurRadius: 14, offset: const Offset(0, 4))]),
-              child: WebViewWidget(controller: _prof),
+              child: Column(children: [
+                const Icon(Icons.music_note_rounded, size: 38, color: Color(0xFFFE2C55)),
+                const SizedBox(height: 6),
+                Text('@$kTikTokUser', style: tx(17, w: FontWeight.w800, c: kGreen)),
+              ]),
             ),
           ),
           SliverToBoxAdapter(
@@ -211,7 +209,7 @@ class _TikTokPageState extends State<TikTokPage> {
                 delegate: SliverChildBuilderDelegate((_, i) {
                   final it = _items[i];
                   return GestureDetector(
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => TtPlayer(it))),
+                    onTap: () => launchUrl(Uri.parse(it.url), mode: LaunchMode.externalApplication),
                     onLongPress: admin ? () => _del(it) : null,
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(16),

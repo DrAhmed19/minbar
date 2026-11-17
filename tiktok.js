@@ -11,14 +11,13 @@
   function shell() {
     root = document.createElement('div'); root.className = 'ttpg';
     root.innerHTML = '<div class="tth"><button class="ttb" type="button" aria-label="رجوع">‹</button><b>مقاطعنا على تيك توك</b><span></span></div>'
-      + '<div class="ttbody"><div class="ttprof"><blockquote class="tiktok-embed" cite="https://www.tiktok.com/@' + USER + '" data-unique-id="' + USER + '" data-embed-type="creator" style="max-width:780px;min-width:288px;margin:0"><section></section></blockquote></div>'
+      + '<div class="ttbody"><div class="ttprof"><b>@'+USER+'</b><span>مقاطعنا على تيك توك</span></div>'
       + '<a class="ttopen" href="https://www.tiktok.com/@' + USER + '" target="_blank" rel="noopener">فتح الحساب في TikTok</a>'
       + '<div class="ttsec"><b>مقاطع مختارة</b><span class="ttadm" hidden><input id="ttIn" dir="ltr" placeholder="الصق رابط مقطع تيك توك"><button type="button" id="ttAdd">إضافة</button></span></div>'
       + '<div class="ttgrid"></div></div>';
     document.body.appendChild(root);
     root.querySelector('.ttb').onclick = close;
     root.querySelector('#ttAdd').onclick = add;
-    embedJs();
   }
   /* سكربت التضمين الرسمي من تيك توك: نعيد تحميله كل مرة حتى يحوّل أي تضمين جديد بالصفحة */
   function embedJs() { const o = document.getElementById('ttEmbedJs'); if (o) o.remove(); const sc = document.createElement('script'); sc.id = 'ttEmbedJs'; sc.async = true; sc.src = 'https://www.tiktok.com/embed.js'; document.body.appendChild(sc); }
@@ -34,8 +33,8 @@
     root.querySelector('.ttadm').hidden = !isAdmin();
     const g = root.querySelector('.ttgrid');
     if (!items.length) { g.innerHTML = '<div class="tthint">' + (isAdmin() ? 'أضف أول مقطع بلصق رابطه بالأعلى' : 'لا توجد مقاطع مختارة بعد') + '</div>'; return; }
-    g.innerHTML = items.map((it) => '<button type="button" class="ttc" data-v="' + esc(it.vid) + '">' + (it.thumb ? '<img alt="" loading="lazy" referrerpolicy="no-referrer" src="' + esc(it.thumb) + '">' : '') + '<i>▶</i><span>' + esc(it.title) + '</span>' + (isAdmin() ? '<em data-del="' + esc(it.id) + '">حذف</em>' : '') + '</button>').join('');
-    g.querySelectorAll('.ttc').forEach((b) => { b.onclick = (e) => { const d = e.target.closest('[data-del]'); if (d) { e.stopPropagation(); del(d.dataset.del); return; } play(b.dataset.v); }; });
+    g.innerHTML = items.map((it) => '<a class="ttc" target="_blank" rel="noopener" href="' + esc(it.url) + '" data-v="' + esc(it.vid) + '">' + (it.thumb ? '<img alt="" loading="lazy" referrerpolicy="no-referrer" src="' + esc(it.thumb) + '">' : '') + '<i>▶</i><span>' + esc(it.title) + '</span>' + (isAdmin() ? '<em data-del="' + esc(it.id) + '">حذف</em>' : '') + '</a>').join('');
+    g.querySelectorAll('.ttc').forEach((b) => { b.onclick = (e) => { const d = e.target.closest('[data-del]'); if (d) { e.preventDefault(); e.stopPropagation(); del(d.dataset.del); } }; });
   }
   function play(vid) {
     document.querySelectorAll('audio,video').forEach((a) => { try { a.pause(); } catch (e) {} });
