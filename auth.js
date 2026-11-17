@@ -12,19 +12,53 @@
   const say = (m) => cb.toast && cb.toast(m);
   const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 
-  A.signOut = () => auth.signOut();
+  /* تسجيل الخروج: نمسح الجلسة ونرجع لشاشة الدخول */
+  let outing = false;
+  A.signOut = () => { if (outing) return Promise.resolve(); outing = true; const done = () => { try { localStorage.removeItem('basim.user'); } catch (e) {} location.reload(); }; return auth.signOut().then(done, done); };
   const MSG = { 'auth/network-request-failed': 'لا يوجد اتصال بالإنترنت. تأكد من الاتصال وحاول مرة أخرى', 'auth/too-many-requests': 'محاولات كثيرة، انتظر قليلاً ثم حاول مرة أخرى', 'auth/user-disabled': 'هذا الحساب موقوف', 'auth/unauthorized-domain': 'هذا العنوان غير مسموح له بتسجيل الدخول' };
   const errMsg = (e) => MSG[e && e.code] || 'تعذّر تسجيل الدخول، حاول مرة أخرى';
   let busy = false;
   function setBusy(b) { busy = b; const g = $('gBtn'), q = $('lGuest'); if (g) { g.disabled = b; g.classList.toggle('busy', b); } if (q) q.disabled = b; }
-  async function signIn() {
-    if (busy) return; setBusy(true); // منع الضغط المزدوج
+  /* نافذة اختيار الحساب: نستخدم نافذة Google الأصلية (One Tap / FedCM) فوق الصفحة بدون فتح صفحة جديدة،
+     وإذا ما توفرت لأي سبب نرجع لنافذة Firebase ثم إعادة التوجيه كحل أخير */
+  const GCID = '123319772563-8f3s18nrs35suufmhfq0bf9058122cok.apps.googleusercontent.com';
+  let gisSt = 0; /* 0 لم يُحمّل، 1 جاهز، -1 غير متاح */
+  function gisLoad() {
+    if (gisSt) return;
+    const sc = document.createElement('script'); sc.src = 'https://accounts.google.com/gsi/client'; sc.async = true;
+    sc.onload = () => { try { google.accounts.id.initialize({ client_id: GCID, callback: gisCred, auto_select: false, cancel_on_tap_outside: true, use_fedcm_for_prompt: true, itp_support: true, context: 'signin' }); gisSt = 1; } catch (e) { gisSt = -1; } };
+    sc.onerror = () => { gisSt = -1; }; document.head.appendChild(sc);
+  }
+  async function gisCred(r) {
+    try { setBusy(true); await auth.signInWithCredential(firebase.auth.GoogleAuthProvider.credential(r.credential)); }
+    catch (e) { say(errMsg(e)); } finally { setBusy(false); }
+  }
+  async function popupSignIn() {
     const p = new firebase.auth.GoogleAuthProvider(); p.setCustomParameters({ prompt: 'select_account' });
     try { await auth.signInWithPopup(p); }
     catch (e) {
       if (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment') { try { await auth.signInWithRedirect(p); return; } catch (e2) { say(errMsg(e2)); } }
       else if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request' && e.code !== 'auth/user-cancelled') say(errMsg(e));
-    } finally { setBusy(false); }
+    }
+  }
+  async function signIn() {
+    if (busy) return; // منع الضغط المزدوج
+    if (gisSt === 1) {
+      setBusy(true); let doneP = false;
+      const fin = () => { if (!doneP) { doneP = true; setBusy(false); } };
+      setTimeout(fin, 4000); /* حتى لو ما وصل أي رد، يرجع الزر قابلاً للضغط */
+      try {
+        google.accounts.id.prompt((n) => {
+          try {
+            if (n.isNotDisplayed && n.isNotDisplayed()) { gisSt = -1; fin(); popupSignIn(); }
+            else if (n.isSkippedMoment && n.isSkippedMoment()) fin();
+            else if (n.isDismissedMoment && n.isDismissedMoment() && n.getDismissedReason && n.getDismissedReason() !== 'credential_returned') fin();
+          } catch (e) { fin(); }
+        });
+      } catch (e) { gisSt = -1; fin(); popupSignIn(); }
+      return;
+    }
+    setBusy(true); try { await popupSignIn(); } finally { setBusy(false); }
   }
   async function handle(u) {
     if (!u) { if (cb.onOut) cb.onOut(); A.admin = false; $('btnAdmin').hidden = true; pane('gSign'); if (window.__mjCode) return cb.onEnter({ uid: '', name: 'ضيف المجلس', email: '', photo: '', chan: '', guest: true, mj: true }); return; }
@@ -151,7 +185,7 @@
 
   A.start = (o) => {
     cb = o; $('gBox').hidden = false; pane('gLoad');
-    $('gBtn').onclick = signIn;
+    $('gBtn').onclick = signIn; gisLoad();
     auth.getRedirectResult().catch((e) => { if (e && e.code && e.code !== 'auth/no-auth-event') say(errMsg(e)); });
     $('btnAdmin').onclick = () => { if (A.admin) openAdmin(); };
     A.openAdmin = () => openAdmin();
