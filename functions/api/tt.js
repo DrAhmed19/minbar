@@ -21,5 +21,9 @@ export async function onRequestGet({ request }) {
   const clean = 'https://www.tiktok.com/@' + m[1] + '/video/' + m[2];
   let o = {};
   try { const r = await fetch('https://www.tiktok.com/oembed?url=' + encodeURIComponent(clean)); if (r.ok) o = await r.json(); } catch (e) {}
-  return J({ id: m[2], user: m[1], url: clean, title: (o.title || '').slice(0, 300), thumb: o.thumbnail_url || '', author: o.author_name || '' }, 200, 3600);
+  let thumb = o.thumbnail_url || '', title = o.title || '';
+  // احتياط: لو تيك توك رفض طلب السيرفر نجرب خدمات وسيطة لجلب الغلاف
+  if (!thumb) { try { const r = await fetch('https://noembed.com/embed?url=' + encodeURIComponent(clean)); if (r.ok) { const n = await r.json(); thumb = n.thumbnail_url || ''; title = title || n.title || ''; } } catch (e) {} }
+  if (!thumb) { try { const r = await fetch('https://www.tikwm.com/api/?url=' + encodeURIComponent(clean), { headers: { 'user-agent': 'Mozilla/5.0' } }); if (r.ok) { const n = (await r.json()).data || {}; thumb = n.origin_cover || n.cover || ''; title = title || n.title || ''; } } catch (e) {} }
+  return J({ id: m[2], user: m[1], url: clean, title: title.slice(0, 300), thumb, author: o.author_name || '' }, 200, thumb ? 3600 : 0);
 }
