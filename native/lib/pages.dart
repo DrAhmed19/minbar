@@ -125,7 +125,7 @@ class _GateState extends State<Gate> with TickerProviderStateMixin {
                     offset: Offset(0, 14 * (1 - fade(0.75))),
                     child: Column(children: [
                       const SizedBox(height: 6),
-                      Text('منبر', style: tx(54, w: FontWeight.w800, c: const Color(0xFFF3EAD0))),
+                      Text('منبر', style: const TextStyle(fontFamily: 'F8', fontSize: 66, height: 1.25, color: Color(0xFFF3EAD0))),
                       const SizedBox(height: 6),
                       Container(width: 120 * fade(0.95), height: 2, decoration: BoxDecoration(borderRadius: BorderRadius.circular(2), gradient: const LinearGradient(colors: [Color(0x00E8C46A), kGold, Color(0x00E8C46A)]))),
                       const SizedBox(height: 8),
@@ -206,7 +206,7 @@ class LoginPage extends StatelessWidget {
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 SizedBox(width: 96, height: 104, child: CustomPaint(painter: LogoPainter(0.15))),
                 const SizedBox(height: 8),
-                Text('منبر', style: tx(44, w: FontWeight.w800, c: const Color(0xFFF3EAD0))),
+                Text('منبر', style: const TextStyle(fontFamily: 'F8', fontSize: 54, height: 1.25, color: Color(0xFFF3EAD0))),
                 Text('قصائد ومراثي', style: tx(14, w: FontWeight.w500, c: const Color(0xFF9FBDB0))),
                 const SizedBox(height: 18),
                 Container(width: 42, height: 2, decoration: BoxDecoration(color: const Color(0x66F4CF55), borderRadius: BorderRadius.circular(2))),

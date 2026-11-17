@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'occasion.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
@@ -294,6 +295,7 @@ class Repo extends ChangeNotifier {
   Future<void> init() async {
     _p = await SharedPreferences.getInstance();
     _watchNet();
+    hijriAdj = _p!.getInt('hijriAdj') ?? 0;
     try {
       locals = (jsonDecode(_p!.getString('locals') ?? '[]') as List).whereType<Map>().map(Track.fromJson).toList();
     } catch (_) {}

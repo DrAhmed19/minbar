@@ -1,5 +1,8 @@
 /// تحويل التاريخ الميلادي إلى هجري (خوارزمية جدولية) + مناسبات منبر
+/// تصحيح يدوي (±يوم/يومين) لأن بداية الشهر ترى بالرؤية وتختلف عن الحساب الفلكي
+int hijriAdj = 0;
 ({int y, int m, int d}) hijriOf(DateTime g) {
+  if (hijriAdj != 0) g = g.add(Duration(days: hijriAdj));
   final a = (14 - g.month) ~/ 12, yy = g.year + 4800 - a, mm = g.month + 12 * a - 3;
   final jd = g.day + (153 * mm + 2) ~/ 5 + 365 * yy + yy ~/ 4 - yy ~/ 100 + yy ~/ 400 - 32045;
   var l = jd - 1948440 + 10632;

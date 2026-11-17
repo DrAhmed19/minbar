@@ -1667,7 +1667,19 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
       w.remove(); if (!best) return toast('لم نتعرّف على القصيدة في المكتبة'); qFrom(best.t, tracks); play(tracks.indexOf(best.t), true); const at = best.ln.t; if (isFinite(at)) seekTo(at); toast('تم التعرّف: ' + best.t.title);
     } catch (e) { w.remove(); toast('تعذّر التعرّف. يلزم اتصال بالإنترنت عند الاستخدام الأول'); } }
   /* ---------- 9) مناسبة اليوم (حسب التقويم الهجري) ---------- */
-  function occasion() { let d, m; try { const f = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', { day: 'numeric', month: 'numeric' }).formatToParts(new Date()); d = +f.find((x) => x.type === 'day').value; m = +f.find((x) => x.type === 'month').value; } catch (e) { return null; }
+  const HADJ = () => { try { return +localStorage.getItem('minbar.hadj') || 0; } catch (e) { return 0; } };
+  function hadjMenu() { modal('ضبط التاريخ الهجري', (bx, close) => { bx.appendChild(el('p', 'abp', 'يُحسب من جهازك بدون إنترنت. إن اختلف عن رؤية الهلال صحّحه بيوم أو يومين.')); [[-2, 'يومين للخلف'], [-1, 'يوم للخلف'], [0, 'بدون تصحيح'], [1, 'يوم للأمام'], [2, 'يومين للأمام']].forEach(([v, l]) => { const b = el('button', HADJ() === v ? 'pri' : '', l + (HADJ() === v ? ' ✓' : '')); b.onclick = () => { try { localStorage.setItem('minbar.hadj', v); } catch (e) {} close(); toast('تم الضبط'); try { occRender && 0; } catch (e) {} }; bx.appendChild(b); }); }); }
+  /* تقرير المشرف: الأكثر سماعاً وتفاعلاً آخر 30 يوماً + الطلبات المعلقة */
+  function repMenu() { const db = fdb(); if (!db) return toast('غير متصل'); modal('تقرير منبر', (bx, close) => { const ld = el('p', 'abp', 'جارٍ التجميع…'); bx.appendChild(ld);
+    const since = firebase.firestore.Timestamp.fromMillis(Date.now() - 30 * 864e5), nm = (id) => { const t = tracks.find((z) => z.id === id); return t ? t.title : id; };
+    Promise.all([db.collection('stats').orderBy('plays', 'desc').limit(10).get(), db.collection('rx').where('at', '>=', since).limit(1000).get(), db.collection('lyrEdits').get(), db.collection('lyrSubs').get()]).then(([st, rx, ce, cs]) => {
+      ld.remove(); const sec = (t) => { const h = el('b', '', t); h.style.cssText = 'display:block;margin:12px 0 4px;color:#F3D88A'; bx.appendChild(h); };
+      sec('الأكثر سماعاً (الإجمالي)'); st.docs.forEach((d, i) => bx.appendChild(el('p', 'abp', (i + 1) + '. ' + nm(d.id) + ' — ' + (d.data().plays || 0))));
+      const c = {}; rx.forEach((d) => { const k = d.data().track; c[k] = (c[k] || 0) + 1; }); sec('الأكثر تفاعلاً آخر 30 يوماً (' + rx.size + ' تفاعل)');
+      Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 8).forEach(([k, n], i) => bx.appendChild(el('p', 'abp', (i + 1) + '. ' + nm(k) + ' — ' + n)));
+      sec('بانتظار مراجعتك'); bx.appendChild(el('p', 'abp', 'تصحيحات كلمات: ' + ce.size + ' · كلمات مقترحة كاملة: ' + cs.size));
+      const cn = el('button', 'cn', 'إغلاق'); cn.onclick = close; bx.appendChild(cn); }).catch(() => { ld.textContent = 'تعذّر جلب البيانات'; }); }); }
+  function occasion() { let d, m; try { const f = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', { day: 'numeric', month: 'numeric' }).formatToParts(new Date(Date.now() + HADJ() * 864e5)); d = +f.find((x) => x.type === 'day').value; m = +f.find((x) => x.type === 'month').value; } catch (e) { return null; }
     const N = ['', 'الأولى', 'الثانية', 'الثالثة', 'الرابعة', 'الخامسة', 'السادسة', 'السابعة', 'الثامنة', 'التاسعة', 'العاشرة'];
     if (m === 1 && d <= 9) return { t: 'الليلة ' + N[d + 1] + ' من محرم', k: ['محرم', 'الحسين', 'عاشوراء', 'كربلاء'] }; if (m === 1 && d === 10) return { t: 'يوم عاشوراء', k: ['عاشوراء', 'الحسين', 'كربلاء', 'محرم'] }; if (m === 1 && d <= 13) return { t: 'أيام محرم', k: ['محرم', 'الحسين', 'كربلاء'] };
     if (m === 2 && d >= 15 && d <= 20) return { t: d === 20 ? 'زيارة الأربعين' : 'أيام المسير إلى الأربعين', k: ['الأربعين', 'زيارة', 'مشاية', 'الحسين'] }; if (m === 2 && d >= 27) return { t: 'ذكرى وفاة النبي ﷺ والإمام الحسن', k: ['النبي', 'الحسن', 'المصطفى'] };
@@ -2087,7 +2099,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     if (tab === 'lib' && libV === 'home') render(); }
   /* بطاقة التاريخ والمناسبة: اليوم الهجري والشهر والسنة + مناسبة اليوم أو القادمة */
   function dateCard(body) {
-    const d = new Date(), P = {}; try { new Intl.DateTimeFormat('ar-u-ca-islamic-umalqura-nu-latn', { day: 'numeric', month: 'long', year: 'numeric' }).formatToParts(d).forEach((x) => { P[x.type] = x.value; }); } catch (e) {}
+    const d = new Date(Date.now() + HADJ() * 864e5), P = {}; try { new Intl.DateTimeFormat('ar-u-ca-islamic-umalqura-nu-latn', { day: 'numeric', month: 'long', year: 'numeric' }).formatToParts(d).forEach((x) => { P[x.type] = x.value; }); } catch (e) {}
     let greg = ''; try { greg = new Intl.DateTimeFormat('ar-IQ-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(d); } catch (e) {}
     const o = occasion(), nx = o ? null : occNext(), c = el('div', 'dcard'), dt = el('div', 'dcd'), ds = el('div', 'dco');
     dt.append(el('b', '', P.day || ''), el('span', '', P.month || ''), el('small', '', (P.year || '') + ' هـ')); c.appendChild(dt);
@@ -2126,7 +2138,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
     if (!body.querySelector('.hsec')) { if (!tracks.length) skel(body, 8); else body.appendChild(el('div', 'hint cen', 'ابدأ الاستماع لتظهر هنا اقتراحاتك')); }
     hotLoad(); }
   /* المناسبة القادمة (خلال 10 أيام) */
-  function occNext() { for (let i = 1; i <= 10; i++) { const d = new Date(Date.now() + i * 864e5); let dd, mm; try { const f = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', { day: 'numeric', month: 'numeric' }).formatToParts(d); dd = +f.find((x) => x.type === 'day').value; mm = +f.find((x) => x.type === 'month').value; } catch (e) { return null; }
+  function occNext() { for (let i = 1; i <= 10; i++) { const d = new Date(Date.now() + (i + HADJ()) * 864e5); let dd, mm; try { const f = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', { day: 'numeric', month: 'numeric' }).formatToParts(d); dd = +f.find((x) => x.type === 'day').value; mm = +f.find((x) => x.type === 'month').value; } catch (e) { return null; }
       const M = [[1, 1, 'محرم الحرام'], [2, 15, 'المسير إلى الأربعين'], [2, 20, 'زيارة الأربعين'], [2, 28, 'وفاة النبي ﷺ والإمام الحسن'], [5, 13, 'الأيام الفاطمية'], [6, 3, 'الأيام الفاطمية الثانية'], [9, 19, 'ليالي القدر وشهادة الإمام علي']]; const m = M.find((x) => x[0] === mm && x[1] === dd); if (m) return { t: m[2], d: i }; } return null; }
   /* ================= متابعة الرواديد + تنبيه بالجديد ================= */
   function folToggle(r) { let a = follows(); if (a.includes(r)) { a = a.filter((x) => x !== r); toast('ألغيت متابعة ' + r); } else { a.push(r); toast('تتابع ' + r + ' — ننبهك بإصداراته الجديدة'); try { if (window.Notification && Notification.permission === 'default') Notification.requestPermission(); } catch (e) {} } jset(FOLK, a); render(); }
@@ -2164,7 +2176,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   function toolsUi() { const b = g('plrTools'); if (!b) return; b.textContent = ''; const seen = jget('minbar.seen.tools', {});
     b.appendChild(el('h5', 'tgh', 'القصيدة')); const L2 = el('div', 'tlist'); b.appendChild(L2);
     [['sleep', 'moon', 'مؤقت النوم', sleepT ? 'مفعّل — اضغط للتغيير' : 'إيقاف التشغيل بعد مدة', () => { g('plrSlB').click(); toolsUi(); }], ['about', 'info', 'عن القصيدة', 'الرادود والتفاصيل', about], ['share', 'share', 'مشاركة اللحظة', 'من الدقيقة الحالية', shareMoment], ['peak', 'flame', 'الذروة', rxList.length ? 'أكثر لحظة إعجاباً' : 'لا إعجابات', () => { const p = peakT(); if (p == null) return toast('لا توجد تفاعلات بعد على هذه القصيدة'); A.currentTime = p; if (A.paused) fadePlay(); tp(false); }],
-      ['fix', 'text', 'تصحيح الكلمات', 'اقتراح تعديل سطر أو توقيت', fixMenu]].forEach(([k, icn, n, s, f]) => {
+      ...(isOwner() ? [['rep', 'text', 'تقرير المشرف', 'الأكثر سماعاً وتفاعلاً والطلبات المعلقة', repMenu]] : []), ['hadj', 'text', 'ضبط التاريخ الهجري', 'تصحيح يوم أو يومين', hadjMenu], ['fix', 'text', 'تصحيح الكلمات', 'اقتراح تعديل سطر أو توقيت', fixMenu]].forEach(([k, icn, n, s, f]) => {
       const t = el('button', 'ptl'); t.type = 'button'; t.innerHTML = '<i class="pci">' + ic(icn, 18) + '</i><span></span><small></small>'; t.children[1].textContent = n; t.children[2].textContent = s; if (!seen[k]) t.appendChild(el('i', 'nb', 'جديد')); t.onclick = () => { const sn = jget('minbar.seen.tools', {}); sn[k] = 1; jset('minbar.seen.tools', sn); f(); toolsUi(); }; t.dataset.k = k; L2.appendChild(t); }); }
 
   /* ================= صفحتي: حساب المستخدم + قسم الإدارة (يُبنى للمالك فقط) ================= */
