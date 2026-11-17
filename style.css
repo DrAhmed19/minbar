@@ -1825,3 +1825,4 @@ textarea.mdin{resize:none}
 .ttopen{display:block;margin:10px auto 0;width:fit-content;padding:10px 18px;border-radius:12px;background:#fe2c55;color:#fff!important;text-decoration:none;font-size:14px;font-weight:700}
 .ttplay{flex-direction:column;overflow:auto;padding:60px 0 20px}.ttpv{width:min(100vw,420px);display:flex;justify-content:center}
 .ttprof{display:flex;flex-direction:column;align-items:center;gap:4px;padding:26px 10px;min-height:0}.ttprof b{font-size:18px;color:#0f5a43}.ttprof span{font-size:12px;color:#777}a.ttc{display:block;text-decoration:none}
+.ttadm textarea{flex:1;border:1px solid #ddd;border-radius:12px;padding:8px 10px;font:inherit;resize:none}

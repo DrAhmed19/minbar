@@ -87,7 +87,7 @@ class _TikTokPageState extends State<TikTokPage> {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           title: Text('إضافة مقطع', style: tx(16, w: FontWeight.w800)),
-          content: TextField(controller: ctl, autofocus: true, textDirection: TextDirection.ltr, decoration: const InputDecoration(hintText: 'الصق رابط المقطع من تيك توك')),
+          content: TextField(controller: ctl, autofocus: true, textDirection: TextDirection.ltr, decoration: const InputDecoration(hintText: 'الصق رابط مقطع أو أكثر (سطر لكل رابط)'), maxLines: 4, minLines: 1),
           actions: [
             TextButton(onPressed: () => Navigator.pop(d), child: const Text('إلغاء')),
             TextButton(onPressed: () => Navigator.pop(d, ctl.text.trim()), child: const Text('إضافة')),
@@ -97,33 +97,39 @@ class _TikTokPageState extends State<TikTokPage> {
     );
     if (link == null || link.isEmpty) return;
     setState(() => _adding = true);
-    final m = await ttInfo(link);
-    if (!mounted) return;
-    if (m == null || m['id'] == null) {
-      setState(() => _adding = false);
-      _snack('${m?['error'] ?? 'تعذّر قراءة الرابط، تأكد منه وحاول مرة أخرى'}');
-      return;
+    int ok = 0;
+    String err = '';
+    for (final u in link.split(RegExp(r'[\s,]+')).where((e) => e.isNotEmpty)) {
+      var m = await ttInfo(u);
+      if (m == null || m['id'] == null) {
+        final x = RegExp(r'@([\w.-]+)/video/(\d{8,25})').firstMatch(u);
+        if (x == null) {
+          err = 'الرابط ما فيه رقم مقطع، انسخه من «مشاركة ← نسخ الرابط» للمقطع نفسه';
+          continue;
+        }
+        m = {'id': x.group(2), 'url': 'https://www.tiktok.com/@${x.group(1)}/video/${x.group(2)}', 'title': '', 'thumb': ''};
+      }
+      if (_items.any((e) => e.vid == m!['id'])) {
+        err = 'مضاف مسبقاً';
+        continue;
+      }
+      try {
+        final top = _items.isEmpty ? 0 : _items.map((e) => e.order).reduce((a, b) => a < b ? a : b);
+        await FirebaseFirestore.instance.collection('tiktok').doc(m['id']).set({
+          'vid': m['id'],
+          'url': m['url'],
+          'title': '${m['title'] ?? ''}',
+          'thumb': '${m['thumb'] ?? ''}',
+          'order': top - 1,
+          'at': FieldValue.serverTimestamp(),
+        });
+        ok++;
+        await _load();
+      } catch (e) {
+        err = 'تعذّر الحفظ: $e';
+      }
     }
-    if (_items.any((e) => e.vid == m['id'])) {
-      setState(() => _adding = false);
-      _snack('هذا المقطع مضاف مسبقاً');
-      return;
-    }
-    try {
-      final top = _items.isEmpty ? 0 : _items.map((e) => e.order).reduce((a, b) => a < b ? a : b);
-      await FirebaseFirestore.instance.collection('tiktok').doc(m['id']).set({
-        'vid': m['id'],
-        'url': m['url'],
-        'title': '${m['title'] ?? ''}',
-        'thumb': '${m['thumb'] ?? ''}',
-        'order': top - 1, // الجديد يطلع أولاً
-        'at': FieldValue.serverTimestamp(),
-      });
-      _snack('تمت الإضافة');
-      await _load();
-    } catch (_) {
-      _snack('تعذّر الحفظ');
-    }
+    _snack(ok > 0 ? 'تمت إضافة $ok${err.isEmpty ? '' : ' — $err'}' : (err.isEmpty ? 'تعذّرت الإضافة' : err));
     if (mounted) setState(() => _adding = false);
   }
 
