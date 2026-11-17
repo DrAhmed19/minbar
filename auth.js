@@ -7,53 +7,32 @@
   firebase.initializeApp(C);
   const auth = firebase.auth(), db = firebase.firestore();
   const $ = (id) => document.getElementById(id);
-  const pane = (id) => ['gLoad', 'gSign', 'gForm', 'gWait'].forEach((x) => { $(x).hidden = x !== id; });
+  const pane = (id) => ['gLoad', 'gSign'].forEach((x) => { const e = $(x); if (e) e.hidden = x !== id; });
   let cb = {};
   const say = (m) => cb.toast && cb.toast(m);
   const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 
   A.signOut = () => auth.signOut();
+  const MSG = { 'auth/network-request-failed': 'لا يوجد اتصال بالإنترنت. تأكد من الاتصال وحاول مرة أخرى', 'auth/too-many-requests': 'محاولات كثيرة، انتظر قليلاً ثم حاول مرة أخرى', 'auth/user-disabled': 'هذا الحساب موقوف', 'auth/unauthorized-domain': 'هذا العنوان غير مسموح له بتسجيل الدخول' };
+  const errMsg = (e) => MSG[e && e.code] || 'تعذّر تسجيل الدخول، حاول مرة أخرى';
+  let busy = false;
+  function setBusy(b) { busy = b; const g = $('gBtn'), q = $('lGuest'); if (g) { g.disabled = b; g.classList.toggle('busy', b); } if (q) q.disabled = b; }
   async function signIn() {
+    if (busy) return; setBusy(true); // منع الضغط المزدوج
     const p = new firebase.auth.GoogleAuthProvider(); p.setCustomParameters({ prompt: 'select_account' });
     try { await auth.signInWithPopup(p); }
     catch (e) {
-      if (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment') auth.signInWithRedirect(p);
-      else if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') say('تعذّر الدخول: ' + (e.code || e.message));
-    }
+      if (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment') { try { await auth.signInWithRedirect(p); return; } catch (e2) { say(errMsg(e2)); } }
+      else if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request' && e.code !== 'auth/user-cancelled') say(errMsg(e));
+    } finally { setBusy(false); }
   }
   async function handle(u) {
-    if (!u) { if (cb.onOut) cb.onOut(); A.admin = false; $('btnAdmin').hidden = true; $('btnTrialReset').hidden = true; pane('gSign'); if (window.__mjCode) return cb.onEnter({ uid: '', name: 'ضيف المجلس', email: '', photo: '', chan: '', guest: true, mj: true }); return; }
-    pane('gLoad');
-    try {
-      let open = false;
-      try { const c = await db.doc('config/app').get(); if (c.exists) open = !!c.data().open; } catch (e) {}
-      let admin = false;
-      try { await db.collection('waitlist').limit(1).get(); admin = true; } catch (e) {}
-      A.admin = admin; $('btnAdmin').hidden = !admin; $('btnTrialReset').hidden = !admin;
-      const prof = { uid: u.uid, name: u.displayName || '', email: u.email || '', photo: u.photoURL || '', chan: '', guest: false };
-      if (admin || open || window.__mjCode) return cb.onEnter(prof); /* مؤقتاً: الدخول برمز المجلس بدون تحقق */
-      const d = await db.doc('waitlist/' + u.uid).get();
-      if (!d.exists) { $('gHello').textContent = 'مرحباً ' + (u.displayName || '') + '، يرجى إكمال بيانات التسجيل المسبق'; return pane('gForm'); }
-      const st = d.data().status;
-      if (st === 'approved') return cb.onEnter(prof);
-      $('gWaitMsg').textContent = st === 'rejected'
-        ? 'نشكر لك اهتمامك. لم يتم اختيارك ضمن مرحلة التجربة الحالية، وسنوافيك عند الإطلاق العام.'
-        : 'تم تسجيلك بنجاح في قائمة الانتظار. عند اختيارك للتجربة ستتمكن من الدخول تلقائياً بنفس الحساب.';
-      pane('gWait');
-    } catch (e) { say('مشكلة بالاتصال: ' + (e.code || e.message)); pane('gSign'); }
-  }
-  async function register() {
-    const u = auth.currentUser; if (!u) return;
-    $('gReg').disabled = true;
-    try {
-      await db.doc('waitlist/' + u.uid).set({
-        name: u.displayName || '', email: u.email || '', photo: u.photoURL || '',
-        handle: $('gHandle').value.trim().slice(0, 100), note: $('gNote').value.trim().slice(0, 300),
-        status: 'pending', createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      handle(u);
-    } catch (e) { say('تعذّر التسجيل: ' + (e.code || e.message)); }
-    $('gReg').disabled = false;
+    if (!u) { if (cb.onOut) cb.onOut(); A.admin = false; $('btnAdmin').hidden = true; pane('gSign'); if (window.__mjCode) return cb.onEnter({ uid: '', name: 'ضيف المجلس', email: '', photo: '', chan: '', guest: true, mj: true }); return; }
+    // الدخول مفتوح لكل حساب Google: يدخل مباشرة، وصلاحية المشرف تُفحص بالخلفية
+    const prof = { uid: u.uid, name: u.displayName || '', email: u.email || '', photo: u.photoURL || '', chan: '', guest: false };
+    cb.onEnter(prof);
+    try { await db.collection('waitlist').limit(1).get(); A.admin = true; } catch (e) { A.admin = false; }
+    $('btnAdmin').hidden = !A.admin;
   }
 
   /* ---- لوحة الإدارة ---- */
@@ -172,10 +151,10 @@
 
   A.start = (o) => {
     cb = o; $('gBox').hidden = false; pane('gLoad');
-    $('gBtn').onclick = signIn; $('gReg').onclick = register; $('gOut1').onclick = $('gOut2').onclick = () => auth.signOut();
+    $('gBtn').onclick = signIn;
+    auth.getRedirectResult().catch((e) => { if (e && e.code && e.code !== 'auth/no-auth-event') say(errMsg(e)); });
     $('btnAdmin').onclick = () => { if (A.admin) openAdmin(); };
     A.openAdmin = () => openAdmin();
-    $('btnTrialReset').onclick = async () => { if (!A.admin) return; if (!confirm('إعادة فتح الفترة التجريبية لجميع المستخدمين؟ سيحصل كل جهاز على فترة تجريبية جديدة.')) return; try { await db.doc('config/public').set({ trialEpoch: Date.now() }, { merge: true }); say('تمت إعادة فتح الفترة التجريبية للجميع'); } catch (e) { say('فشل التنفيذ: ' + (e.code || e.message)); } };
     auth.onAuthStateChanged(handle);
   };
 })();

@@ -126,7 +126,7 @@ ui.Picture _pattern() {
   return _patPic = rec.endRecording();
 }
 
-Shader _gold(Rect r) => ui.Gradient.linear(r.topCenter, r.bottomCenter, const [Color(0xFFF2D688), Color(0xFFDDB458), Color(0xFFBE8F36)], const [0, .5, 1]);
+Shader _gold(Rect r) => ui.Gradient.linear(r.topCenter, r.bottomCenter, const [Color(0xFFF4DB92), Color(0xFFE3BF66), Color(0xFFCFA34A)], const [0, .5, 1]);
 
 class MihrabPainter extends CustomPainter {
   final double t; // ثوانٍ منذ البداية
@@ -178,7 +178,7 @@ class MihrabPainter extends CustomPainter {
     }
     // هالة
     final ha = .07 + .2 * lo + .06 * _r(el, 0, 1) + .07 * br;
-    c.drawRect(big, Paint()..shader = ui.Gradient.radial(ctr, 95 * s + 60, [Color.fromRGBO(240, 205, 120, ha.clamp(0.0, 1.0)), const Color(0x00F0CD78)]));
+    c.drawRect(big, Paint()..shader = ui.Gradient.radial(ctr, compact ? 125 : 95 * s + 60, [Color.fromRGBO(240, 205, 120, ha.clamp(0.0, 1.0)), const Color(0x00F0CD78)]));
 
     // ضوء المحراب
     if (lo > .001) {
@@ -314,14 +314,20 @@ class MihrabPainter extends CustomPainter {
       c.scale(s);
       final bp = Paint()..shader = _gold(ar);
       final bs = Paint()
-        ..color = const Color(0x73000000)
+        ..color = const Color(0x59000000)
         ..maskFilter = MaskFilter.blur(BlurStyle.normal, 4 / s);
+      final bg = Paint()
+        ..color = Color.fromRGBO(246, 215, 130, .55 + .2 * br)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, (3 + 3 * br) / s);
+      final bh = Paint()..color = const Color(0x8CFFFAE1);
       for (var i = 0; i < 5; i++) {
         final r = _ob((rs * 1.7 - i * .17).clamp(0.0, 1.0)).clamp(0.0, 1.15), h = _hs[i] * _bk(w, i) * r;
         if (h < .6) continue;
         final rr = RRect.fromRectAndRadius(Rect.fromLTWH(_xs[i], 116 - h, 9, h), const Radius.circular(4.5));
         c.drawRRect(rr.shift(Offset(0, 2.5 / s)), bs);
+        c.drawRRect(rr, bg);
         c.drawRRect(rr, bp);
+        if (h > 6) c.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(_xs[i] + 2.2, 116 - h + 3, 1.3, h - 6), const Radius.circular(.65)), bh);
       }
       c.restore();
     }
@@ -355,13 +361,13 @@ class MihrabPainter extends CustomPainter {
         // الاسم + لمعة
         c.saveLayer(dst, Paint()..color = Color.fromRGBO(0, 0, 0, na));
         c.drawImageRect(img, src, dst, Paint()..filterQuality = FilterQuality.high);
-        final sp = compact ? (t % 7) / .9 : _r(el, 4.4, 5.3);
+        final sp = compact ? (t % 8) / 1.7 : _r(el, 4.2, 5.8);
         if (sp > 0 && sp < 1) {
           final cc = 1.3 - 1.6 * _e(sp);
           double k(double v) => v.clamp(0.0, 1.0);
           c.drawRect(dst, Paint()
             ..blendMode = BlendMode.srcATop
-            ..shader = ui.Gradient.linear(dst.topLeft, Offset(dst.right, dst.top + dst.height * .39), const [Color(0x00FFFAE6), Color(0x00FFFAE6), Color(0xE6FFFCEE), Color(0x00FFFAE6), Color(0x00FFFAE6)], [0, k(cc - .12), k(cc), k(cc + .12), 1]));
+            ..shader = ui.Gradient.linear(dst.topLeft, Offset(dst.right, dst.top + dst.height * .39), const [Color(0x00FFFAE6), Color(0x00FFFAE6), Color(0xBFFFFCEE), Color(0x00FFFAE6), Color(0x00FFFAE6)], [0, k(cc - .17), k(cc), k(cc + .17), 1]));
         }
         c.restore();
       }
@@ -436,4 +442,54 @@ class _MihrabMarkState extends State<MihrabMark> with SingleTickerProviderStateM
           builder: (_, __) => CustomPaint(painter: MihrabPainter(_sw.elapsedMilliseconds / 1000 + 3, compact: true)),
         ),
       );
+}
+
+/// خلفية شاشة الدخول: نفس تدرّج الافتتاحية مع زخرفة هندسية خافتة حول الشعار
+class MihrabBackdrop extends CustomPainter {
+  final double cy; // مركز الإضاءة نسبةً لارتفاع الشاشة
+  const MihrabBackdrop({this.cy = .3});
+  @override
+  void paint(Canvas c, Size z) {
+    final r = Offset.zero & z, ctr = Offset(z.width / 2, z.height * cy);
+    c.drawRect(r, Paint()..shader = ui.Gradient.radial(ctr, z.longestSide * .9, const [Color(0xFF0E4636), Color(0xFF06281E), Color(0xFF010A07)], const [0, .45, 1]));
+    final k = z.width / _W;
+    final pr = Rect.fromCircle(center: ctr, radius: z.width * .75);
+    c.saveLayer(pr, Paint()..color = const Color(0x12000000));
+    c.save();
+    c.translate(0, ctr.dy - _H * k * .3);
+    c.scale(k);
+    c.drawPicture(_pattern());
+    c.restore();
+    c.drawRect(pr, Paint()
+      ..blendMode = BlendMode.dstIn
+      ..shader = ui.Gradient.radial(ctr, z.width * .75, const [Color(0xFF000000), Color(0x00000000)]));
+    c.restore();
+    c.drawRect(r, Paint()..shader = ui.Gradient.radial(ctr, z.width * .7, const [Color(0x22F0CD78), Color(0x00F0CD78)]));
+  }
+
+  @override
+  bool shouldRepaint(covariant MihrabBackdrop o) => o.cy != cy;
+}
+
+/// شعار Google الملوّن (حرف G)
+class GoogleG extends CustomPainter {
+  const GoogleG();
+  @override
+  void paint(Canvas c, Size z) {
+    final s = z.shortestSide, ctr = Offset(z.width / 2, z.height / 2), r = s * .36, w = s * .2;
+    final rect = Rect.fromCircle(center: ctr, radius: r);
+    Paint p(Color col) => Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = w
+      ..color = col;
+    const d = math.pi / 180;
+    c.drawArc(rect, -40 * d, -95 * d, false, p(const Color(0xFFEA4335)));
+    c.drawArc(rect, -135 * d, -90 * d, false, p(const Color(0xFFFBBC05)));
+    c.drawArc(rect, 135 * d, -95 * d, false, p(const Color(0xFF34A853)));
+    c.drawArc(rect, 40 * d, -40 * d, false, p(const Color(0xFF4285F4)));
+    c.drawRect(Rect.fromLTWH(ctr.dx, ctr.dy - w / 2, r + w / 2, w), Paint()..color = const Color(0xFF4285F4));
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter o) => false;
 }

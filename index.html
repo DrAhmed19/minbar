@@ -22,45 +22,23 @@ window.__splashOut=function(){var s=document.getElementById('splash');if(!s||s.d
   <canvas id="lgBg"></canvas>
   <div class="lcard">
     <canvas class="lmih" id="lMih" aria-label="منبر"></canvas>
-    <p class="ltag">قصائد ومراثي<br><span>صوت المنبر</span></p>
-    <div class="lfeat"><span>كلمات متزامنة</span><span>وضع السيارة</span><span>مجلس مشترك</span></div>
+    <p class="ltag">قصائد ومراثي</p>
+    <div class="lorn" aria-hidden="true"><i></i><b></b><i></i></div>
     <div id="gBox" hidden>
-      <div id="gLoad" class="gst">جارٍ التحقق...</div>
+      <div id="gLoad" class="gst"><span class="lspin"></span></div>
       <div id="gSign" class="gst" hidden>
-        <p class="gp">التطبيق قيد التطوير ولم يُطلق رسمياً بعد. يمكنك التسجيل المسبق بحساب Google، وسيتم اختيار عدد محدود من المستخدمين لتجربته قبل الإطلاق.</p>
-        <button class="btn wide big gbtn" id="gBtn" type="button"><svg class="gsv" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.68 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> التسجيل المسبق بحساب Google</button>
-        <button class="btn wide" id="gTrial" type="button">تجربة محدودة</button>
-      </div>
-      <div id="gForm" class="gst" hidden>
-        <p class="gp" id="gHello"></p>
-        <div class="lf"><input id="gHandle" maxlength="100" placeholder="حسابك على تيك توك أو يوتيوب (اختياري)"></div>
-        <div class="lf"><input id="gNote" maxlength="300" placeholder="نبذة عن استخدامك للتطبيق (اختياري)"></div>
-        <button class="btn primary wide big" id="gReg" type="button">تأكيد التسجيل المسبق</button>
-        <button class="btn wide" id="gOut1" type="button">تغيير الحساب</button>
-      </div>
-      <div id="gWait" class="gst" hidden>
-        <div class="gok">✓</div><p class="gp" id="gWaitMsg"></p>
-        <button class="btn wide" id="gOut2" type="button">تسجيل الخروج</button>
+        <button class="lgbtn" id="gBtn" type="button"><span>المتابعة بحساب Google</span><svg class="gsv" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.68 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg><i class="lspin"></i></button>
       </div>
     </div>
-    <div class="ltabs"><button type="button" id="ltIn" class="on">تسجيل الدخول</button><button type="button" id="ltUp">حساب جديد</button></div>
-    <form id="lform" autocomplete="off">
-      <div class="lf" id="lfName" hidden><input id="lName" placeholder="الاسم"></div>
-      <div class="lf" id="lfChan" hidden><input id="lChan" placeholder="اسم قناتك أو حسابك (يظهر بشعارك)"></div>
-      <div class="lf"><input id="lMail" type="email" placeholder="البريد الإلكتروني"></div>
-      <div class="lf"><input id="lPass" type="password" placeholder="كلمة المرور"><button type="button" id="lEye" data-ic="eye" aria-label="إظهار"></button></div>
-      <button class="btn primary wide big" id="lGo" type="submit">دخول</button>
-    </form>
-    <div class="lsep"><span>أو</span></div>
-    <button class="btn wide" id="lGuest" type="button">تجربة محدودة</button>
-    <div class="lsoc"><button type="button" disabled>Google<small>قريباً</small></button><button type="button" disabled>Apple<small>قريباً</small></button></div>
-    <div class="lnote">مُهدى إلى باسم الكربلائي<br><small>نسخة تجريبية قيد التطوير</small></div>
+    <button class="lguest" id="lGuest" type="button">المتابعة كضيف</button>
+    <p class="lhint">تصفّح واستمع كضيف، وسجّل دخولك لحفظ مفضّلتك والتعليق والتفاعل</p>
+    <div class="lnote">بالمتابعة فإنك توافق على شروط الاستخدام وسياسة الخصوصية<b>إهداء إلى الحاج باسم الكربلائي</b><small>الإصدار 3.0.0</small></div>
     <a class="tk" href="https://www.tiktok.com/@a1h9mad" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.6 5.82A4.28 4.28 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6 0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64 0 3.33 2.76 5.7 5.73 5.7 3.15 0 5.7-2.55 5.7-5.7V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3s-1.88.09-3.24-1.48z"/></svg><span>تابعنا على تيك توك</span></a>
   </div>
 </div>
 <div id="app">
   <header class="bar">
-    <div class="brand"><button class="ib" id="btnHome" data-ic="home" aria-label="الرئيسية" hidden></button><img src="icons/brand-mark.png" alt=""><span>منبر</span><em id="trialChip" class="tchip" hidden></em></div>
+    <div class="brand"><button class="ib" id="btnHome" data-ic="home" aria-label="الرئيسية" hidden></button><img src="icons/brand-mark.png" alt=""><span>منبر</span></div>
     <div class="acts">
       <button class="ib" id="btnUndo" data-ic="undo" aria-label="تراجع" disabled></button>
       <button class="ib" id="btnRedo" data-ic="redo" aria-label="إعادة" disabled></button>
@@ -203,7 +181,7 @@ window.__splashOut=function(){var s=document.getElementById('splash');if(!s||s.d
       <div class="sec">
         <div class="sech">نص القصيدة</div>
         <textarea id="lyrText" rows="5" placeholder="اكتب أو الصق الكلمات، كل بيت بسطر"></textarea>
-        <div class="row"><button class="btn small" id="lyrAsr" type="button">استخراج الكلمات تلقائياً (تجريبي)</button></div>
+        <div class="row"><button class="btn small" id="lyrAsr" type="button">استخراج الكلمات تلقائياً</button></div>
         <div class="hint" id="lyrAsrMsg"></div>
       </div>
       <div class="sec">
@@ -410,8 +388,7 @@ window.__splashOut=function(){var s=document.getElementById('splash');if(!s||s.d
     <div class="spage" data-sp="account" hidden>
       <div class="pcard prof big"><div class="av lg" id="avBig"></div><div class="pm"><b id="acctName2"></b><small id="acctMail2"></small></div></div>
       <div class="hint">الاسم والبريد والصورة مأخوذة من حساب Google، وتتغير بتغييرها هناك.</div>
-      <button class="btn wide" id="btnAdmin" type="button" hidden>لوحة الإدارة (الطلبات والاستبيانات)</button>
-      <button class="btn wide" id="btnTrialReset" type="button" hidden>إعادة فتح الفترة التجريبية للجميع</button>
+      <button class="btn wide" id="btnAdmin" type="button" hidden>لوحة الإدارة</button>
     </div>
     <div class="spage" data-sp="appearance" hidden>
       <div class="sec"><div class="sech">الوضع</div><div class="chips" id="uiMode"></div></div>
@@ -437,9 +414,9 @@ window.__splashOut=function(){var s=document.getElementById('splash');if(!s||s.d
       </div>
     </div>
     <div class="spage" data-sp="about" hidden>
-      <div class="sec"><div class="sech">منبر · الإصدار 3.69</div><div class="hint" style="margin:0">منصة متخصصة لتصميم مقاطع القصائد والمراثي. التطبيق قيد التطوير ولم يُطلق رسمياً بعد.</div></div>
+      <div class="sec"><div class="sech">منبر · الإصدار 3.0.0</div><div class="hint" style="margin:0">منصة متخصصة للاستماع إلى القصائد والمراثي وتصميم مقاطعها.</div></div>
       <div class="sec"><div class="sech">ما الجديد</div><div class="hint" style="margin:0;line-height:2">• قائمة المشاريع وحفظها تلقائياً<br>• فحص الجهاز وضبط الأداء تلقائياً<br>• تصدير حتى 120 إطاراً بالثانية<br>• استخراج الكلمات ومزامنة أدق<br>• صفحة إعدادات ووضع فاتح</div></div>
-      <div class="sec"><div class="sech">شروط الاستخدام</div><div class="hint" style="margin:0;line-height:1.9">يُقدَّم التطبيق كما هو خلال مرحلة التطوير. المستخدم مسؤول عن المحتوى الذي يصمّمه وعن امتلاكه حقوق استخدام المواد الصوتية والمرئية، ولا يجوز استخدام التطبيق لأي غرض مخالف للقانون.</div></div>
+      <div class="sec"><div class="sech">شروط الاستخدام</div><div class="hint" style="margin:0;line-height:1.9">يُقدَّم التطبيق كما هو. المستخدم مسؤول عن المحتوى الذي يصمّمه وعن امتلاكه حقوق استخدام المواد الصوتية والمرئية، ولا يجوز استخدام التطبيق لأي غرض مخالف للقانون.</div></div>
       <div class="sec"><div class="sech">الخصوصية</div><div class="hint" style="margin:0;line-height:1.9">تبقى ملفاتك ومشاريعك (الفيديو والصوت والصور) على جهازك ولا تُرفع إلى أي خادم. نحتفظ فقط باسمك وبريدك من حساب Google لإدارة الوصول، وبإجابات الاستبيان إن شاركت بها.</div></div>
       <a class="tk" href="https://www.tiktok.com/@a1h9mad" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.6 5.82A4.28 4.28 0 0 1 15.54 3h-3.09v12.4a2.59 2.59 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6 0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64 0 3.33 2.76 5.7 5.73 5.7 3.15 0 5.7-2.55 5.7-5.7V9.01a7.35 7.35 0 0 0 4.3 1.38V7.3s-1.88.09-3.24-1.48z"/></svg><span>صفحتنا على تيك توك</span></a>
     </div>

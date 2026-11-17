@@ -374,7 +374,7 @@ class _SettingsPageState extends State<SettingsPage> {
               r.refresh().then((_) => syncKnown());
               _msg('جارٍ التحديث…');
             }),
-            _row(Ic.down, 'التحقق من تحديث التطبيق', 'نسخة 1.0 · بناء $kBuild', () async {
+            _row(Ic.down, 'التحقق من تحديث التطبيق', 'الإصدار $kVersion', () async {
               final u = await latestUpdate();
               if (!mounted) return;
               if (u.build > kBuild) {

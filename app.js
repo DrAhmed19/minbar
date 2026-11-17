@@ -1220,7 +1220,7 @@ const DEVID = (() => { let d = LS.get('minbar.devid', ''); if (!d) { d = (window
 const grant = () => LS.get('minbar.grant', {}) || {}, unlocked = () => (grant().unlockUntil || 0) > Date.now(), trialMs = () => (TRIAL_MIN + (grant().extMin || 0)) * 60000;
 function trialLeft() { const o = LS.get('minbar.trial2', null); const s = (o && o.e === TRIAL_EPOCH) ? o.s : 0; return s ? Math.max(0, s + trialMs() - Date.now()) : trialMs(); }
 function trialLabel() { const l = trialLeft(); return l <= 0 ? 'انتهت فترة التجربة' : (() => { const n = Math.ceil(l / 60000); return `تجربة محدودة (${n === 1 ? 'دقيقة واحدة' : n === 2 ? 'دقيقتان' : n <= 10 ? n + ' دقائق' : n + ' دقيقة'})`; })(); }
-function refreshTrialBtns() { const t = trialLabel(); if ($('gTrial')) $('gTrial').textContent = t; $('lGuest').textContent = t; }
+function refreshTrialBtns() { return; const t = trialLabel(); if ($('gTrial')) $('gTrial').textContent = t; $('lGuest').textContent = t; }
 async function startTrial() {
   if (window.MAINT && await window.MAINT.on()) return window.MAINT.show();
   if (trialLeft() <= 0) { refreshTrialBtns(); return toast('انتهت فترة التجربة المحدودة على هذا الجهاز'); }
@@ -1228,7 +1228,7 @@ async function startTrial() {
   if (AUTH && AUTH.logTrial) AUTH.logTrial(DEVID, 'start');
   finishLogin({ name: 'تجربة', chan: '', email: '', guest: true, trial: true });
 }
-function stopTrial() { const was = TRIAL; TRIAL = false; clearInterval(trialTimer); $('trialChip').hidden = true; dirty(); if (was) trialUI(); }
+function stopTrial() { const was = TRIAL; TRIAL = false; clearInterval(trialTimer); if ($('trialChip')) $('trialChip').hidden = true; dirty(); if (was) trialUI(); }
 function trialCfg() { cfg = clone(DEF); cfg.logoP = Object.assign({}, LOGO0, cfg.logoP || {}); cfg.tp = Object.assign({}, DEF.tp); cfg.vreact = Object.assign({}, DEF.vreact); rebuildAll(); loadLogo(); }
 function runTrial() {
   TRIAL = true; trialCfg(); clearInterval(trialTimer); dirty(); trialUI();
@@ -1485,7 +1485,7 @@ function buildTints() {
   TINTS.forEach((t, i) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'sw' + (UI.tint === i ? ' on' : ''); b.style.background = `linear-gradient(135deg,${t[1]} 50%,${t[4]} 50%)`; b.title = t[0]; b.onclick = () => { UI.tint = i; saveUI(); buildTints(); }; box.appendChild(b); });
 }
 function fillAccount() {
-  const nm = user ? (user.name || (user.trial ? 'تجربة محدودة' : 'مستخدم')) : '', mail = (user && user.email) || '';
+  const nm = user ? (user.name || 'مستخدم') : '', mail = (user && user.email) || '';
   ['acctName', 'acctName2'].forEach((id) => { $(id).textContent = nm; }); ['acctMail', 'acctMail2'].forEach((id) => { $(id).textContent = mail; });
   ['avMain', 'avBig'].forEach((id) => { const e = $(id); e.textContent = ''; if (user && user.photo) { const im = new Image(); im.referrerPolicy = 'no-referrer'; im.alt = ''; im.src = user.photo; e.appendChild(im); } else e.textContent = (nm || 'م').trim().charAt(0); });
 }
@@ -1593,7 +1593,7 @@ function showInApp(force) {
   h(IS_TT ? 'الطريقة: ١) اضغط على النقاط الثلاث ⋯ أعلى الصفحة. ٢) اختر «فتح في المتصفح». أو انسخ الرابط والصقه في Chrome.' : (IS_AND ? 'أو اضغط ⋯ أعلى الصفحة ثم «فتح في المتصفح».' : 'أو اضغط ⋯ ثم «فتح في Safari».'), 'svs');
   document.body.appendChild(m);
 }
-if (INAPP) { setTimeout(() => showInApp(false), 600); $('gBox').addEventListener('click', (e) => { if (e.target.closest && e.target.closest('#gBtn')) { e.stopPropagation(); e.preventDefault(); showInApp(true); } }, true); }
+if (INAPP) { $('gBox').addEventListener('click', (e) => { if (e.target.closest && e.target.closest('#gBtn')) { e.stopPropagation(); e.preventDefault(); showInApp(true); } }, true); }
 
 /* ---------- نهاية الفترة التجريبية وطلب التمديد ---------- */
 function trialEnded() {
@@ -1689,7 +1689,6 @@ function exportSummary() {
   const mb = dur ? Math.max(1, Math.round(inf[1] * dur / 8 / 1048576)) : 0;
   $('qInfo').textContent = (TRIAL ? 'التصدير في التجربة المحدودة بجودة 720p. ' : '') + (mb ? `الحجم التقريبي للملف: ${mb} ميغابايت` : 'اختر الفيديو أو الصوت لمعرفة الحجم التقريبي');
 }
-['btnSave', 'btnShare'].forEach((id) => $(id).addEventListener('click', () => { setTimeout(() => { if (svAvail()) openSurvey('export'); }, 1500); }));
 
 
 /* ---------- القص وخط الزمن (مقاطع) ---------- */
@@ -2007,20 +2006,21 @@ $('btnUndo').addEventListener('click', () => histGo(-1)); $('btnRedo').addEventL
 const AUTH = window.MinbarAuth; let user = (AUTH && AUTH.enabled) ? null : LS.get('basim.user', null), loginRaf = 0, loginMode = 'in';
 function applyUser() { fillAccount(); }
 let lgL = 0;
-function loginBg(ts) {
-  loginRaf = requestAnimationFrame(loginBg); const lg = $('login'); if (document.hidden || !lg || !lg.classList.contains('show') || (window.PLR && PLR.visible && PLR.visible()) || (ts || 0) - lgL < 40) return; lgL = ts || 0;
-  const c = $('lgBg'), x = c.getContext('2d'); if (c.width !== innerWidth || c.height !== innerHeight) { c.width = innerWidth; c.height = innerHeight; } const w = c.width, h = c.height; const t = performance.now() / 1000;
-  const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#0f6a50'); g.addColorStop(.55, '#0a3c2e'); g.addColorStop(1, '#03140f'); x.fillStyle = g; x.fillRect(0, 0, w, h);
-  x.strokeStyle = 'rgba(255,255,255,.06)'; x.lineWidth = 1.5; const sp = 90, off = (t * 12) % sp;
-  for (let gx = -1; gx < w / sp + 1; gx++) for (let gy = -1; gy < h / sp + 1; gy++) x.stroke(new Path2D(octaPath(gx * sp + off, gy * sp + off, sp / 2)));
-  const n = 34, bw = w / n; for (let i = 0; i < n; i++) { const hh = (Math.sin(t * 2.1 + i * .5) * .5 + .5) * (Math.sin(t * 1.3 + i * .21) * .5 + .5) * h * .18 + 8; const gg = x.createLinearGradient(0, h - hh, 0, h); gg.addColorStop(0, 'rgba(244,207,85,.55)'); gg.addColorStop(1, 'rgba(244,207,85,0)'); x.fillStyle = gg; x.fillRect(i * bw + bw * .2, h - hh, bw * .6, hh); }
-  const rg = x.createRadialGradient(w / 2, h * .28, 10, w / 2, h * .28, h * .5); rg.addColorStop(0, 'rgba(43,181,131,.35)'); rg.addColorStop(1, 'rgba(43,181,131,0)'); x.fillStyle = rg; x.fillRect(0, 0, w, h);
+let lgKey = '';
+function loginBg() {
+  const lg = $('login'); if (!lg || !lg.classList.contains('show')) return;
+  const c = $('lgBg'), d = Math.min(2, devicePixelRatio || 1), w = Math.round(innerWidth * d), h = Math.round(innerHeight * d), k = w + 'x' + h; if (k === lgKey) return; lgKey = k; c.width = w; c.height = h;
+  const x = c.getContext('2d'), cx = w / 2, cy = h * .3;
+  let g = x.createRadialGradient(cx, cy, 0, cx, cy, Math.max(w, h) * .9); g.addColorStop(0, '#0e4636'); g.addColorStop(.45, '#06281e'); g.addColorStop(1, '#010a07'); x.fillStyle = g; x.fillRect(0, 0, w, h);
+  const pc = document.createElement('canvas'); pc.width = w; pc.height = h; const p = pc.getContext('2d'); p.strokeStyle = '#E8C878'; p.lineWidth = .9 * d; const sp = 54 * d;
+  for (let gx = -1; gx < w / sp + 1; gx++) for (let gy = -1; gy < h / sp + 1; gy++) p.stroke(new Path2D(octaPath(gx * sp + (gy % 2 ? sp / 2 : 0), gy * sp, sp * .3)));
+  p.globalCompositeOperation = 'destination-in'; g = p.createRadialGradient(cx, cy, 0, cx, cy, Math.min(w, h) * .8); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)'); p.fillStyle = g; p.fillRect(0, 0, w, h);
+  x.globalAlpha = .08; x.drawImage(pc, 0, 0); x.globalAlpha = 1;
+  g = x.createRadialGradient(cx, cy, 0, cx, cy, w * .7); g.addColorStop(0, 'rgba(240,205,120,.12)'); g.addColorStop(1, 'rgba(240,205,120,0)'); x.fillStyle = g; x.fillRect(0, 0, w, h);
 }
-function showLogin() { $('login').classList.add('show'); cancelAnimationFrame(loginRaf); loginBg(); }
-function setLoginMode(m) {
-  loginMode = m; $('ltIn').classList.toggle('on', m === 'in'); $('ltUp').classList.toggle('on', m === 'up');
-  $('lfName').hidden = $('lfChan').hidden = m === 'in'; $('lGo').textContent = m === 'in' ? 'دخول' : 'إنشاء الحساب والدخول';
-}
+window.addEventListener('resize', () => loginBg());
+function showLogin() { $('login').classList.add('show'); lgKey = ''; loginBg(); }
+function setLoginMode(m) { loginMode = m; }
 /* كل حساب (وكل ضيف) له مفضلته وقوائمه وسجله: عند تغيّر الهوية نحفظ بيانات السابق ونستعيد بيانات الداخل */
 const PERS = ['minbar.plr', 'minbar.pls', 'minbar.follow', 'minbar.last', 'minbar.pos', 'minbar.queue', 'minbar.seen.ids', 'minbar.rx.local', 'minbar.cm.local', 'minbar.lyr.mine'];
 function swapSpace(u) {
@@ -2037,17 +2037,16 @@ function swapSpace(u) {
 }
 function finishLogin(u) {
   if (user && u.uid && user.uid === u.uid) return;
-  if (swapSpace(u)) { LS.set('basim.user', u.guest ? null : u); return location.reload(); }
+  if (swapSpace(u)) { LS.set('basim.user', u.mj ? null : u); return location.reload(); }
   user = u; loadSpace(u); if (u.trial) runTrial(); else stopTrial(); LS.set('basim.user', u); applyUser();
   if (u.chan && !u.guest && cfg.logoMode === 'builder' && (cfg.logoP.text === LOGO0.text || cfg.logoP.text === 'باسم')) { cfg.logoP.text = u.chan; saveCfg(); loadLogo(); buildLogoUI(); }
   $('login').classList.add('leave'); $('app').classList.add('enter');
   setTimeout(() => { $('login').classList.remove('show', 'leave'); cancelAnimationFrame(loginRaf); $('app').classList.remove('enter'); fitCanvas(); }, 520);
   afterLogin(u);
 }
-$('ltIn').addEventListener('click', () => setLoginMode('in')); $('ltUp').addEventListener('click', () => setLoginMode('up'));
-$('lEye').addEventListener('click', () => { const p = $('lPass'); const sh = p.type === 'password'; p.type = sh ? 'text' : 'password'; $('lEye').innerHTML = ic(sh ? 'eyeoff' : 'eye'); });
-$('lform').addEventListener('submit', (e) => { e.preventDefault(); finishLogin({ name: $('lName').value.trim(), chan: $('lChan').value.trim(), email: $('lMail').value.trim(), guest: false }); });
-$('lGuest').addEventListener('click', () => startTrial());
+/* دخول الضيف: يتصفح ويستمع ويقرأ كل شيء، والكتابة (تعليق، تفاعل) تتطلب حساباً */
+let guestBusy = false;
+$('lGuest').addEventListener('click', () => { if (guestBusy) return; guestBusy = true; finishLogin({ uid: '', name: 'ضيف', chan: '', email: '', photo: '', guest: true }); setTimeout(() => { guestBusy = false; }, 1500); });
 $('btnLogout').addEventListener('click', () => { user = null; LS.set('basim.user', null); const go = () => reloadNow(); if (AUTH && AUTH.enabled) Promise.resolve(AUTH.signOut()).then(go, go); else go(); });
 
 function fxSync() { FXK.forEach((k) => { const el = $('fx' + k[0].toUpperCase() + k.slice(1)); if (!el) return; const v = (cfg.fx && cfg.fx[k]) || 0; el.value = v; el.nextElementSibling.textContent = v; }); }
@@ -2385,7 +2384,7 @@ $('btnExport').addEventListener('click', async () => {
     const nm = ($('fTitle').value.trim() || 'قصيدة').replace(/[\\/:*?"<>|]+/g, ' ').trim();
     S.resName = 'منبر - ' + nm + '.mp4';
     const u = URL.createObjectURL(r.blob); const rv = $('resVideo'); if (rv.dataset.u) URL.revokeObjectURL(rv.dataset.u); rv.dataset.u = u; rv.src = u;
-    $('result').hidden = false; $('progBar').style.width = '100%'; $('resMeta').textContent = S.resName + ' · ' + (r.blob.size / 1048576).toFixed(1) + ' ميغابايت'; $('svPrompt').hidden = !svAvail();
+    $('result').hidden = false; $('progBar').style.width = '100%'; $('resMeta').textContent = S.resName + ' · ' + (r.blob.size / 1048576).toFixed(1) + ' ميغابايت'; $('svPrompt').hidden = true;
     if (NS && PID) { PROJ.status = 'exported'; PROJ.expName = S.resName; idb.put(NS + ':' + PID + ':exp', r.blob); saveProject(); }
     $('eoTitle').textContent = 'اكتمل التصدير'; $('eoPct').textContent = '100%'; $('eoBar').style.width = '100%'; $('eoMsg').textContent = ''; $('eoSize').textContent = (r.blob.size / 1048576).toFixed(1) + ' ميغابايت'; $('expRes').appendChild($('result')); $('result').hidden = false; $('eoCancel').hidden = true; $('eoClose').hidden = false;
     $('expMsg').textContent = `تم التصدير (${(r.blob.size / 1048576).toFixed(1)} ميغا)` + (r.codec === 'vp9' ? ' · ترميز VP9' : '') + (r.exact ? '' : ' · وضع التسجيل الحي') + (r.audio ? '' : ' · بدون صوت');
@@ -2411,14 +2410,13 @@ $('btnShare').addEventListener('click', async () => {
 buildDock(); rebuildAll(); loadLogo(); setMode('video'); fitCanvas(); paintPanels(0);
 document.querySelectorAll('[data-ic]').forEach((e) => { e.innerHTML = ic(e.dataset.ic); });
 hist.a = [snap()]; hist.i = 0; updUndo();
-if (AUTH && AUTH.enabled && AUTH.fetchGrant) AUTH.fetchGrant(DEVID).then((g) => { if (!g) return; const o = grant(); if ((g.extMin || 0) !== (o.extMin || 0) || (g.unlockUntil || 0) !== (o.unlockUntil || 0)) { LS.set('minbar.grant', { extMin: g.extMin || 0, unlockUntil: g.unlockUntil || 0 }); refreshTrialBtns(); toast('تمت الموافقة على طلبك'); } }).catch(() => {});
-if (AUTH && AUTH.enabled && AUTH.fetchPublic) AUTH.fetchPublic().then((c) => { const ep = (c && c.trialEpoch) || 0; if (ep > LS.get('minbar.trialRemote', 0)) { LS.set('minbar.trialRemote', ep); LS.set('minbar.trial2', null); refreshTrialBtns(); } }).catch(() => {});
-refreshTrialBtns(); if ($('gTrial')) $('gTrial').addEventListener('click', startTrial);
-if (user && user.trial) { if (trialLeft() > 0) runTrial(); else { user = null; LS.set('basim.user', null); } }
+if (user && user.trial) { user = null; LS.set('basim.user', null); }
 if (!(AUTH && AUTH.enabled) && user) { loadSpace(user); afterLogin(user); }
 if (AUTH && AUTH.enabled) { document.body.classList.add('fbmode');
   const fast = user && user.uid && !user.trial && !user.guest;
-  if (fast) { const u0 = user; user = null; finishLogin(u0); $('login').classList.remove('show', 'leave'); $('app').classList.remove('enter'); } else showLogin();
+  const sg = LS.get('basim.user', null);
+  if (!fast && sg && sg.guest && !sg.mj && !sg.trial) { finishLogin(sg); $('login').classList.remove('show', 'leave'); $('app').classList.remove('enter'); }
+  else if (fast) { const u0 = user; user = null; finishLogin(u0); $('login').classList.remove('show', 'leave'); $('app').classList.remove('enter'); } else showLogin();
   AUTH.start({ onEnter: finishLogin, toast, onOut: () => { if (fast && user && user.uid) { user = null; LS.set('basim.user', null); showLogin(); } } }); }
 else if (!user) { setLoginMode('in'); showLogin(); }
 loadFont();
@@ -2619,4 +2617,4 @@ window.__plrViz = {
   }
 };
 })();
-try { const t0 = Date.now(), chk = () => { const lg = $('login'), ld = $('gLoad'); const wait = lg.classList.contains('show') && ld && !ld.hidden; if (!wait || Date.now() - t0 > 5000) window.__splashOut && window.__splashOut(); else setTimeout(chk, 120); }; setTimeout(chk, 300); } catch (e) {}
+try { const t0 = Date.now(), chk = () => { const lg = document.getElementById('login'), ld = document.getElementById('gLoad'); const wait = lg.classList.contains('show') && ld && !ld.hidden; if (!wait || Date.now() - t0 > 5000) window.__splashOut && window.__splashOut(); else setTimeout(chk, 120); }; setTimeout(chk, 300); } catch (e) {}

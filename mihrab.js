@@ -27,7 +27,7 @@
     for (let y = -T; y < H + T; y += T) for (let x = -T; x < W + T; x += T) { const cx = x + ((y / T) % 2 ? T / 2 : 0); for (const r of [0, Math.PI / 4]) { px.save(); px.translate(cx, y); px.rotate(r); px.strokeRect(-9, -9, 18, 18); px.restore(); } px.beginPath(); px.arc(cx, y, 3, 0, 6.283); px.stroke(); } })();
   const motes = Array.from({ length: 34 }, () => ({ x: Math.random(), y: Math.random(), s: .4 + Math.random() * 1.1, v: .04 + Math.random() * .08, p: Math.random() * 6 }));
   const S0 = 2.45, S1 = 1.5, AY0 = H * .5 - 64 * S0, AY1 = 140, NW0 = 200, NW1 = 205, NH = w => w * 662 / 960;
-  function gold(x) { const g = x.createLinearGradient(0, 0, 0, 120); g.addColorStop(0, '#F2D688'); g.addColorStop(.5, '#DDB458'); g.addColorStop(1, '#BE8F36'); return g; }
+  function gold(x) { const g = x.createLinearGradient(0, 0, 0, 120); g.addColorStop(0, '#F4DB92'); g.addColorStop(.5, '#E3BF66'); g.addColorStop(1, '#CFA34A'); return g; }
   let PTS = null;
   function pts() {
     if (PTS || !FULL.complete || !FULL.naturalWidth) return PTS;
@@ -53,7 +53,7 @@
       const pg = pmx.createRadialGradient(W / 2, ay + 70 * s, 10, W / 2, ay + 70 * s, 90 * s + 90); pg.addColorStop(0, 'rgba(0,0,0,1)'); pg.addColorStop(1, 'rgba(0,0,0,0)'); pmx.fillStyle = pg; pmx.fillRect(0, 0, W, H);
       x.save(); x.globalAlpha = pa; x.drawImage(pm, 0, 0, W, H); x.restore();
     }
-    const ha = .07 + .2 * lo + .06 * R(el, 0, 1) + .07 * br; g = x.createRadialGradient(W / 2, ay + 70 * s, 0, W / 2, ay + 70 * s, 95 * s + 60); g.addColorStop(0, `rgba(240,205,120,${ha})`); g.addColorStop(1, 'rgba(240,205,120,0)'); x.fillStyle = g; x.fillRect(0, -100, W, H + 200);
+    const ha = .07 + .2 * lo + .06 * R(el, 0, 1) + .07 * br; g = x.createRadialGradient(W / 2, ay + 70 * s, 0, W / 2, ay + 70 * s, compact ? 125 : 95 * s + 60); g.addColorStop(0, `rgba(240,205,120,${ha})`); g.addColorStop(1, 'rgba(240,205,120,0)'); x.fillStyle = g; x.fillRect(0, -100, W, H + 200);
     // ضوء المحراب
     if (lo > .001) {
       lx.setTransform(1, 0, 0, 1, 0, 0); lx.clearRect(0, 0, 240, 260); lx.setTransform(2, 0, 0, 2, 0, 0); lx.save(); lx.clip(INNER);
@@ -79,8 +79,12 @@
     // الأعمدة
     const rs = R(el, 3.35, 4.3);
     if (rs > 0) {
-      x.save(); x.translate(ax, ay); x.scale(s, s); x.shadowColor = 'rgba(0,0,0,.45)'; x.shadowBlur = 8; x.shadowOffsetY = 2.5; x.fillStyle = gold(x);
-      xs.forEach((bx, i) => { const r = Math.max(0, Math.min(1.15, ob(Math.max(0, Math.min(1, rs * 1.7 - i * .17))))), h = hs[i] * bk(w, i) * r; if (h < .6) return; x.beginPath(); x.roundRect ? x.roundRect(bx, 116 - h, 9, h, 4.5) : x.rect(bx, 116 - h, 9, h); x.fill(); });
+      x.save(); x.translate(ax, ay); x.scale(s, s); const gd = gold(x);
+      const rr = (bx, y, w2, h2, r2) => { x.beginPath(); x.roundRect ? x.roundRect(bx, y, w2, h2, r2) : x.rect(bx, y, w2, h2); };
+      xs.forEach((bx, i) => { const r = Math.max(0, Math.min(1.15, ob(Math.max(0, Math.min(1, rs * 1.7 - i * .17))))), h = hs[i] * bk(w, i) * r; if (h < .6) return;
+        x.shadowColor = 'rgba(0,0,0,.35)'; x.shadowBlur = 8; x.shadowOffsetY = 2.5; x.fillStyle = gd; rr(bx, 116 - h, 9, h, 4.5); x.fill();
+        x.shadowOffsetY = 0; x.shadowColor = `rgba(246,215,130,${.6 + .2 * br})`; x.shadowBlur = 6 + 6 * br; x.fill(); x.shadowBlur = 0;
+        if (h > 6) { x.fillStyle = 'rgba(255,250,225,.55)'; rr(bx + 2.2, 116 - h + 3, 1.3, h - 6, .65); x.fill(); } });
       x.restore();
     }
     // الاسم: ذرات ذهب تطلع من ضوء المحراب وتتجمع على شكله
@@ -88,8 +92,8 @@
     if (ep > 0 && FULL.complete && FULL.naturalWidth) {
       const nw = L(NW0, NW1, mv), nh = NH(nw), ccy = L(AY0 + 70 * S0, AY1 + 130 * S1 + 18 + NH(NW1) / 2, mv);
       nx.globalCompositeOperation = 'source-over'; nx.clearRect(0, 0, 960, 662); nx.drawImage(FULL, 0, 0, 960, 662);
-      const sp = compact ? ((el0 % 7) / .9) : R(el, 4.4, 5.3);
-      if (sp > 0 && sp < 1) { const c = 1.3 - 1.6 * E(sp), k = v => Math.max(0, Math.min(1, v)); const sg = nx.createLinearGradient(0, 0, 960, 260); sg.addColorStop(0, 'rgba(255,250,230,0)'); sg.addColorStop(k(c - .12), 'rgba(255,250,230,0)'); sg.addColorStop(k(c), 'rgba(255,252,238,.9)'); sg.addColorStop(k(c + .12), 'rgba(255,250,230,0)'); sg.addColorStop(1, 'rgba(255,250,230,0)'); nx.globalCompositeOperation = 'source-atop'; nx.fillStyle = sg; nx.fillRect(0, 0, 960, 662); }
+      const sp = compact ? ((el0 % 8) / 1.7) : R(el, 4.2, 5.8);
+      if (sp > 0 && sp < 1) { const c = 1.3 - 1.6 * E(sp), k = v => Math.max(0, Math.min(1, v)); const sg = nx.createLinearGradient(0, 0, 960, 260); sg.addColorStop(0, 'rgba(255,250,230,0)'); sg.addColorStop(k(c - .17), 'rgba(255,250,230,0)'); sg.addColorStop(k(c), 'rgba(255,252,238,.75)'); sg.addColorStop(k(c + .17), 'rgba(255,250,230,0)'); sg.addColorStop(1, 'rgba(255,250,230,0)'); nx.globalCompositeOperation = 'source-atop'; nx.fillStyle = sg; nx.fillRect(0, 0, 960, 662); }
       x.save(); x.translate(W / 2, ccy); x.scale(L(.97, 1, ep), L(.97, 1, ep));
       x.globalAlpha = SM(R(ep, .5, 1));
       x.shadowColor = `rgba(20,10,0,${.5 + .35 * lo})`; x.shadowBlur = 12 + 8 * lo; x.shadowOffsetY = 4; x.drawImage(nc, -nw / 2, -nh / 2, nw, nh);
@@ -105,7 +109,7 @@
     }
     if (!compact) {
       const ta = SM(R(el, 4.8, 5.6));
-      if (ta > 0) { x.save(); x.globalAlpha = ta * .75; x.textAlign = 'center'; x.direction = 'rtl'; x.font = '14px F2, Amiri, serif'; x.fillStyle = '#CDBB8A'; x.fillText('إهداء إلى الحاج باسم الكربلائي', W / 2, Hc - 44 - (Hc - H) / 2); x.restore(); }
+      if (ta > 0) { x.save(); x.globalAlpha = ta * .75; x.textAlign = 'center'; x.direction = 'rtl'; x.font = '14px AmiriR, F2, serif'; x.fillStyle = '#CDBB8A'; x.fillText('إهداء إلى الحاج باسم الكربلائي', W / 2, Hc - 44 - (Hc - H) / 2); x.restore(); }
     }
   }
 

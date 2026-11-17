@@ -2,6 +2,8 @@ rules_version = '2';
 service cloud.firestore { match /databases/{db}/documents {
   function isAdmin() { return request.auth != null && request.auth.token.email_verified == true && request.auth.token.email == 'ahmad1999199919999@gmail.com'; }
   function signed() { return request.auth != null; }
+  // الكتابة العامة (تعليق، تفاعل، تصحيح كلمات) لأصحاب الحسابات فقط، وليس للحسابات المجهولة. الضيف يقرأ فقط
+  function real() { return request.auth != null && request.auth.token.firebase.sign_in_provider != 'anonymous'; }
 
   // ===== القواعد السابقة كما هي =====
   match /waitlist/{uid} {
@@ -45,17 +47,17 @@ service cloud.firestore { match /databases/{db}/documents {
   // تصويت على تعديل كلمة أو توقيت: كل مستخدم يضيف نفسه فقط مرة واحدة
   match /lyrEdits/{id} {
     allow read: if true;
-    allow create: if signed() && request.resource.data.voters == [request.auth.uid]
+    allow create: if real() && request.resource.data.voters == [request.auth.uid]
       && request.resource.data.keys().hasOnly(['track','line','field','val','voters'])
       && request.resource.data.field in ['l','t'];
-    allow update: if signed()
+    allow update: if real()
       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['voters'])
       && request.resource.data.voters.toSet() == resource.data.voters.toSet().union([request.auth.uid].toSet());
     allow delete: if isAdmin();
   }
   // طلبات إضافة كلمات أو توقيت: المستخدم يرسل، والمدير فقط يقرأ ويوافق أو يرفض
   match /lyrSubs/{id} {
-    allow create: if signed() && request.resource.data.uid == request.auth.uid
+    allow create: if real() && request.resource.data.uid == request.auth.uid
       && request.resource.data.status == 'pending'
       && request.resource.data.keys().hasOnly(['track','title','json','uid','status','createdAt'])
       && request.resource.data.json is string && request.resource.data.json.size() <= 200000;
@@ -71,7 +73,7 @@ service cloud.firestore { match /databases/{db}/documents {
   // التعليقات على لحظات القصيدة (220 حرفاً كحد أقصى)
   match /cmts/{id} {
     allow read: if true;
-    allow create: if signed() && request.resource.data.uid == request.auth.uid
+    allow create: if real() && request.resource.data.uid == request.auth.uid
       && request.resource.data.keys().hasOnly(['track','t','text','uid','name','st','at'])
       && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 220
       && (!('st' in request.resource.data) || request.resource.data.st in ['ok', 'review', 'block'])
@@ -102,7 +104,7 @@ service cloud.firestore { match /databases/{db}/documents {
   // التفاعلات العائمة ❤️ 😢 🤲 💔
   match /rx/{id} {
     allow read: if true;
-    allow create: if signed() && request.resource.data.uid == request.auth.uid
+    allow create: if real() && request.resource.data.uid == request.auth.uid
       && request.resource.data.keys().hasOnly(['track','t','e','uid','at'])
       && request.resource.data.e in ['❤️','😢','🤲','💔']
       && (!('at' in request.resource.data) || request.resource.data.at == request.time)

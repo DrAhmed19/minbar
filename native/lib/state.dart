@@ -6,6 +6,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show PlatformException;
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:ota_update/ota_update.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:audio_service/audio_service.dart' show MediaItem;
@@ -353,86 +355,92 @@ class AuthCtl extends ChangeNotifier {
       }
       return;
     }
+    // الدخول مفتوح لكل حساب Google: يدخل مباشرة، ونتحقق من صلاحية المشرف بالخلفية
     guest = false;
     await _p?.setBool('guest', false);
-    final cachedOk = _p?.getString('okUid') == u.uid;
-    state = cachedOk ? AuthState.ok : AuthState.loading;
+    state = AuthState.ok;
+    await _p?.setString('okUid', u.uid);
     notifyListeners();
     try {
-      final db = FirebaseFirestore.instance;
-      var open = false;
-      try {
-        final c = await db.doc('config/app').get();
-        if (c.exists) open = c.data()?['open'] == true;
-      } catch (_) {}
-      try {
-        await db.collection('waitlist').limit(1).get();
-        admin = true;
-      } catch (_) {
-        admin = false;
-      }
-      if (admin || open) {
-        state = AuthState.ok;
-      } else {
-        final d = await db.doc('waitlist/${u.uid}').get();
-        if (!d.exists) {
-          state = AuthState.form;
-        } else {
-          final st = d.data()?['status'];
-          state = st == 'approved' ? AuthState.ok : (st == 'rejected' ? AuthState.rejected : AuthState.wait);
-        }
-      }
-    } catch (e) {
-      if (!cachedOk) {
-        error = 'مشكلة بالاتصال';
-        state = AuthState.out;
-      }
-    }
-    if (state == AuthState.ok) {
-      await _p?.setString('okUid', u.uid);
-    } else {
-      await _p?.remove('okUid');
+      await FirebaseFirestore.instance.collection('waitlist').limit(1).get();
+      admin = true;
+    } catch (_) {
+      admin = false;
     }
     notifyListeners();
   }
 
+  /// معرّف عميل Google (يُمرَّر وقت البناء). إذا موجود نفتح نافذة اختيار الحساب الأصلية داخل التطبيق،
+  /// وإذا فشلت لأي سبب نرجع لطريقة Firebase العادية حتى ما يتعطل الدخول
+  static const kGcid = String.fromEnvironment('GCID');
+  bool busy = false;
+  GoogleSignIn? _gs;
+
+  String _msg(String code) {
+    switch (code) {
+      case 'network-request-failed':
+        return 'لا يوجد اتصال بالإنترنت. تأكد من الاتصال وحاول مرة أخرى';
+      case 'too-many-requests':
+        return 'محاولات كثيرة. انتظر قليلاً ثم حاول مرة أخرى';
+      case 'user-disabled':
+        return 'هذا الحساب موقوف';
+      case 'account-exists-with-different-credential':
+        return 'هذا البريد مرتبط بطريقة دخول أخرى';
+      default:
+        return 'تعذّر تسجيل الدخول، حاول مرة أخرى';
+    }
+  }
+
   Future<void> google() async {
+    if (busy) return; // منع الضغط المزدوج
+    busy = true;
     error = '';
     notifyListeners();
     try {
-      await FirebaseAuth.instance.signInWithProvider(GoogleAuthProvider());
+      if (kGcid.isNotEmpty) {
+        try {
+          _gs ??= GoogleSignIn(serverClientId: kGcid, scopes: const ['email', 'profile']);
+          try {
+            await _gs!.signOut(); // حتى تظهر قائمة الحسابات كل مرة
+          } catch (_) {}
+          final acc = await _gs!.signIn().timeout(const Duration(minutes: 3));
+          if (acc == null) return; // ألغى المستخدم
+          final a = await acc.authentication;
+          if (a.idToken != null) {
+            await FirebaseAuth.instance.signInWithCredential(GoogleAuthProvider.credential(idToken: a.idToken, accessToken: a.accessToken)).timeout(const Duration(seconds: 40));
+            return;
+          }
+        } on PlatformException catch (e) {
+          if (e.code == 'sign_in_canceled') return;
+          if (e.code == 'network_error') {
+            error = _msg('network-request-failed');
+            return;
+          }
+        } on FirebaseAuthException {
+          rethrow;
+        } on TimeoutException {
+          error = 'انتهت مهلة الدخول، حاول مرة أخرى';
+          return;
+        } catch (_) {}
+      }
+      final p = GoogleAuthProvider()..setCustomParameters({'prompt': 'select_account'});
+      await FirebaseAuth.instance.signInWithProvider(p);
     } on FirebaseAuthException catch (e) {
-      if (e.code != 'canceled' && e.code != 'web-context-canceled') error = 'تعذّر الدخول: ${e.code}';
-      notifyListeners();
+      if (e.code != 'canceled' && e.code != 'web-context-canceled' && e.code != 'web-context-already-presented') error = _msg(e.code);
     } catch (e) {
-      error = 'تعذّر الدخول';
+      error = _msg('');
+    } finally {
+      busy = false;
       notifyListeners();
     }
   }
 
   Future<void> enterGuest() async {
+    if (busy) return;
     guest = true;
     app.repo.useUser('guest');
     await _p?.setBool('guest', true);
     state = AuthState.ok;
-    notifyListeners();
-  }
-
-  Future<void> register() async {
-    final u = user;
-    if (u == null) return;
-    try {
-      await FirebaseFirestore.instance.doc('waitlist/${u.uid}').set({
-        'name': u.displayName ?? '',
-        'email': u.email ?? '',
-        'photo': u.photoURL ?? '',
-        'status': 'pending',
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-      state = AuthState.wait;
-    } catch (e) {
-      error = 'تعذّر التسجيل';
-    }
     notifyListeners();
   }
 
@@ -441,6 +449,9 @@ class AuthCtl extends ChangeNotifier {
     await _p?.setBool('guest', false);
     try {
       await FirebaseAuth.instance.signOut();
+    } catch (_) {}
+    try {
+      await _gs?.signOut();
     } catch (_) {}
     user = null;
     app.repo.useUser('');
@@ -457,6 +468,9 @@ class AuthCtl extends ChangeNotifier {
 
 /// فحص التحديثات: يقارن رقم البناء المدمج بآخر إصدار منشور على GitHub
 const kBuild = int.fromEnvironment('BUILD', defaultValue: 0);
+
+/// رقم الإصدار الظاهر للمستخدم (رقم البناء داخلي فقط)
+const kVersion = '3.0.0';
 final kNav = GlobalKey<NavigatorState>();
 
 /// تحديث داخل التطبيق: تنزيل مع شريط تقدّم ثم فتح شاشة التثبيت مباشرة

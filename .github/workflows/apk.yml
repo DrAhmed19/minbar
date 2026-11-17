@@ -46,7 +46,9 @@ jobs:
       - name: بناء
         working-directory: native
         run: |
-          for i in 1 2 3; do flutter build apk --release --obfuscate --split-debug-info=build/symbols --split-per-abi --target-platform android-arm64,android-arm,android-x64 --build-number=${{ github.run_number }} --dart-define=BUILD=${{ github.run_number }} && exit 0; echo "retry $i"; sleep 45; done; exit 1
+          GCID=$(curl -s -m 20 "https://www.googleapis.com/identitytoolkit/v3/relyingparty/getProjectConfig?key=AIzaSyCIgeO-PZ-F_H597PfhRhOG7O2dXIpbWhw" | python3 -c "import sys,json;d=json.load(sys.stdin);print(next((x.get('clientId','') for x in d.get('idpConfig',[]) if x.get('provider')=='google.com'),''))" 2>/dev/null || true)
+          echo "Google client id: ${GCID:0:12}..."
+          for i in 1 2 3; do flutter build apk --release --obfuscate --split-debug-info=build/symbols --split-per-abi --target-platform android-arm64,android-arm,android-x64 --build-number=${{ github.run_number }} --dart-define=BUILD=${{ github.run_number }} --dart-define=GCID=$GCID && exit 0; echo "retry $i"; sleep 45; done; exit 1
       - name: بصمة التوقيع (من ملف APK نفسه)
         run: |
           AS=$(ls $ANDROID_HOME/build-tools/*/apksigner | tail -1)

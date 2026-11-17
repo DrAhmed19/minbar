@@ -109,82 +109,165 @@ class _GateState extends State<Gate> with TickerProviderStateMixin {
   }
 }
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
   final VoidCallback onRetry;
   const LoginPage({super.key, required this.onRetry});
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixin {
+  late final AnimationController _in = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))..forward();
+
+  @override
+  void dispose() {
+    _in.dispose();
+    super.dispose();
+  }
+
+  /// ظهور متدرّج لكل عنصر (من 0 إلى 1 حسب ترتيبه)
+  Widget _rise(int i, Widget w) {
+    final a = CurvedAnimation(parent: _in, curve: Interval((i * .1).clamp(0.0, .6), (i * .1 + .5).clamp(0.0, 1.0), curve: Curves.easeOutCubic));
+    return AnimatedBuilder(
+      animation: a,
+      builder: (_, c) => Opacity(opacity: a.value, child: Transform.translate(offset: Offset(0, 14 * (1 - a.value)), child: c)),
+      child: w,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final a = app.auth;
-    Widget body;
-    switch (a.state) {
-      case AuthState.form:
-        body = Column(children: [
-          Text('مرحباً ${a.user?.displayName ?? ''}', style: tx(16, c: Colors.white), textAlign: TextAlign.center),
-          const SizedBox(height: 8),
-          Text('التطبيق قيد التطوير. سجّل مسبقاً بحسابك وسيتم اختيار عدد محدود من المستخدمين لتجربته.',
-              style: tx(13, w: FontWeight.w500, c: const Color(0xFF8FA69B), h: 1.7), textAlign: TextAlign.center),
-          const SizedBox(height: 18),
-          GoldButton('تسجيل مسبق', a.register),
-          const SizedBox(height: 10),
-          GoldButton('الدخول كضيف', a.enterGuest, outline: true),
-          const SizedBox(height: 6),
-          TextButton(onPressed: a.signOut, child: Text('تغيير الحساب', style: tx(13, c: const Color(0xFF8FA69B)))),
-        ]);
-        break;
-      case AuthState.wait:
-      case AuthState.rejected:
-        body = Column(children: [
-          PIcon(a.state == AuthState.wait ? Ic.timer : Ic.heart, color: kGold, size: 36),
-          const SizedBox(height: 10),
-          Text(
-              a.state == AuthState.rejected
-                  ? 'نشكر لك اهتمامك. لم يتم اختيارك ضمن مرحلة التجربة الحالية، وسنوافيك عند الإطلاق العام.'
-                  : 'تم تسجيلك في قائمة الانتظار. عند اختيارك ستدخل تلقائياً بنفس الحساب.',
-              style: tx(13.5, w: FontWeight.w500, c: const Color(0xFFCBD8D1), h: 1.8),
-              textAlign: TextAlign.center),
-          const SizedBox(height: 18),
-          GoldButton('الدخول كضيف', a.enterGuest),
-          const SizedBox(height: 6),
-          TextButton(onPressed: a.signOut, child: Text('تغيير الحساب', style: tx(13, c: const Color(0xFF8FA69B)))),
-        ]);
-        break;
-      default:
-        body = Column(children: [
-          GoldButton('الدخول بحساب Google', a.google, icon: Ic.users),
-          const SizedBox(height: 6),
-          TextButton(onPressed: a.enterGuest, child: Text('المتابعة كضيف', style: tx(14, w: FontWeight.w600, c: const Color(0xFFB9CFC4)))),
-          if (a.error.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text(a.error, style: tx(12.5, c: const Color(0xFFE8A0A0)), textAlign: TextAlign.center),
-          ],
-        ]);
-    }
+    const amiri = TextStyle(fontFamily: 'Amiri');
     return Scaffold(
-      backgroundColor: kDeep,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(center: Alignment(0, -0.5), radius: 1.3, colors: [Color(0xFF0F4A38), Color(0xFF072A20), Color(0xFF03140F)]),
-        ),
+      backgroundColor: const Color(0xFF020E0A),
+      body: CustomPaint(
+        painter: const MihrabBackdrop(cy: .3),
         child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 28),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                const MihrabMark(width: 210, height: 250),
-                const SizedBox(height: 2),
-                Text('قصائد ومراثي', style: tx(14, w: FontWeight.w500, c: const Color(0xFF9FBDB0))),
-                const SizedBox(height: 18),
-                Container(width: 42, height: 2, decoration: BoxDecoration(color: const Color(0x66F4CF55), borderRadius: BorderRadius.circular(2))),
-                const SizedBox(height: 30),
-                body,
-                const SizedBox(height: 28),
-                Text('بالمتابعة فإنك توافق على شروط الاستخدام وسياسة الخصوصية', style: tx(10.5, c: const Color(0xFF6B887B)), textAlign: TextAlign.center),
-                const SizedBox(height: 4),
-                Text('مُهدى إلى باسم الكربلائي · نسخة تجريبية', style: tx(10.5, c: const Color(0xFF5E7A6E))),
-              ]),
+          child: LayoutBuilder(
+            builder: (ctx, bc) => SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: bc.maxHeight),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 28),
+                  child: Column(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                    const SizedBox(height: 8),
+                    Column(children: [
+                      _rise(0, const MihrabMark(width: 230, height: 276)),
+                      const SizedBox(height: 6),
+                      _rise(1, Text('قصائد ومراثي', style: amiri.copyWith(fontSize: 21, color: const Color(0xFFE9D9AE), height: 1.4))),
+                      const SizedBox(height: 10),
+                      _rise(2, const _Orn()),
+                    ]),
+                    Column(children: [
+                      const SizedBox(height: 26),
+                      _rise(3, _GoogleBtn(busy: a.busy, onTap: a.busy ? null : a.google)),
+                      const SizedBox(height: 12),
+                      _rise(4, _GuestBtn(onTap: a.busy ? null : a.enterGuest)),
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 250),
+                        child: a.error.isEmpty
+                            ? const SizedBox(width: double.infinity)
+                            : Padding(
+                                padding: const EdgeInsets.only(top: 14),
+                                child: Text(a.error, style: tx(12.5, c: const Color(0xFFE8A0A0)), textAlign: TextAlign.center),
+                              ),
+                      ),
+                      const SizedBox(height: 10),
+                      _rise(5, Text('تصفّح واستمع كضيف، وسجّل دخولك لحفظ مفضّلتك والتعليق والتفاعل', style: tx(11.5, c: const Color(0xFF7F9A8E), h: 1.6), textAlign: TextAlign.center)),
+                    ]),
+                    _rise(6, Padding(
+                      padding: const EdgeInsets.only(top: 30, bottom: 14),
+                      child: Column(children: [
+                        Text('بالمتابعة فإنك توافق على شروط الاستخدام وسياسة الخصوصية', style: tx(10.5, c: const Color(0xFF5F7C70)), textAlign: TextAlign.center),
+                        const SizedBox(height: 8),
+                        Text('إهداء إلى الحاج باسم الكربلائي', style: amiri.copyWith(fontSize: 14, color: const Color(0xFFCDBB8A))),
+                        const SizedBox(height: 2),
+                        Text('الإصدار $kVersion', style: tx(10, c: const Color(0xFF4F6B60))),
+                      ]),
+                    )),
+                  ]),
+                ),
+              ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// زخرفة صغيرة: خطّان يتلاشيان وبينهما معيّن
+class _Orn extends StatelessWidget {
+  const _Orn();
+  @override
+  Widget build(BuildContext context) {
+    Widget line(bool r) => Container(
+          width: 46,
+          height: 1,
+          decoration: BoxDecoration(gradient: LinearGradient(colors: r ? const [Color(0x00E2BE64), Color(0xCCE2BE64)] : const [Color(0xCCE2BE64), Color(0x00E2BE64)])),
+        );
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      line(true),
+      const SizedBox(width: 8),
+      Transform.rotate(angle: .785, child: Container(width: 5, height: 5, color: const Color(0xFFE2BE64))),
+      const SizedBox(width: 8),
+      line(false),
+    ]);
+  }
+}
+
+class _GoogleBtn extends StatelessWidget {
+  final bool busy;
+  final VoidCallback? onTap;
+  const _GoogleBtn({required this.busy, this.onTap});
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 54,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFFFFFCF2), Color(0xFFF1E9D4)]),
+        boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 18, offset: Offset(0, 8)), BoxShadow(color: Color(0x33E8C46A), blurRadius: 24)],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Center(
+            child: busy
+                ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Color(0xFF2F6B55)))
+                : Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text('المتابعة بحساب Google', style: tx(15.5, w: FontWeight.w700, c: const Color(0xFF1F2A25))),
+                    const SizedBox(width: 12),
+                    const SizedBox(width: 22, height: 22, child: CustomPaint(painter: GoogleG())),
+                  ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GuestBtn extends StatelessWidget {
+  final VoidCallback? onTap;
+  const _GuestBtn({this.onTap});
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 50,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: const Color(0x14FFFFFF),
+        border: Border.all(color: const Color(0x40E2BE64)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Center(child: Text('المتابعة كضيف', style: tx(14.5, w: FontWeight.w600, c: const Color(0xFFE6DCC0)))),
         ),
       ),
     );

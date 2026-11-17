@@ -745,7 +745,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               ListTile(
                 leading: const PIcon(Ic.down, color: kGreen),
                 title: Text('التحقق من تحديث التطبيق', style: tx(14)),
-                subtitle: Text('نسخة 1.0 · بناء $kBuild', style: tx(11.5, c: kMuted)),
+                subtitle: Text('الإصدار $kVersion', style: tx(11.5, c: kMuted)),
                 onTap: () async {
                   Navigator.pop(s);
                   final up = await latestUpdate();
