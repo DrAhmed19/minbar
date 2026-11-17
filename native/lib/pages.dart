@@ -26,8 +26,8 @@ class _GateState extends State<Gate> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    // تحميل ذكي: أقل مدة 1.1 ثانية حتى تكتمل الحركة، ويبقى فقط لحد ما تجهز البيانات
-    Future.delayed(const Duration(milliseconds: 1100), () {
+    // تحميل ذكي: أقل مدة 2.5 ثانية حتى تكتمل الحركة، ويبقى فقط لحد ما تجهز البيانات
+    Future.delayed(const Duration(milliseconds: 2500), () {
       if (mounted) setState(() => _minDone = true);
     });
     app.auth.addListener(_r);
@@ -120,18 +120,13 @@ class _GateState extends State<Gate> with TickerProviderStateMixin {
                   ),
                 ),
                 Opacity(
-                  opacity: fade(0.75) * (1 - e),
-                  child: Transform.translate(
-                    offset: Offset(0, 14 * (1 - fade(0.75))),
-                    child: Column(children: [
-                      const SizedBox(height: 6),
-                      Text('منبر', style: const TextStyle(fontFamily: 'F8', fontSize: 66, height: 1.25, color: Color(0xFFF3EAD0))),
-                      const SizedBox(height: 6),
-                      Container(width: 120 * fade(0.95), height: 2, decoration: BoxDecoration(borderRadius: BorderRadius.circular(2), gradient: const LinearGradient(colors: [Color(0x00E8C46A), kGold, Color(0x00E8C46A)]))),
-                      const SizedBox(height: 8),
-                      Opacity(opacity: fade(1.05), child: Text(_greet(), style: tx(15, c: const Color(0xFF9FBDB0)))),
-                    ]),
-                  ),
+                  opacity: 1 - e,
+                  child: Column(children: [
+                    const SizedBox(height: 14),
+                    NameMark(width: 230, write: (el - 0.5) / 1.3, shine: (el - 1.9) / 0.7),
+                    const SizedBox(height: 10),
+                    Opacity(opacity: fade(1.9), child: Text(_greet(), style: tx(15, c: const Color(0xFF9FBDB0)))),
+                  ]),
                 ),
               ]);
             },
@@ -205,8 +200,9 @@ class LoginPage extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 28),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 SizedBox(width: 96, height: 104, child: CustomPaint(painter: LogoPainter(0.15))),
-                const SizedBox(height: 8),
-                Text('منبر', style: const TextStyle(fontFamily: 'F8', fontSize: 54, height: 1.25, color: Color(0xFFF3EAD0))),
+                const SizedBox(height: 12),
+                const NameLoop(width: 190),
+                const SizedBox(height: 4),
                 Text('قصائد ومراثي', style: tx(14, w: FontWeight.w500, c: const Color(0xFF9FBDB0))),
                 const SizedBox(height: 18),
                 Container(width: 42, height: 2, decoration: BoxDecoration(color: const Color(0x66F4CF55), borderRadius: BorderRadius.circular(2))),
@@ -223,4 +219,74 @@ class LoginPage extends StatelessWidget {
       ),
     );
   }
+}
+
+/// اسم التطبيق (شعار الخط): كتابة بالقلم من اليمين لليسار ثم مسحة ضوء ذهبية
+class NameMark extends StatelessWidget {
+  final double width, write, shine;
+  const NameMark({super.key, required this.width, required this.write, this.shine = -1});
+
+  @override
+  Widget build(BuildContext context) {
+    final w = write.clamp(0.0, 1.0);
+    final h = width * 662 / 960;
+    if (w <= 0) return SizedBox(width: width, height: h);
+    final img = Image.asset('assets/name.png', width: width, height: h, fit: BoxFit.contain, filterQuality: FilterQuality.high);
+    final head = w * 1.2;
+    final done = w >= 1;
+    Widget base = done
+        ? img
+        : ShaderMask(
+            blendMode: BlendMode.dstIn,
+            shaderCallback: (r) => LinearGradient(
+              begin: Alignment.centerRight,
+              end: Alignment.centerLeft,
+              colors: const [Colors.white, Colors.white, Color(0x00FFFFFF)],
+              stops: [0, (head - 0.2).clamp(0.0, 1.0), head.clamp(0.0, 1.0)],
+            ).createShader(r),
+            child: img,
+          );
+    final s = shine;
+    if (s > 0 && s < 1) {
+      final c = 1.25 - 1.5 * Curves.easeInOut.transform(s);
+      double k(double v) => v.clamp(0.0, 1.0);
+      base = Stack(children: [
+        base,
+        ShaderMask(
+          blendMode: BlendMode.srcIn,
+          shaderCallback: (r) => LinearGradient(
+            begin: const Alignment(-1, -0.35),
+            end: const Alignment(1, 0.35),
+            colors: const [Color(0x00FFF4CC), Color(0x00FFF4CC), Color(0xE6FFF4CC), Color(0x00FFF4CC), Color(0x00FFF4CC)],
+            stops: [0, k(c - 0.14), k(c), k(c + 0.14), 1],
+          ).createShader(r),
+          child: img,
+        ),
+      ]);
+    }
+    return SizedBox(width: width, height: h, child: base);
+  }
+}
+
+/// نسخة شاشة الدخول: الاسم ثابت وتمرّ عليه مسحة ضوء كل بضع ثوانٍ
+class NameLoop extends StatefulWidget {
+  final double width;
+  const NameLoop({super.key, required this.width});
+  @override
+  State<NameLoop> createState() => _NameLoopState();
+}
+
+class _NameLoopState extends State<NameLoop> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 7000))..repeat();
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+        animation: _c,
+        builder: (_, __) => NameMark(width: widget.width, write: 1, shine: _c.value < 0.12 ? _c.value / 0.12 : -1),
+      );
 }
