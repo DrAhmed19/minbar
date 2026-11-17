@@ -22,18 +22,36 @@ class TtItem {
 }
 
 /// معلومات المقطع من خادم الموقع (يحوّل الروابط المختصرة ويجلب العنوان والصورة)
-Future<Map<String, dynamic>?> ttInfo(String link) async {
+Future<Map<String, dynamic>?> _ttGet(String url) async {
   try {
     final c = HttpClient()..connectionTimeout = const Duration(seconds: 12);
-    final rq = await c.getUrl(Uri.parse('${kBase}api/tt?url=${Uri.encodeComponent(link)}'));
+    final rq = await c.getUrl(Uri.parse(url));
+    rq.headers.set('user-agent', 'Mozilla/5.0');
     final rs = await rq.close().timeout(const Duration(seconds: 20));
     final body = await rs.transform(utf8.decoder).join();
     c.close();
-    final m = jsonDecode(body) as Map<String, dynamic>;
-    return m;
+    return jsonDecode(body) as Map<String, dynamic>;
   } catch (_) {
     return null;
   }
+}
+
+Future<Map<String, dynamic>?> ttInfo(String link) async {
+  var m = await _ttGet('${kBase}api/tt?url=${Uri.encodeComponent(link)}');
+  final x = RegExp(r'@([\w.-]+)/video/(\d{8,25})').firstMatch(link);
+  if (m == null || m['id'] == null) {
+    if (x == null) return m;
+    m = {'id': x.group(2), 'url': 'https://www.tiktok.com/@${x.group(1)}/video/${x.group(2)}', 'title': '', 'thumb': ''};
+  }
+  // الغلاف: لو السيرفر ما جابه نجيبه من تيك توك مباشرة من الجهاز
+  if ('${m['thumb'] ?? ''}'.isEmpty) {
+    final o = await _ttGet('https://www.tiktok.com/oembed?url=${Uri.encodeComponent('${m['url']}')}');
+    if (o != null) {
+      m['thumb'] = o['thumbnail_url'] ?? '';
+      if ('${m['title'] ?? ''}'.isEmpty) m['title'] = o['title'] ?? '';
+    }
+  }
+  return m;
 }
 
 class TikTokPage extends StatefulWidget {
@@ -180,7 +198,7 @@ class _TikTokPageState extends State<TikTokPage> {
               child: Column(children: [
                 const Icon(Icons.music_note_rounded, size: 38, color: Color(0xFFFE2C55)),
                 const SizedBox(height: 6),
-                Text('@$kTikTokUser', style: tx(17, w: FontWeight.w800, c: kGreen)),
+                Directionality(textDirection: TextDirection.ltr, child: Text('@$kTikTokUser', style: tx(17, w: FontWeight.w800, c: kGreen))),
               ]),
             ),
           ),

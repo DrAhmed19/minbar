@@ -4,7 +4,7 @@
   const esc = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const db = () => { try { return firebase.firestore(); } catch (e) { return null; } };
   const isAdmin = () => !!(window.MinbarAuth && MinbarAuth.admin);
-  const info = (u) => fetch('api/tt?url=' + encodeURIComponent(u)).then((r) => r.json()).catch(() => null);
+  const info = async (u) => { let m = await fetch('api/tt?url=' + encodeURIComponent(u)).then((r) => r.json()).catch(() => null); if (m && m.id && !m.thumb) { try { const o = await fetch('https://www.tiktok.com/oembed?url=' + encodeURIComponent(m.url)).then((r) => r.json()); m.thumb = o.thumbnail_url || ''; m.title = m.title || o.title || ''; } catch (e) {} } return m; };
   let root = null, items = [], busy = false;
   const toast = (m) => { const t = document.getElementById('toast'); if (!t) return alert(m); t.textContent = m; t.hidden = false; clearTimeout(t._h); t._h = setTimeout(() => { t.hidden = true; }, 2600); };
 
