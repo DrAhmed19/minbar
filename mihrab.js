@@ -26,7 +26,7 @@
   (() => { px.scale(2, 2); px.strokeStyle = 'rgba(232,200,120,1)'; px.lineWidth = .6; const T = 36;
     for (let y = -T; y < H + T; y += T) for (let x = -T; x < W + T; x += T) { const cx = x + ((y / T) % 2 ? T / 2 : 0); for (const r of [0, Math.PI / 4]) { px.save(); px.translate(cx, y); px.rotate(r); px.strokeRect(-9, -9, 18, 18); px.restore(); } px.beginPath(); px.arc(cx, y, 3, 0, 6.283); px.stroke(); } })();
   const motes = Array.from({ length: 34 }, () => ({ x: Math.random(), y: Math.random(), s: .4 + Math.random() * 1.1, v: .04 + Math.random() * .08, p: Math.random() * 6 }));
-  const S0 = 2.45, S1 = 1.5, AY0 = H * .5 - 64 * S0, AY1 = 118, NW0 = 200, NW1 = 262, NH = w => w * 662 / 960;
+  const S0 = 2.45, S1 = 1.5, AY0 = H * .5 - 64 * S0, AY1 = 140, NW0 = 200, NW1 = 205, NH = w => w * 662 / 960;
   function gold(x) { const g = x.createLinearGradient(0, 0, 0, 120); g.addColorStop(0, '#F2D688'); g.addColorStop(.5, '#DDB458'); g.addColorStop(1, '#BE8F36'); return g; }
   let PTS = null;
   function pts() {
