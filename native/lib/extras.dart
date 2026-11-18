@@ -21,6 +21,7 @@ import 'ui.dart';
 import 'car.dart';
 import 'home.dart' show GroupPage, LocalPage;
 import 'tiktok.dart';
+import 'stats.dart';
 export 'car.dart';
 
 /// إضافات التطبيق: الإعدادات، الإشعارات (قصائد جديدة + تذكير المناسبات)،
@@ -560,6 +561,7 @@ class _ProfilePageState extends State<ProfilePage> {
           _item(Ic.dl, 'المحمّلة للاستماع بدون إنترنت', '${dls.length} قصيدة', () => go(GroupPage('المحمّلة', dls))),
           _item(Ic.folder, 'ملفات من جهازك', '${r.locals.length} ملف', () => go(const LocalPage())),
           _item(Ic.play, 'مقاطعنا على تيك توك', 'مقاطع مختارة بمشاهداتها وتعليقاتها', () => go(const TikTokPage())),
+          if (a.admin) _item(Ic.play, 'الإحصائيات', 'المستخدمون النشطون والمشاهدات', () => go(const StatsPage())),
           const Divider(height: 24, indent: 18, endIndent: 18),
           _item(Ic.timer, 'ضبط التاريخ الهجري', 'يُحسب من الجهاز بدون إنترنت، وتصحّحه إن اختلف يوم', () async {
             final h = hijriOf(DateTime.now());
