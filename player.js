@@ -1667,9 +1667,15 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
       w.remove(); if (!best) return toast('لم نتعرّف على القصيدة في المكتبة'); qFrom(best.t, tracks); play(tracks.indexOf(best.t), true); const at = best.ln.t; if (isFinite(at)) seekTo(at); toast('تم التعرّف: ' + best.t.title);
     } catch (e) { w.remove(); toast('تعذّر التعرّف. يلزم اتصال بالإنترنت عند الاستخدام الأول'); } }
   /* ---------- 9) مناسبة اليوم (حسب التقويم الهجري) ---------- */
-  const HADJ = () => { try { const l = localStorage.getItem('minbar.hadj'); if (l !== null && l !== '') return +l || 0; return +localStorage.getItem('minbar.hadj.g') || 0; } catch (e) { return 0; } };
+  const HADJ = () => { try { const s = localStorage.getItem('minbar.hadj.s'); if (s !== null && s !== '') return +s || 0; const l = localStorage.getItem('minbar.hadj'); if (l !== null && l !== '') return +l || 0; return +localStorage.getItem('minbar.hadj.g') || 0; } catch (e) { return 0; } };
   /* ضبط عام يحدده المشرف (hijri/adj) ويُخزَّن للعمل بدون إنترنت */
-  setTimeout(() => { try { const db = fdb(); if (db) db.doc('hijri/adj').get().then((d) => { if (d.exists) localStorage.setItem('minbar.hadj.g', String(+d.data().v || 0)); }).catch(() => {}); } catch (e) {} }, 4000);
+  /* ضبط التاريخ الهجري على تقويم النجف الأشرف من /api/hijri مرة باليوم (يُحفظ للعمل بدون إنترنت) */
+  function hijriSync() { try {
+    const n = new Date(), day = n.getFullYear() + '-' + n.getMonth() + '-' + n.getDate(); if (localStorage.getItem('minbar.hadj.day') === day) return;
+    fetch('api/hijri').then((r) => (r.ok ? r.json() : null)).then((j) => { if (!j || !j.y) return;
+      for (let a = 0; a <= 3; a++) for (const sg of (a ? [1, -1] : [1])) { const k = a * sg; let p = {}; try { new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', { day: 'numeric', month: 'numeric', year: 'numeric' }).formatToParts(new Date(Date.now() + k * 864e5)).forEach((x) => { p[x.type] = +x.value; }); } catch (e) { return; }
+        if (p.day === j.d && p.month === j.m && p.year === j.y) { localStorage.setItem('minbar.hadj.s', String(k)); localStorage.setItem('minbar.hadj.day', day); try { if (tab === 'lib' && libV === 'home') render(); } catch (e) {} return; } } }).catch(() => {}); } catch (e) {} }
+  setTimeout(hijriSync, 2500); document.addEventListener('visibilitychange', () => { if (!document.hidden) hijriSync(); });
   function hadjMenu() { modal('ضبط التاريخ الهجري', (bx, close) => { bx.appendChild(el('p', 'abp', (isOwner() ? 'اختيارك هنا يُطبَّق على جميع المستخدمين.' : 'يُحسب من جهازك بدون إنترنت. إن اختلف التاريخ صحّحه بيوم أو يومين.'))); [[-2, 'يومين للخلف'], [-1, 'يوم للخلف'], [0, 'بدون تصحيح'], [1, 'يوم للأمام'], [2, 'يومين للأمام']].forEach(([v, l]) => { const b = el('button', HADJ() === v ? 'pri' : '', l + (HADJ() === v ? ' ✓' : '')); b.onclick = () => { if (isOwner()) { try { fdb().doc('hijri/adj').set({ v, by: fuid(), at: firebase.firestore.FieldValue.serverTimestamp() }); localStorage.setItem('minbar.hadj.g', String(v)); localStorage.removeItem('minbar.hadj'); } catch (e) { toast('تعذّر الحفظ'); } } else { try { localStorage.setItem('minbar.hadj', v); } catch (e) {} } close(); toast('تم الضبط'); try { occRender && 0; } catch (e) {} }; bx.appendChild(b); }); }); }
   /* تقرير المشرف: الأكثر سماعاً وتفاعلاً آخر 30 يوماً + الطلبات المعلقة */
   function repMenu() { const db = fdb(); if (!db) return toast('غير متصل'); modal('تقرير منبر', (bx, close) => { const ld = el('p', 'abp', 'جارٍ التجميع…'); bx.appendChild(ld);
@@ -2107,7 +2113,7 @@ class PS extends AudioWorkletProcessor{static get parameterDescriptors(){return[
   /* بطاقة التاريخ والمناسبة: اليوم الهجري والشهر والسنة + مناسبة اليوم أو القادمة */
   function dateCard(body) {
     const d = new Date(Date.now() + HADJ() * 864e5), P = {}; try { new Intl.DateTimeFormat('ar-u-ca-islamic-umalqura-nu-latn', { day: 'numeric', month: 'long', year: 'numeric' }).formatToParts(d).forEach((x) => { P[x.type] = x.value; }); } catch (e) {}
-    let greg = ''; try { greg = new Intl.DateTimeFormat('ar-IQ-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(d); } catch (e) {}
+    let greg = ''; try { greg = new Intl.DateTimeFormat('ar-IQ-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date()); } catch (e) {}
     const o = occasion(), nx = o ? null : occNext(), c = el('div', 'dcard'), dt = el('div', 'dcd'), ds = el('div', 'dco');
     dt.append(el('b', '', P.day || ''), el('span', '', P.month || ''), el('small', '', (P.year || '') + ' هـ')); c.appendChild(dt);
     if (o) { const L = tracks.filter((t) => o.k.some((k) => [t.title, t.cat, t.poet].join(' ').includes(k))); ds.append(el('small', '', 'مناسبة اليوم'), el('b', '', o.t), el('span', '', L.length ? L.length + ' قصيدة مناسبة' : greg));

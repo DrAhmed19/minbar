@@ -563,27 +563,6 @@ class _ProfilePageState extends State<ProfilePage> {
           _item(Ic.play, 'مقاطعنا على تيك توك', 'مقاطع مختارة بمشاهداتها وتعليقاتها', () => go(const TikTokPage())),
           if (a.admin) _item(Ic.play, 'الإحصائيات', 'المستخدمون النشطون والمشاهدات', () => go(const StatsPage())),
           const Divider(height: 24, indent: 18, endIndent: 18),
-          _item(Ic.timer, 'ضبط التاريخ الهجري', 'يُحسب من الجهاز بدون إنترنت، وتصحّحه إن اختلف يوم', () async {
-            final h = hijriOf(DateTime.now());
-            final v = await showDialog<int>(
-              context: context,
-              builder: (d) => Directionality(
-                textDirection: TextDirection.rtl,
-                child: SimpleDialog(
-                  title: Text('اليوم الهجري الآن: ${h.d}/${h.m}/${h.y}', style: tx(15, w: FontWeight.w800)),
-                  children: [
-                    for (final e in const {-2: 'يومين للخلف', -1: 'يوم للخلف', 0: 'بدون تصحيح', 1: 'يوم للأمام', 2: 'يومين للأمام'}.entries)
-                      SimpleDialogOption(onPressed: () => Navigator.pop(d, e.key), child: Text('${e.value}${e.key == hijriAdj ? '  ✓' : ''}', style: tx(14, w: e.key == hijriAdj ? FontWeight.w800 : FontWeight.w500, c: e.key == hijriAdj ? kGreen : kInk))),
-                  ],
-                ),
-              ),
-            );
-            if (v != null) {
-              hijriAdj = v;
-              (await SharedPreferences.getInstance()).setInt('hijriLocal', v);
-              app.repo.notifyListeners();
-            }
-          }),
           _item(Ic.gear, 'الإعدادات', 'الإشعارات والتشغيل والصوت والتحديث', () => go(const SettingsPage())),
           if (!a.guest)
             ListTile(

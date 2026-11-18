@@ -295,7 +295,7 @@ class Repo extends ChangeNotifier {
   Future<void> init() async {
     _p = await SharedPreferences.getInstance();
     _watchNet();
-    hijriAdj = _p!.getInt('hijriLocal') ?? _p!.getInt('hijriRemote') ?? 0;
+    hijriAdj = _p!.getInt('hijriRemote') ?? _p!.getInt('hijriLocal') ?? 0;
     try {
       locals = (jsonDecode(_p!.getString('locals') ?? '[]') as List).whereType<Map>().map(Track.fromJson).toList();
     } catch (_) {}
@@ -559,20 +559,42 @@ class Repo extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// يضبط التاريخ الهجري على تقويم النجف الأشرف (من خادم الموقع، مرة باليوم، ويُحفظ للعمل بدون إنترنت)
+  Future<void> hijriSync() async {
+    try {
+      final n = DateTime.now(), day = '${n.year}-${n.month}-${n.day}';
+      if (_p?.getString('hijriSync.day') == day) return;
+      final c = HttpClient()..connectionTimeout = const Duration(seconds: 10);
+      final rq = await c.getUrl(Uri.parse('${kBase}api/hijri'));
+      final rs = await rq.close().timeout(const Duration(seconds: 15));
+      final body = await rs.transform(utf8.decoder).join();
+      c.close();
+      if (rs.statusCode != 200) return;
+      final j = jsonDecode(body) as Map;
+      final y = (j['y'] as num).toInt(), m = (j['m'] as num).toInt(), d = (j['d'] as num).toInt();
+      final keep = hijriAdj;
+      for (var a = 0; a <= 3; a++) {
+        for (final sg in a == 0 ? [1] : [1, -1]) {
+          hijriAdj = a * sg;
+          final h = hijriOf(n);
+          if (h.y == y && h.m == m && h.d == d) {
+            await _p?.setInt('hijriRemote', hijriAdj);
+            await _p?.setString('hijriSync.day', day);
+            notifyListeners();
+            return;
+          }
+        }
+      }
+      hijriAdj = keep;
+    } catch (_) {}
+  }
+
   // ---- الأكثر استماعاً/إعجاباً ----
   Future<void> loadHot() async {
     if (DateTime.now().difference(_hotAt).inMinutes < 10) return;
     _hotAt = DateTime.now();
     final db = FirebaseFirestore.instance;
-    try {
-      // ضبط التاريخ الهجري العام (يحدده المشرف): يُحفظ للعمل بدون إنترنت
-      final h = await db.doc('hijri/adj').get();
-      final v = (h.data()?['v'] as num?)?.toInt();
-      if (v != null) {
-        await _p?.setInt('hijriRemote', v);
-        if (_p?.getInt('hijriLocal') == null) hijriAdj = v;
-      }
-    } catch (_) {}
+    hijriSync();
     // توفير حصة Firestore: الأكثر استماعاً/إعجاباً يُحفظ 3 ساعات بالجهاز
     final hc = _p?.getString('hot.v1');
     final hat = _p?.getInt('hot.at') ?? 0;
