@@ -18,6 +18,7 @@ import 'state.dart';
 import 'ui.dart';
 
 part 'car_scene.dart';
+part 'car_geo.dart';
 
 /// وضع السيارة: مشهد قيادة حيّ بكامل الشاشة.
 /// - السرعة من GPS مع تنقية (دقة السرعة، رفض القفزات، حساب احتياطي من المسافة/الزمن).
@@ -399,6 +400,8 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
   Position? _lp;
   double _lt = 0, _rawV = 0, _turn = 0, _acc = 99, _fixAt = -99, _blinkHold = 0;
   double _lat = 32.616, _lon = 44.024; // كربلاء افتراضياً
+  double _posAt = -99, _gpsStartAt = -99, _lastRestart = -99;
+  bool _gotFix = false, _useLM = true; // _useLM: GPS مباشر من الجهاز (يعمل بدون إنترنت) وإلا مزوّد جوجل
   // الطقس والوقت
   _Wx _wx = _Wx();
   int _wMode = 0, _tMode = 0;
@@ -411,12 +414,31 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
   bool _hasPos = false, _geoBusy = false;
   double _gLat = 0, _gLon = 0;
 
-  void _applyBiome() => _sc.biome = _bMode >= 0 ? _bMode : (_region?.biome ?? _bFarm);
+  // خيارات المشهد (منطقة/وقت/طقس يدوي) للمشرف فقط للفحص؛ المستخدم دائماً تلقائي وحقيقي
+  bool get _adm => app.auth.admin;
+  int get _bM => _adm ? _bMode : -1;
+  int get _wM => _adm ? _wMode : 0;
+  int get _tM => _adm ? _tMode : 0;
 
-  /// اسم المحافظة والحي ونوع المكان: عند أول موقع وكل ما تتحرك 2 كم
+  void _applyBiome() => _sc.biome = _bM >= 0 ? _bM : (_region?.biome ?? _bFarm);
+
+  /// المحافظة والحي ونوع المشهد: محلياً بدون إنترنت (فوري)، وكل ما تتحرك 700 م يُحدَّث تلقائياً.
+  /// الإنترنت احتياط فقط إذا الموقع خارج بيانات العراق.
   Future<void> _geo({bool force = false}) async {
     if (!_hasPos || _geoBusy) return;
-    if (!force && _region != null && Geolocator.distanceBetween(_gLat, _gLon, _lat, _lon) < 2000) return;
+    if (!force && _region != null && Geolocator.distanceBetween(_gLat, _gLon, _lat, _lon) < 700) return;
+    final off = _offlineRegion(_lat, _lon);
+    if (off != null) {
+      _gLat = _lat;
+      _gLon = _lon;
+      final old = _region;
+      if (old == null || old.place != off.place || old.sub != off.sub || old.biome != off.biome) {
+        _region = off;
+        _applyBiome();
+        if (mounted) setState(() {});
+      }
+      return;
+    }
     _geoBusy = true;
     final r = await _reverse(_lat, _lon);
     _geoBusy = false;
@@ -485,6 +507,7 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
     _ct = Timer.periodic(const Duration(seconds: 1), (_) {
       _clock.value = DateTime.now();
       if (DateTime.now().second % 20 == 0) _env();
+      _gpsWatch();
       if (DateTime.now().second == 30) _geo();
     });
     SharedPreferences.getInstance().then((p) async {
@@ -514,29 +537,39 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
 
   // ---------------- السرعة والاتجاه ----------------
   void _onPos(Position p) {
+    _posAt = _now;
+    _gotFix = true;
     final now = p.timestamp.millisecondsSinceEpoch / 1000.0;
     _acc = p.accuracy;
-    double? sp;
-    // سرعة الجهاز (دوبلر) هي الأدق إن كانت دقتها مقبولة
-    if (p.speed.isFinite && p.speed >= 0 && (p.speedAccuracy <= 0 || p.speedAccuracy < 2.5)) sp = p.speed;
+    // 1) سرعة الجهاز (دوبلر): الأدق، نقبلها حتى لو دقتها متوسطة
+    double? dop;
+    if (p.speed.isFinite && p.speed >= 0 && (p.speedAccuracy <= 0 || p.speedAccuracy < 4)) dop = p.speed;
+    // 2) سرعة محسوبة من المسافة/الزمن بين موقعين (احتياط)
     final lp = _lp;
+    double? der;
+    double d = 0, dt = 0;
     if (lp != null) {
-      final dt = now - _lt;
-      if (dt > 0.2 && dt < 15) {
-        final d = Geolocator.distanceBetween(lp.latitude, lp.longitude, p.latitude, p.longitude);
-        if (sp == null && p.accuracy < 20 && lp.accuracy < 20) sp = d / dt; // احتياطي: المسافة/الزمن
-        if (sp != null) {
-          final lim = _rawV + 8 * dt; // رفض القفزات غير الممكنة
-          if (sp > lim) sp = lim;
-          if (sp > 1.2 && d < sp * dt * 1.6 + 6) _dist += d;
-        }
-        if (sp != null && sp > 2.5 && p.heading >= 0 && lp.heading >= 0 && (p.headingAccuracy <= 0 || p.headingAccuracy < 25)) {
-          final dh = ((p.heading - lp.heading + 540) % 360) - 180;
-          _turn += (_cl((dh / dt) * math.pi / 180, -0.6, 0.6) - _turn) * 0.6;
-          _sc.heading = p.heading;
-        } else if ((sp ?? 0) < 1.5) {
-          _turn *= 0.5;
-        }
+      dt = now - _lt;
+      if (dt > 0.25 && dt < 12) {
+        d = Geolocator.distanceBetween(lp.latitude, lp.longitude, p.latitude, p.longitude);
+        if (p.accuracy < 40 && lp.accuracy < 40) der = d / dt;
+      }
+    }
+    double? sp = dop ?? der;
+    // الجهاز أحياناً يعطي صفر رغم الحركة الفعلية: نعتمد المحسوبة إذا القفزة أكبر بوضوح من ضجيج الـGPS
+    if (dop != null && dop < 0.5 && der != null && der > 3 && d > (p.accuracy + (lp?.accuracy ?? 0)) * 0.6) sp = der;
+    // لا سرعة قابلة للاعتماد (دقة ضعيفة لحظياً): نُبقي آخر سرعة مع تخفيف بدل التوقف المفاجئ
+    sp ??= _rawV * 0.85;
+    if (lp != null && dt > 0.2 && dt < 15) {
+      final lim = _rawV + 9 * dt; // رفض القفزات غير الممكنة
+      if (sp > lim) sp = lim;
+      if (sp > 1.2 && d < sp * dt * 1.6 + 6) _dist += d;
+      if (sp > 2.5 && p.heading >= 0 && lp.heading >= 0 && (p.headingAccuracy <= 0 || p.headingAccuracy < 25)) {
+        final dh = ((p.heading - lp.heading + 540) % 360) - 180;
+        _turn += (_cl((dh / dt) * math.pi / 180, -0.6, 0.6) - _turn) * 0.6;
+        _sc.heading = p.heading;
+      } else if (sp < 1.5) {
+        _turn *= 0.5;
       }
     }
     _lp = p;
@@ -546,9 +579,8 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
     if (!_hasPos) {
       _hasPos = true;
       _env();
-      _geo();
     }
-    if (sp == null) return;
+    _geo(); // تحديث المنطقة تلقائياً مع التنقل (محلي وفوري)
     if (sp < 0.6) sp = 0; // ضجيج التوقف
     _rawV = sp;
     _fixAt = _now;
@@ -582,10 +614,7 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
         if (ask) _say('السرعة تحتاج صلاحية الموقع');
         return;
       }
-      await _gs?.cancel();
-      _gs = Geolocator.getPositionStream(
-        locationSettings: AndroidSettings(accuracy: LocationAccuracy.bestForNavigation, distanceFilter: 0, intervalDuration: const Duration(milliseconds: 1000)),
-      ).listen(_onPos, onError: (_) {});
+      await _gpsStart();
       if (mounted) setState(() => gps = true);
       (await SharedPreferences.getInstance()).setBool('car.gps', true);
       final lp = await Geolocator.getLastKnownPosition();
@@ -598,6 +627,37 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
       }
     } catch (_) {
       if (ask) _say('تعذّر تشغيل عدّاد السرعة');
+    }
+  }
+
+  /// اشتراك GPS: أولاً GPS الجهاز مباشرة (أدق، لا يحتاج إنترنت ولا خدمات جوجل)، وإذا لم يصل موقع يتحول للمزوّد البديل
+  Future<void> _gpsStart() async {
+    await _gs?.cancel();
+    _gotFix = false;
+    _gpsStartAt = _now;
+    _posAt = _now;
+    _gs = Geolocator.getPositionStream(
+      locationSettings: AndroidSettings(
+        accuracy: LocationAccuracy.bestForNavigation,
+        distanceFilter: 0,
+        intervalDuration: const Duration(milliseconds: 1000),
+        forceLocationManager: _useLM,
+      ),
+    ).listen(_onPos, onError: (_) {
+      Timer(const Duration(seconds: 2), () {
+        if (mounted && gps) _gpsStart();
+      });
+    });
+  }
+
+  /// مراقب: إذا انقطع وصول المواقع أكثر من 6 ثوانٍ نعيد تشغيل الاشتراك، وإذا ما وصل أي موقع نبدّل المزوّد
+  void _gpsWatch() {
+    if (!gps || _gs == null) return;
+    final t = _now;
+    if (t - _posAt > 6 && t - _lastRestart > 10) {
+      _lastRestart = t;
+      if (!_gotFix) _useLM = !_useLM;
+      _gpsStart();
     }
   }
 
@@ -639,7 +699,7 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
               if (Geolocator.distanceBetween(_lat, _lon, m.$1, m.$2) < 45000) (brg(m.$1, m.$2), Geolocator.distanceBetween(_lat, _lon, m.$1, m.$2) / 1000, m.$3),
           ];
     final h = _sc.heading;
-    switch (_tMode) {
+    switch (_tM) {
       case 1:
         _sc
           ..sunEl = 48
@@ -702,7 +762,7 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
     }
   }
 
-  _Wx get _wxNow => _presets[_wMode] ?? _wx;
+  _Wx get _wxNow => _presets[_wM] ?? _wx;
 
   // ---------------- كل إطار ----------------
   void _tick(Duration e) {
@@ -715,7 +775,7 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
     final gp = gps;
     if (gps) {
       final age = _now - _fixAt;
-      target = age < 5 ? _rawV : _rawV * _cl(1 - (age - 5) / 5); // فقدان الإشارة: تباطؤ تدريجي
+      target = age < 6 ? _rawV : _rawV * _cl(1 - (age - 6) / 5); // فقدان الإشارة: تباطؤ تدريجي
     } else {
       target = playing ? 13.9 : 0; // بدون GPS: سير عرضي 50 كم/س مع التشغيل
     }
@@ -1000,33 +1060,70 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
                 child: Text('${icon == null ? '' : '$icon '}$label', style: tx(13, c: on ? kGold : Colors.white70)),
               ),
             );
-        Widget card(String icon, String title, List<Widget> kids, {String? note}) => Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x17FFFFFF), Color(0x08FFFFFF)]),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0x1AFFFFFF)),
-              ),
+        Widget card(String icon, String title, List<Widget> kids, {String? note, bool admin = false}) => Padding(
+              padding: const EdgeInsets.only(bottom: 16),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Container(width: 30, height: 30, alignment: Alignment.center, decoration: BoxDecoration(color: const Color(0x26E8C468), borderRadius: BorderRadius.circular(10)), child: Text(icon, style: const TextStyle(fontSize: 15))),
-                  const SizedBox(width: 10),
-                  Expanded(child: Text(title, style: tx(15, c: Colors.white))),
-                  if (note != null) Text(note, style: tx(12, c: kGold)),
-                ]),
-                const SizedBox(height: 12),
-                ...kids,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(6, 0, 6, 8),
+                  child: Row(children: [
+                    PIcon(icon, color: admin ? const Color(0xFFE59A9A) : kGold, size: 17),
+                    const SizedBox(width: 8),
+                    Text(title, style: tx(13.5, c: admin ? const Color(0xFFE59A9A) : kGold, w: FontWeight.w700)),
+                    if (admin) ...[
+                      const SizedBox(width: 8),
+                      Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1), decoration: BoxDecoration(color: const Color(0x33E59A9A), borderRadius: BorderRadius.circular(8)), child: Text('مشرف', style: tx(10.5, c: const Color(0xFFE59A9A)))),
+                    ],
+                    const Spacer(),
+                    if (note != null) Text(note, style: tx(11.5, c: Colors.white54)),
+                  ]),
+                ),
+                Container(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                  decoration: BoxDecoration(color: const Color(0x0DFFFFFF), borderRadius: BorderRadius.circular(22), border: Border.all(color: const Color(0x14FFFFFF))),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: kids),
+                ),
               ]),
             );
-        Widget label(String t) => Padding(padding: const EdgeInsets.only(top: 10, bottom: 7), child: Text(t, style: tx(12, c: Colors.white54)));
+        Widget label(String t) => Padding(padding: const EdgeInsets.only(top: 12, bottom: 8), child: Text(t, style: tx(12, c: Colors.white54)));
         Widget wrap(List<Widget> k) => Wrap(spacing: 7, runSpacing: 7, children: k);
+        // مفتاح تبديل مقسّم بحجم الشاشة (أنماط التطبيقات الحديثة)
+        Widget seg(List<String> names, int sel, void Function(int) on) => Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(color: const Color(0x14000000), borderRadius: BorderRadius.circular(14)),
+              child: Row(children: [
+                for (int i = 0; i < names.length; i++)
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => upd(() => on(i)),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(vertical: 9),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(color: sel == i ? const Color(0xFFE8C468) : Colors.transparent, borderRadius: BorderRadius.circular(11)),
+                        child: Text(names[i], style: tx(13, c: sel == i ? const Color(0xFF2A2106) : Colors.white70, w: sel == i ? FontWeight.w700 : FontWeight.w500)),
+                      ),
+                    ),
+                  ),
+              ]),
+            );
+        Widget tile(String icon, String title, String value, {Color? vc}) => Expanded(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                padding: const EdgeInsets.all(13),
+                decoration: BoxDecoration(color: const Color(0x0FFFFFFF), borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0x14FFFFFF))),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [PIcon(icon, color: Colors.white54, size: 15), const SizedBox(width: 6), Text(title, style: tx(11.5, c: Colors.white54))]),
+                  const SizedBox(height: 8),
+                  Text(value, maxLines: 2, overflow: TextOverflow.ellipsis, style: tx(14.5, c: vc ?? Colors.white, h: 1.35, w: FontWeight.w700)),
+                ]),
+              ),
+            );
         Widget stat(String v, String l) => Expanded(
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 10),
+                padding: const EdgeInsets.symmetric(vertical: 11),
                 margin: const EdgeInsets.symmetric(horizontal: 3),
-                decoration: BoxDecoration(color: const Color(0x0FFFFFFF), borderRadius: BorderRadius.circular(12)),
-                child: Column(children: [Text(v, style: tx(16, c: Colors.white, h: 1.2)), Text(l, style: tx(11, c: Colors.white54))]),
+                decoration: BoxDecoration(color: const Color(0x0FFFFFFF), borderRadius: BorderRadius.circular(14)),
+                child: Column(children: [Text(v, style: tx(17, c: Colors.white, h: 1.2, w: FontWeight.w700)), Text(l, style: tx(11, c: Colors.white54))]),
               ),
             );
         final total = DateTime.now().difference(_start).inSeconds.toDouble(), avg = _moveSec > 30 ? _dist / _moveSec * 3.6 : 0.0;
@@ -1052,30 +1149,19 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
                   IconButton(onPressed: () => Navigator.pop(c), icon: const PIcon(Ic.x, color: Colors.white70, size: 22)),
                 ]),
                 const SizedBox(height: 6),
-                card('🚗', 'سيارتك', [
-                  label('الشكل'),
-                  Row(children: [
-                    for (final e in _modelNames.entries)
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 3),
-                          child: GestureDetector(
-                            onTap: () => upd(() {
-                              _sc.model = e.key;
-                              save('car.model', e.key);
-                            }),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(color: _sc.model == e.key ? const Color(0x2EE8C468) : const Color(0x0FFFFFFF), borderRadius: BorderRadius.circular(14), border: Border.all(color: _sc.model == e.key ? kGold : const Color(0x1FFFFFFF))),
-                              child: Text(e.value, style: tx(13, c: _sc.model == e.key ? kGold : Colors.white70)),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ]),
+                // الحالة الحالية: المنطقة (تلقائية وتعمل بدون إنترنت) والسرعة
+                Row(children: [
+                  tile(Ic.compass, 'المنطقة', _region == null ? (_hasPos ? 'جارٍ التحديد…' : 'الموقع غير متاح') : [_region!.place, if (_region!.sub.isNotEmpty) _region!.sub].join(' · ')),
+                  tile(Ic.speed, 'عدّاد السرعة', !gps ? 'متوقف' : (_now - _posAt < 6 ? (_acc < 15 ? 'يعمل · دقيق' : 'يعمل · ±${_acc.round()} م') : 'ينتظر الإشارة'), vc: gps && _now - _posAt < 6 ? const Color(0xFF8EE0A8) : null),
+                ]),
+                const SizedBox(height: 16),
+                card(Ic.color, 'السيارة', [
+                  seg([for (final e in _modelNames.entries) e.value], _modelNames.keys.toList().indexOf(_sc.model), (i) {
+                    _sc.model = _modelNames.keys.elementAt(i);
+                    save('car.model', _sc.model);
+                  }),
                   label('اللون: ${_colorNames[_sc.color] ?? ''}'),
-                  wrap([
+                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                     for (final e in _carColors.entries)
                       Semantics(
                         label: _colorNames[e.key],
@@ -1085,9 +1171,10 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
                             _sc.color = e.key;
                             save('car.color', e.key);
                           }),
-                          child: Container(
-                            width: 36,
-                            height: 36,
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            width: 38,
+                            height: 38,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(e.value[0]), Color(e.value[1]), Color(e.value[3])]),
@@ -1098,66 +1185,24 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
                       ),
                   ]),
                 ]),
-                card('🗺', 'المشهد', [
-                  label('المنطقة'),
-                  wrap([
-                    for (final e in _biomeNames.entries)
-                      chip(e.value, _bMode == e.key, () {
-                        _bMode = e.key;
-                        save('car.biome', e.key);
-                        _applyBiome();
-                      }),
-                  ]),
-                  label('الوقت'),
-                  wrap([
-                    for (int i = 0; i < 4; i++)
-                      chip(const ['تلقائي', 'نهار', 'غروب', 'ليل'][i], _tMode == i, () {
-                        _tMode = i;
-                        save('car.tm', i);
-                        _env();
-                      }, icon: const ['🕒', '☀', '🌇', '🌙'][i]),
-                  ]),
-                  label('الطقس'),
-                  wrap([
-                    for (int i = 0; i < _presets.length; i++)
-                      chip(i == 0 ? 'الحقيقي' : _presets[i]!.label, _wMode == i, () {
-                        _wMode = i;
-                        save('car.wx', i);
-                      }, icon: i == 0 ? '📡' : _presets[i]!.icon(false)),
-                  ]),
-                  label('جودة الرسوم'),
-                  wrap([
-                    for (final e in const {0: 'تلقائية', 1: 'عالية', 2: 'متوسطة', 3: 'خفيفة'}.entries)
-                      chip(e.value, _qMode == e.key, () {
-                        _qMode = e.key;
-                        save('car.q', e.key);
-                        _World.q = e.key == 0 ? (app.player.perf == 0 ? 2 : 1) : 3 - e.key;
-                      }),
-                  ]),
-                ], note: 'المكتشفة: $detected'),
-                card('🛡', 'القيادة الآمنة', [
+                card(Ic.timer, 'القيادة الآمنة', [
                   Row(children: [
-                    Expanded(child: Text('تنبيه السرعة (نغمة هادئة مرة وحدة)', style: tx(13, c: Colors.white70))),
-                    Text(_limit == 0 ? 'إيقاف' : '$_limit كم/س', style: tx(14, c: kGold)),
+                    Expanded(child: Text('تنبيه السرعة', style: tx(14, c: Colors.white))),
+                    Text(_limit == 0 ? 'متوقف' : '$_limit كم/س', style: tx(14, c: kGold, w: FontWeight.w700)),
                   ]),
-                  SliderTheme(
-                    data: SliderTheme.of(c).copyWith(activeTrackColor: kGold, thumbColor: kGold, inactiveTrackColor: Colors.white12, overlayColor: const Color(0x22E8C468)),
-                    child: Slider(
-                      value: _limit.toDouble(),
-                      min: 0,
-                      max: 160,
-                      divisions: 16,
-                      onChanged: (v) {
-                        _limit = v.round();
+                  const SizedBox(height: 3),
+                  Text('نغمة هادئة مرة وحدة عند التجاوز', style: tx(12, c: Colors.white54)),
+                  const SizedBox(height: 10),
+                  wrap([
+                    for (final v in const [0, 60, 80, 100, 110, 120, 130, 140])
+                      chip(v == 0 ? 'إيقاف' : '$v', _limit == v, () {
+                        _limit = v;
                         _alertArmed = true;
-                        set(() {});
-                      },
-                      onChangeEnd: (v) {
-                        save('car.limit', _limit);
-                        if (_limit > 0 && !gps) _gpsOn();
-                      },
-                    ),
-                  ),
+                        save('car.limit', v);
+                        if (v > 0 && !gps) _gpsOn();
+                      }),
+                  ]),
+                  const SizedBox(height: 4),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     value: _restOn,
@@ -1169,7 +1214,18 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
                     title: Text('تذكير بالاستراحة كل ساعتين قيادة', style: tx(14, c: Colors.white)),
                   ),
                 ]),
-                card('🔵', 'الاتصال بالسيارة', [
+                card(Ic.pulse, 'الأداء', [
+                  Text('جودة الرسوم', style: tx(14, c: Colors.white)),
+                  const SizedBox(height: 3),
+                  Text('التلقائية تضبط الجودة حسب قدرة الجهاز', style: tx(12, c: Colors.white54)),
+                  const SizedBox(height: 10),
+                  seg(const ['تلقائية', 'عالية', 'متوسطة', 'خفيفة'], _qMode, (i) {
+                    _qMode = i;
+                    save('car.q', i);
+                    _World.q = i == 0 ? (app.player.perf == 0 ? 2 : 1) : 3 - i;
+                  }),
+                ]),
+                card(Ic.power, 'الاتصال بالسيارة', [
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     value: auto,
@@ -1192,19 +1248,47 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
                   const SizedBox(height: 8),
                   Text('Android Auto: افتح منبر من شاشة السيارة لتصفح المفضلة والإصدارات والتحكم بالتشغيل.', style: tx(12, c: Colors.white54, h: 1.6)),
                 ]),
-                card('📊', 'الرحلة الحالية', [
+                card(Ic.eq, 'الرحلة الحالية', [
                   Row(children: [stat(gps ? '${(_dist / 1000).toStringAsFixed(1)}' : '—', 'كم'), stat(_dur(total), 'المدة'), stat('${_heard.length}', 'قصائد')]),
                   const SizedBox(height: 6),
                   Row(children: [stat(gps ? '${avg.round()}' : '—', 'المعدل'), stat(gps ? '${(_maxV * 3.6).round()}' : '—', 'الأعلى'), stat(gps ? _dur(_moveSec) : '—', 'الحركة')]),
                   if (lastTrip != null) ...[label('آخر رحلة'), Text(lastTrip, style: tx(13, c: Colors.white70))],
                 ]),
-                card('🚘', 'معاينة', [
-                  Container(
-                    height: 170,
-                    color: const Color(0xFF0B1F19),
-                    child: CustomPaint(painter: _CarPreview(_sc.model, _sc.color), size: Size.infinite),
-                  ),
-                ]),
+                // للمشرف فقط: فحص المشهد والمعاينة
+                if (_adm)
+                  card(Ic.gear, 'فحص المشهد', admin: true, note: 'المكتشفة: $detected', [
+                    label('المنطقة'),
+                    wrap([
+                      for (final e in _biomeNames.entries)
+                        chip(e.value, _bMode == e.key, () {
+                          _bMode = e.key;
+                          save('car.biome', e.key);
+                          _applyBiome();
+                        }),
+                    ]),
+                    label('الوقت'),
+                    wrap([
+                      for (int i = 0; i < 4; i++)
+                        chip(const ['تلقائي', 'نهار', 'غروب', 'ليل'][i], _tMode == i, () {
+                          _tMode = i;
+                          save('car.tm', i);
+                          _env();
+                        }, icon: const ['🕒', '☀', '🌇', '🌙'][i]),
+                    ]),
+                    label('الطقس'),
+                    wrap([
+                      for (int i = 0; i < _presets.length; i++)
+                        chip(i == 0 ? 'الحقيقي' : _presets[i]!.label, _wMode == i, () {
+                          _wMode = i;
+                          save('car.wx', i);
+                        }, icon: i == 0 ? '📡' : _presets[i]!.icon(false)),
+                    ]),
+                    label('معاينة السيارة'),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(height: 170, color: const Color(0xFF0B1F19), child: CustomPaint(painter: _CarPreview(_sc.model, _sc.color), size: Size.infinite)),
+                    ),
+                  ]),
               ]),
             ),
           ),
@@ -1289,7 +1373,7 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
               },
               child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('📍 $place${sub.isEmpty ? '' : ' · $sub'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(14, c: Colors.white, h: 1.25)),
-                Text('${w.icon(night)} $t${w.label}${_wMode == 0 ? '' : ' (معاينة)'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(12, c: Colors.white70, h: 1.3)),
+                Text('${w.icon(night)} $t${w.label}${_wM == 0 ? '' : ' (معاينة)'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(12, c: Colors.white70, h: 1.3)),
               ]),
             ),
           ),
