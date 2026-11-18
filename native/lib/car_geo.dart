@@ -141,5 +141,5 @@ _Region? _offlineRegion(double lat, double lon) {
   } else if (gov == 'Al-Anbar' && lon < 43.3 || gov == 'Al-Muthanna' && lon < 45.6 || gov == 'An-Najaf' && lon < 44.0 || gov == 'Karbala' && lon < 43.8 || gov == 'Ninawa' && lon < 41.9 || gov == 'Al-Basrah' && lon < 47.3 || gov == 'Dhi Qar' && lat < 30.9 && lon < 46.3) {
     biome = _bDesert;
   }
-  return _Region(place, sub, biome);
+  return _Region(place, sub, biome, gov);
 }

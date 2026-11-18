@@ -19,6 +19,7 @@ import 'ui.dart';
 
 part 'car_scene.dart';
 part 'car_geo.dart';
+part 'car_map.dart';
 
 /// وضع السيارة: مشهد قيادة حيّ بكامل الشاشة.
 /// - السرعة من GPS مع تنقية (دقة السرعة، رفض القفزات، حساب احتياطي من المسافة/الزمن).
@@ -401,6 +402,10 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
   double _lt = 0, _rawV = 0, _turn = 0, _acc = 99, _fixAt = -99, _blinkHold = 0;
   double _lat = 32.616, _lon = 44.024; // كربلاء افتراضياً
   double _posAt = -99, _gpsStartAt = -99, _lastRestart = -99;
+  final _mapTick = ValueNotifier<int>(0);
+  final _nav = ValueNotifier<_NavInfo?>(null);
+  double _mapHead = 0;
+  bool _mapOn = true;
   bool _gotFix = false, _useLM = true; // _useLM: GPS مباشر من الجهاز (يعمل بدون إنترنت) وإلا مزوّد جوجل
   // الطقس والوقت
   _Wx _wx = _Wx();
@@ -519,6 +524,7 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
       if (!_carColors.containsKey(_sc.color)) _sc.color = 'green';
       _limit = p.getInt('car.limit') ?? 0;
       _restOn = p.getBool('car.rest') ?? true;
+      _mapOn = p.getBool('car.map') ?? true;
       _qMode = p.getInt('car.q') ?? 0;
       _bMode = p.getInt('car.biome') ?? -1;
       _applyBiome();
@@ -568,6 +574,7 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
         final dh = ((p.heading - lp.heading + 540) % 360) - 180;
         _turn += (_cl((dh / dt) * math.pi / 180, -0.6, 0.6) - _turn) * 0.6;
         _sc.heading = p.heading;
+        _mapHead = (_mapHead + ((p.heading - _mapHead + 540) % 360 - 180) * 0.6 + 360) % 360;
       } else if (sp < 1.5) {
         _turn *= 0.5;
       }
@@ -581,6 +588,10 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
       _env();
     }
     _geo(); // تحديث المنطقة تلقائياً مع التنقل (محلي وفوري)
+    if (_mapOn) {
+      final nv = _navCompute(_lat, _lon, _mapHead, sp > 2.5);
+      if (nv != null || sp > 2.5) _nav.value = nv;
+    }
     if (sp < 0.6) sp = 0; // ضجيج التوقف
     _rawV = sp;
     _fixAt = _now;
@@ -820,6 +831,7 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
     final kmh = gps ? (s.v * 3.6).round() : 0;
     if (kmh != _kmh.value) _kmh.value = kmh;
     _frame.value++;
+    if (_mapOn && _frame.value % 6 == 0) _mapTick.value++;
   }
 
   /// إحصاءات الرحلة، تنبيه السرعة الهادئ، وتذكير الاستراحة
@@ -961,6 +973,8 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
     _gs?.cancel();
     _beep?.dispose();
     _frame.dispose();
+    _mapTick.dispose();
+    _nav.dispose();
     _kmh.dispose();
     _clock.dispose();
     _fx.dispose();
@@ -1224,6 +1238,19 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
                     save('car.q', i);
                     _World.q = i == 0 ? (app.player.perf == 0 ? 2 : 1) : 3 - i;
                   }),
+                  const SizedBox(height: 6),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: _mapOn,
+                    activeColor: kGold,
+                    onChanged: (v) => upd(() {
+                      _mapOn = v;
+                      save('car.map', v);
+                      if (!v) _nav.value = null;
+                    }),
+                    title: Text('الخريطة المصغرة وشريط البلدات', style: tx(14, c: Colors.white)),
+                    subtitle: Text('تعمل بدون إنترنت', style: tx(12, c: Colors.white54)),
+                  ),
                 ]),
                 card(Ic.power, 'الاتصال بالسيارة', [
                   SwitchListTile(
@@ -1569,6 +1596,41 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
         child: RepaintBoundary(child: CustomPaint(painter: _World(_sc, st, _frame), size: Size.infinite)),
       );
 
+  Widget _miniMap(double size) => IgnorePointer(
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: kGold, width: 2), boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 10)]),
+          child: ClipOval(child: RepaintBoundary(child: CustomPaint(painter: _MapPainter(this, _mapTick), size: Size(size, size)))),
+        ),
+      );
+
+  Widget _navStrip(double w) => ValueListenableBuilder<_NavInfo?>(
+        valueListenable: _nav,
+        builder: (_, n, __) => n == null
+            ? const SizedBox.shrink()
+            : IgnorePointer(
+                child: Container(
+                  width: w,
+                  height: 32,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(color: const Color(0x8C000000), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0x26FFFFFF))),
+                  child: Row(children: [
+                    Text(n.from, style: tx(11.5, c: Colors.white70)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Stack(alignment: Alignment.center, children: [
+                        Container(height: 3, decoration: BoxDecoration(color: const Color(0x40FFFFFF), borderRadius: BorderRadius.circular(2))),
+                        Align(alignment: AlignmentDirectional.centerStart, child: FractionallySizedBox(widthFactor: n.frac.clamp(0.02, 1.0), child: Container(height: 3, decoration: BoxDecoration(color: kGold, borderRadius: BorderRadius.circular(2))))),
+                      ]),
+                    ),
+                    const SizedBox(width: 8),
+                    Text('${n.to} · ${n.km < 10 ? n.km.toStringAsFixed(1) : n.km.round()} كم', style: tx(11.5, c: Colors.white)),
+                  ]),
+                ),
+              ),
+      );
+
   Widget _overlays(double cy) => IgnorePointer(
         child: Stack(children: [
           Positioned(
@@ -1651,6 +1713,8 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
                     child: const IgnorePointer(child: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.centerLeft, end: Alignment.centerRight, colors: [Color(0x00000000), Color(0xB3000000), Color(0xD9000000)], stops: [0, 0.25, 1]))))),
                 Positioned(left: 0, width: sw, top: 0, bottom: 0, child: _overlays(carY - cw * 0.4)),
                 Positioned(top: top + 66, left: sw * 0.5 - g / 2, child: _speedo(g)),
+                if (_mapOn && sw * 0.5 - g / 2 - 16 >= 62) Positioned(top: top + 66, left: 8, child: _miniMap(math.min(90.0, sw * 0.5 - g / 2 - 16))),
+                if (_mapOn) Positioned(left: 0, width: sw, top: hz + 44, child: Center(child: _navStrip(math.min(sw * 0.84, 330.0)))),
                 Positioned(top: top - 4, left: 0, right: 0, child: _topBar()),
                 Positioned(left: 0, width: sw, top: hz + 8, child: _bannerW()),
                 Positioned(
@@ -1681,6 +1745,8 @@ class _CarPageState extends State<CarPage> with SingleTickerProviderStateMixin {
                   child: const IgnorePointer(child: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0x00000000), Color(0xCC000000), Color(0xF2000000)], stops: [0, 0.2, 1]))))),
               Positioned.fill(child: _overlays(carY - cw * 0.4)),
               Positioned(top: top + 66, left: (w - g) / 2, child: _speedo(g)),
+              if (_mapOn && (w - g) / 2 - 16 >= 62) Positioned(top: top + 66, left: 8, child: _miniMap(math.min(90.0, (w - g) / 2 - 16))),
+              if (_mapOn) Positioned(left: 0, right: 0, top: hz + 44, child: Center(child: _navStrip(math.min(w * 0.84, 330.0)))),
               Positioned(top: top - 4, left: 0, right: 0, child: _topBar()),
               Positioned(left: 0, right: 0, top: hz + 6, child: _bannerW()),
               Positioned(

@@ -7,7 +7,8 @@ const _biomeNames = {-1: 'تلقائي', _bCity: 'مدينة', _bDesert: 'صحر
 class _Region {
   final String place, sub;
   final int biome;
-  const _Region(this.place, this.sub, this.biome);
+  final String govKey;
+  const _Region(this.place, this.sub, this.biome, [this.govKey = '']);
 }
 
 int _biomeFor(String gov, String country, bool urban) {
