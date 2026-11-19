@@ -15,12 +15,14 @@ export async function onRequest({ request, env }) {
   if (!bucket && !kv) return out({ error: 'لم يُربط مخزن' }, 500);
 
   if (request.method === 'GET') {
-    const u = new URL(request.url), s = u.searchParams.get('s') || 'r2', c = u.searchParams.get('c') || undefined;
+    const u = new URL(request.url), s = u.searchParams.get('s') || 'r2', c = u.searchParams.get('c') || undefined, after = u.searchParams.get('a') || undefined;
     try {
       if (s === 'r2') {
         if (!bucket) return out({ items: [], cursor: null, done: true, none: true });
-        const r = await bucket.list({ limit: PAGE, cursor: c });
-        return out({ items: r.objects.map((o) => [o.key, o.size, o.uploaded ? +new Date(o.uploaded) : 0, o.etag || '']), cursor: r.truncated ? r.cursor : null, done: !r.truncated });
+        /* ترقيم بالمفتاح الأخير (startAfter) بدل المؤشّر المبهم: ثابت ولا يكرّر الصفحات */
+        const r = await bucket.list(after ? { limit: PAGE, startAfter: after } : { limit: PAGE });
+        const items = r.objects.map((o) => [o.key, o.size, o.uploaded ? +new Date(o.uploaded) : 0, o.etag || '']);
+        return out({ items, last: items.length ? items[items.length - 1][0] : null, done: !r.truncated || !items.length });
       }
       if (!kv) return out({ items: [], cursor: null, done: true, none: true });
       const r = await kv.list({ limit: PAGE, cursor: c });

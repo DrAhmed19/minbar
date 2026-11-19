@@ -35,15 +35,16 @@
     S.loading = true; S.err = ''; S.r2 = []; S.kv = []; S.sel.clear(); draw();
     try {
       for (const st of ['r2', 'kv']) {
-        let c = '', arr = [];
-        for (let i = 0; i < 60; i++) {
-          S.msg = (st === 'r2' ? 'جارٍ قراءة ملفات R2… ' : 'جارٍ قراءة ملفات KV… ') + f0(arr.length); head();
-          const d = await api('api/store?s=' + st + (c ? '&c=' + encodeURIComponent(c) : ''));
+        let c = '', a = '', seen = new Map();
+        for (let i = 0; i < 80; i++) {
+          S.msg = (st === 'r2' ? 'جارٍ قراءة ملفات R2… ' : 'جارٍ قراءة ملفات KV… ') + f0(seen.size); head();
+          const d = await api('api/store?s=' + st + (st === 'r2' ? (a ? '&a=' + encodeURIComponent(a) : '') : (c ? '&c=' + encodeURIComponent(c) : '')));
           if (d.none) { if (st === 'kv') S.kvNone = true; break; }
-          d.items.forEach((x) => arr.push({ k: x[0], n: x[1], t: x[2], e: x[3], st, p: x[0].charAt(0) }));
-          if (d.done || !d.cursor) break; c = d.cursor;
+          let add = 0; d.items.forEach((x) => { if (!seen.has(x[0])) { seen.set(x[0], { k: x[0], n: x[1], t: x[2], e: x[3], st, p: x[0].charAt(0) }); add++; } });
+          if (d.done || !add) break;
+          if (st === 'r2') { if (!d.last || d.last === a) break; a = d.last; } else { if (!d.cursor || d.cursor === c) break; c = d.cursor; }
         }
-        S[st] = arr;
+        S[st] = [...seen.values()];
       }
       S.ref = cacheRefs();
     } catch (e) { S.err = e.message || String(e); }
