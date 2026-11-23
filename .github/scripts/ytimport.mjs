@@ -164,6 +164,47 @@ async function modeCovers() {
   if (fail && !ok) process.exitCode = 1;
 }
 
+/* تواريخ القصائد المرفوعة يدوياً: يُبحث عن كل قصيدة في يوتيوب ويُضبط تاريخها على تاريخ نشرها هناك (فقط عند تطابق الاسم والمدة) */
+async function modeDates() {
+  await jobPatch({ status: 'running', phase: 'فحص القصائد…', done: 0, total: 0, msg: '' });
+  const dMs = (u) => { const m = /^(\d{4})(\d\d)(\d\d)$/.exec(String(u || '')); return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], 12) : 0; };
+  const tracks = await store.list('tracks', ['title', 'reciter', 'dur', 'at', 'atYt', 'atTry', 'yt', 'album']);
+  const done = new Set(), fixed = [];
+  // 1) قصائد مستوردة سابقاً: التاريخ جاهز في مسوداتها
+  for (const d of await store.list('ytDrafts', ['status', 'trackId', 'ud'])) {
+    const t = d.status === 'published' && d.trackId && tracks.find((x) => x.id === d.trackId), ms = dMs(d.ud);
+    if (t && ms && !t.atYt) { await store.patch('tracks/' + t.id, { at: ms, atYt: 1 }); t.atYt = 1; t.at = ms; fixed.push(t.album); }
+  }
+  // 2) المرفوعة يدوياً: بحث بالاسم
+  const todo = tracks.filter((t) => !t.atYt && !t.yt && !t.atTry && t.title);
+  const bad = []; let ok = 0; const t0 = Date.now();
+  for (let i = 0; i < todo.length; i++) {
+    if (Date.now() - t0 > 300 * 60e3) break;
+    const t = todo[i]; await jobPatch({ total: todo.length, done: i, phase: '(' + (i + 1) + '/' + todo.length + ') ' + clip(t.title, 50) });
+    try {
+      const names = [t.reciter], key = L.normAr(L.cleanTitle(t.title, names));
+      const out = await L.ytTry(ctx, ['--skip-download', '--no-playlist', '--print', '%(id)s\t%(upload_date)s\t%(duration)s\t%(title)s', 'ytsearch6:' + t.title + ' ' + (t.reciter || '')]);
+      let best = null;
+      for (const ln of out.split('\n')) {
+        const [id, ud, du, ...ti] = ln.split('\t'); if (!id || !/^\d{8}$/.test(ud || '')) continue;
+        const k = L.normAr(L.cleanTitle(ti.join('\t'), names)); if (!key || !k) continue;
+        const nameOk = k === key || k.includes(key) || key.includes(k);
+        const dur = +du || 0, dOk = !t.dur || !dur || Math.abs(dur - t.dur) <= Math.max(6, t.dur * 0.06);
+        if (nameOk && dOk && (!best || (k === key && !best.exact))) best = { ud, exact: k === key };
+      }
+      if (best) { await store.patch('tracks/' + t.id, { at: dMs(best.ud), atYt: 1, atTry: 1 }); fixed.push(t.album); ok++; }
+      else { await store.patch('tracks/' + t.id, { atTry: 1 }); bad.push(t.title); }
+    } catch (e) { if (/COOKIES_EXPIRED/.test(e.message)) { bad.push('توقف: ' + L.friendlyErr(e.message)); break; } bad.push(t.title); }
+  }
+  // 3) تاريخ الإصدار = أحدث قصائده
+  const alb = new Set(fixed.filter(Boolean));
+  if (alb.size) {
+    const all = await store.list('tracks', ['album', 'at', 'atYt']);
+    for (const a of alb) { const mx = Math.max(0, ...all.filter((x) => x.album === a && x.atYt).map((x) => x.at || 0)); if (mx && await store.get('albums/' + a).catch(() => null)) await store.patch('albums/' + a, { at: mx }).catch(() => {}); }
+  }
+  await jobPatch({ status: 'done', done: todo.length, total: todo.length, phase: 'ضُبط تاريخ ' + (fixed.length) + ' قصيدة' + (bad.length ? ' · لم أجد ' + bad.length : ''), msg: bad.slice(0, 12).join(' | ').slice(0, 800) });
+}
+
 /* إكمال الدفعات المتبقية من مهام استيراد كبيرة (دفعة واحدة لكل تشغيل) */
 async function drainQueue() {
   const q = (await store.list('ytJobs', ['rest', 'paused'])).filter((j) => j.id !== JOB && !j.paused && Array.isArray(j.rest) && j.rest.length);
@@ -208,7 +249,7 @@ async function modeScan() {
 try {
   await mkdir(WORK, { recursive: true });
   console.log('yt-dlp js-runtimes:', JSR, '· cookies:', !!COOKIES, '· mode:', MODE, '· job:', JOB);
-  if (MODE === 'list') await modeList(); else if (MODE === 'import') await modeImport(); else if (MODE === 'scan') await modeScan(); else if (MODE === 'covers') await modeCovers(); else throw new Error('نمط غير معروف: ' + MODE);
+  if (MODE === 'list') await modeList(); else if (MODE === 'import') await modeImport(); else if (MODE === 'scan') await modeScan(); else if (MODE === 'covers') await modeCovers(); else if (MODE === 'dates') await modeDates(); else throw new Error('نمط غير معروف: ' + MODE);
 } catch (e) {
   console.error('::error::' + e.message);
   try { await jobPatch({ status: 'failed', phase: 'فشل', msg: L.friendlyErr(e.message) }); } catch (x) { console.error('تعذّر تسجيل الفشل:', x.message); }

@@ -49,6 +49,7 @@
       try { col('ytDrafts').where('status', '==', 'draft').get().then((s) => { if (s.size) dr.textContent = 'المسودات (' + s.size + ')'; }).catch(() => {}); } catch (e) {}
       const op = E.btn('wide', 'العمليات (متابعة وتحكم)', () => ops()); bx.appendChild(op);
       try { col('ytDrafts').where('status', '==', 'published').get().then((q) => { let n = 0; q.forEach((x) => { const d = x.data(); if (d.trackId && !d.covFix) n++; }); if (n) bx.insertBefore(E.btn('wide primary', 'تصحيح صور القصائد المنشورة (' + n + ')', () => fixCovers()), op); }).catch(() => {}); } catch (e) {}
+      bx.insertBefore(E.btn('wide primary', 'ضبط تواريخ القصائد المرفوعة يدوياً', () => fixDates()), op);
       bx.appendChild(E.btn('wide', 'القنوات المتابَعة (فحص تلقائي مرتين يومياً)', () => sources()));
       try { col('ytJobs').orderBy('upd', 'desc').limit(25).get().then((q) => { let n = 0; q.forEach((d) => { const j = d.data(); if ((j.mode === 'import') && ['run', 'wait', 'stale'].includes(stateOf(j)[0])) n++; }); if (n) op.textContent = 'العمليات (' + n + ' جارية أو مؤجلة)'; }).catch(() => {}); } catch (e) {}
       bx.appendChild(E.btn('wide', 'إغلاق', close));
@@ -61,6 +62,14 @@
     try { await col('ytJobs').doc(id).set({ mode: 'covers', status: 'queued', phase: 'بانتظار التشغيل…', upd: Date.now() }); await dispatch(id, 'covers'); }
     catch (e) { return E.toast(e.message || 'فشل التشغيل'); }
     progress('تصحيح صور القصائد', id, (j) => { E.fsLoad(); E.toast(j.phase || 'تم'); home(); });
+  }
+
+  /* القصائد المرفوعة يدوياً بلا تاريخ نشر: يُبحث عنها في يوتيوب ويُضبط تاريخها */
+  async function fixDates() {
+    const id = jid('dt');
+    try { await col('ytJobs').doc(id).set({ mode: 'dates', status: 'queued', phase: 'بانتظار التشغيل…', upd: Date.now() }); await dispatch(id, 'dates'); }
+    catch (e) { return E.toast(e.message || 'فشل التشغيل'); }
+    progress('ضبط تواريخ القصائد', id, (j) => { E.fsLoad(); E.toast(j.phase || 'تم'); home(); });
   }
 
   async function startList(url, goBtn) {

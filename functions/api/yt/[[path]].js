@@ -19,7 +19,7 @@ export async function onRequest({ request, env, params }) {
   if (pth !== 'run') return json({ error: 'مسار غير معروف' }, 404);
   let b; try { b = await request.json(); } catch (e) { return json({ error: 'طلب غير صالح' }, 400); }
   const job = String((b && b.job) || ''), mode = String((b && b.mode) || '');
-  if (!/^[A-Za-z0-9_-]{4,60}$/.test(job) || !['list', 'import', 'scan', 'covers'].includes(mode)) return json({ error: 'معطيات غير صالحة' }, 400);
+  if (!/^[A-Za-z0-9_-]{4,60}$/.test(job) || !['list', 'import', 'scan', 'covers', 'dates'].includes(mode)) return json({ error: 'معطيات غير صالحة' }, 400);
   if (!env.GH_TOKEN) return json({ error: 'لم يُضف السر GH_TOKEN في Cloudflare' }, 500);
   const r = await fetch('https://api.github.com/repos/' + (env.GH_REPO || 'DrAhmed19/minbar') + '/actions/workflows/yt-import.yml/dispatches', {
     method: 'POST',
