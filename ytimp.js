@@ -50,6 +50,11 @@
       const op = E.btn('wide', 'العمليات (متابعة وتحكم)', () => ops()); bx.appendChild(op);
       try { col('ytDrafts').where('status', '==', 'published').get().then((q) => { let n = 0; q.forEach((x) => { const d = x.data(); if (d.trackId && !d.covFix) n++; }); if (n) bx.insertBefore(E.btn('wide primary', 'تصحيح صور القصائد المنشورة (' + n + ')', () => fixCovers()), op); }).catch(() => {}); } catch (e) {}
       bx.insertBefore(E.btn('wide primary', 'ضبط تواريخ القصائد المرفوعة يدوياً', () => fixDates()), op);
+      bx.insertBefore(E.btn('wide', 'نسخ قائمة القصائد بلا تاريخ نشر', () => {
+        const L = E.tracks().filter((x) => !x.atYt && !x.yt).map((x) => x.title + ' — ' + (x.reciter || '') + (x.album && E.ALB()[x.album] ? ' — ' + E.ALB()[x.album].name : ''));
+        const tx = L.length + ' قصيدة:\n' + L.join('\n');
+        (navigator.clipboard ? navigator.clipboard.writeText(tx) : Promise.reject()).then(() => E.toast('نُسخت ' + L.length + ' قصيدة'), () => E.toast('تعذّر النسخ'));
+      }), op);
       bx.appendChild(E.btn('wide', 'القنوات المتابَعة (فحص تلقائي مرتين يومياً)', () => sources()));
       try { col('ytJobs').orderBy('upd', 'desc').limit(25).get().then((q) => { let n = 0; q.forEach((d) => { const j = d.data(); if ((j.mode === 'import') && ['run', 'wait', 'stale'].includes(stateOf(j)[0])) n++; }); if (n) op.textContent = 'العمليات (' + n + ' جارية أو مؤجلة)'; }).catch(() => {}); } catch (e) {}
       bx.appendChild(E.btn('wide', 'إغلاق', close));
