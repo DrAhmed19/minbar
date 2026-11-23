@@ -49,7 +49,6 @@
       try { col('ytDrafts').where('status', '==', 'draft').get().then((s) => { if (s.size) dr.textContent = 'المسودات (' + s.size + ')'; }).catch(() => {}); } catch (e) {}
       const op = E.btn('wide', 'العمليات (متابعة وتحكم)', () => ops()); bx.appendChild(op);
       try { col('ytDrafts').where('status', '==', 'published').get().then((q) => { let n = 0; q.forEach((x) => { const d = x.data(); if (d.trackId && !d.covFix) n++; }); if (n) bx.insertBefore(E.btn('wide primary', 'تصحيح صور القصائد المنشورة (' + n + ')', () => fixCovers()), op); }).catch(() => {}); } catch (e) {}
-      bx.insertBefore(E.btn('wide primary', 'ضبط تواريخ القصائد المرفوعة يدوياً', () => fixDates()), op);
       bx.insertBefore(E.btn('wide', 'نسخ قائمة القصائد بلا تاريخ نشر', () => {
         const L = E.tracks().filter((x) => !x.atYt && !x.yt).map((x) => x.title + ' — ' + (x.reciter || '') + (x.album && E.ALB()[x.album] ? ' — ' + E.ALB()[x.album].name : ''));
         const tx = L.length + ' قصيدة:\n' + L.join('\n');
@@ -67,14 +66,6 @@
     try { await col('ytJobs').doc(id).set({ mode: 'covers', status: 'queued', phase: 'بانتظار التشغيل…', upd: Date.now() }); await dispatch(id, 'covers'); }
     catch (e) { return E.toast(e.message || 'فشل التشغيل'); }
     progress('تصحيح صور القصائد', id, (j) => { E.fsLoad(); E.toast(j.phase || 'تم'); home(); });
-  }
-
-  /* القصائد المرفوعة يدوياً بلا تاريخ نشر: يُبحث عنها في يوتيوب ويُضبط تاريخها */
-  async function fixDates() {
-    const id = jid('dt');
-    try { await col('ytJobs').doc(id).set({ mode: 'dates', status: 'queued', phase: 'بانتظار التشغيل…', upd: Date.now() }); await dispatch(id, 'dates'); }
-    catch (e) { return E.toast(e.message || 'فشل التشغيل'); }
-    progress('ضبط تواريخ القصائد', id, (j) => { E.fsLoad(); E.toast(j.phase || 'تم'); home(); });
   }
 
   async function startList(url, goBtn) {
