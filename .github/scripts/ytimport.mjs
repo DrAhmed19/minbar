@@ -164,6 +164,27 @@ async function modeCovers() {
   if (fail && !ok) process.exitCode = 1;
 }
 
+/* ضبط تاريخ إصدارات رُفعت يدوياً (الأسماء والتواريخ في relDates.json): كل قصيدة بلا تاريخ يوتيوب تأخذ تاريخ إصدارها مع حفظ ترتيبها؛ لا يُمَسّ إلا الحقلان at وatYt */
+async function modeSetDates() {
+  await jobPatch({ status: 'running', phase: 'ضبط تواريخ الإصدارات…', done: 0, total: 0, msg: '' });
+  const map = JSON.parse(await readFile(new URL('./relDates.json', import.meta.url), 'utf8'));
+  const albs = await store.list('albums', ['name', 'at']), tracks = await store.list('tracks', ['title', 'album', 'at', 'atYt', 'yt']);
+  const lines = []; let n = 0;
+  for (const [name, day] of Object.entries(map)) {
+    const base = Date.parse(day + 'T12:00:00Z'), key = L.normAr(name).replace(/\s+/g, '');
+    const ids = albs.filter((a) => L.normAr(a.name).replace(/\s+/g, '') === key).map((a) => a.id);
+    if (!ids.length) { lines.push(name + ': الإصدار غير موجود'); continue; }
+    for (const id of ids) {
+      const ts = tracks.filter((t) => t.album === id && !t.atYt && !t.yt).sort((a, b) => (a.at || 0) - (b.at || 0) || String(a.id).localeCompare(b.id));
+      for (let i = 0; i < ts.length; i++) { await store.patch('tracks/' + ts[i].id, { at: base + i * 1000, atYt: 1 }); n++; }
+      if (ts.length) await store.patch('albums/' + id, { at: base + ts.length * 1000 });
+      lines.push(name + ': ' + ts.length);
+    }
+  }
+  await jobPatch({ status: 'done', phase: 'ضُبط تاريخ ' + n + ' قصيدة', msg: lines.join(' | ').slice(0, 800) });
+  console.log(lines.join('\n'));
+}
+
 /* إكمال الدفعات المتبقية من مهام استيراد كبيرة (دفعة واحدة لكل تشغيل) */
 async function drainQueue() {
   const q = (await store.list('ytJobs', ['rest', 'paused'])).filter((j) => j.id !== JOB && !j.paused && Array.isArray(j.rest) && j.rest.length);
@@ -208,7 +229,7 @@ async function modeScan() {
 try {
   await mkdir(WORK, { recursive: true });
   console.log('yt-dlp js-runtimes:', JSR, '· cookies:', !!COOKIES, '· mode:', MODE, '· job:', JOB);
-  if (MODE === 'list') await modeList(); else if (MODE === 'import') await modeImport(); else if (MODE === 'scan') await modeScan(); else if (MODE === 'covers') await modeCovers(); else throw new Error('نمط غير معروف: ' + MODE);
+  if (MODE === 'list') await modeList(); else if (MODE === 'import') await modeImport(); else if (MODE === 'scan') await modeScan(); else if (MODE === 'covers') await modeCovers(); else if (MODE === 'setdates') await modeSetDates(); else throw new Error('نمط غير معروف: ' + MODE);
 } catch (e) {
   console.error('::error::' + e.message);
   try { await jobPatch({ status: 'failed', phase: 'فشل', msg: L.friendlyErr(e.message) }); } catch (x) { console.error('تعذّر تسجيل الفشل:', x.message); }
